@@ -10,7 +10,13 @@ CLEANFILES = $(BUILT_SOURCES) *.core
 
 lib_LTLIBRARIES = libmrklkit.la
 
-nobase_include_HEADERS = fparser.h mrklkit.h lparse.h ltype.h lexpr.h
+nobase_include_HEADERS = \
+	mrklkit/fparser.h \
+	mrklkit/mrklkit.h \
+	mrklkit/lparse.h \
+	mrklkit/ltype.h \
+	mrklkit/lexpr.h \
+	mrklkit/dsource.h
 
 noinst_HEADERS =
 
@@ -19,7 +25,8 @@ libmrklkit_la_SOURCES = \
 	mrklkit.c \
 	lparse.c \
 	ltype.c \
-	lexpr.c
+	lexpr.c \
+	dsource.c
 
 nodist_libmrklkit_la_SOURCES = diag.c
 

@@ -16,6 +16,7 @@
 #include "lparse.h"
 #include "ltype.h"
 #include "mrklkit.h"
+#include "dsource.h"
 
 #include "diag.h"
 

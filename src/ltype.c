@@ -33,8 +33,8 @@ builtin_type_destroy(lkit_type_t **ty)
 }
 
 
-static int
-type_destroy(lkit_type_t **ty)
+int
+lkit_type_destroy(lkit_type_t **ty)
 {
 
     if (*ty != NULL) {
@@ -96,7 +96,6 @@ type_destroy(lkit_type_t **ty)
         case LKIT_FUNC:
             tf = (lkit_func_t *)*ty;
             array_fini(&tf->fields);
-            array_fini(&tf->names);
             break;
 
         default:
@@ -141,7 +140,7 @@ type_new(lkit_tag_t tag)
         ta->parser = LKIT_PARSER_NONE;
         ta->delim = NULL;
         array_init(&ta->fields, sizeof(lkit_type_t *), 0,
-                   NULL, (array_finalizer_t)type_destroy);
+                   NULL, (array_finalizer_t)lkit_type_destroy);
         ty = (lkit_type_t *)ta;
         break;
 
@@ -156,7 +155,7 @@ type_new(lkit_tag_t tag)
         td->kvdelim = NULL;
         td->fdelim = NULL;
         array_init(&td->fields, sizeof(lkit_type_t *), 0,
-                   NULL, (array_finalizer_t)type_destroy);
+                   NULL, (array_finalizer_t)lkit_type_destroy);
         ty = (lkit_type_t *)td;
         break;
 
@@ -171,7 +170,7 @@ type_new(lkit_tag_t tag)
         ts->parser = LKIT_PARSER_NONE;
         ts->delim = NULL;
         array_init(&ts->fields, sizeof(lkit_type_t *), 0,
-                   NULL, (array_finalizer_t)type_destroy);
+                   NULL, (array_finalizer_t)lkit_type_destroy);
         array_init(&ts->names, sizeof(unsigned char *), 0,
                    NULL, NULL);
         ty = (lkit_type_t *)ts;
@@ -186,9 +185,7 @@ type_new(lkit_tag_t tag)
         tf->base.name = "func";
         LKIT_ERROR(tf) = 0;
         array_init(&tf->fields, sizeof(lkit_type_t *), 0,
-                   NULL, (array_finalizer_t)type_destroy);
-        array_init(&tf->names, sizeof(unsigned char *), 0,
-                   NULL, NULL);
+                   NULL, (array_finalizer_t)lkit_type_destroy);
         ty = (lkit_type_t *)tf;
         break;
 
@@ -305,8 +302,8 @@ lkit_type_dump(lkit_type_t *ty)
     }
 }
 
-static int
-next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int seterror)
+int
+ltype_next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int seterror)
 {
     lkit_type_t *ty;
     fparser_datum_t **tok;
@@ -325,87 +322,6 @@ next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int seterror
     (*tok)->error = seterror;
     return 1;
 }
-
-/**
- * data source example
- *
- */
-
-static void
-dsource_init(dsource_t *dsource)
-{
-    dsource->timestamp_index = -1;
-    dsource->date_index = -1;
-    dsource->time_index = -1;
-    dsource->duration_index = -1;
-    dsource->error = 0;
-    /* weak ref */
-    dsource->logtype = NULL;
-    dsource->fields = NULL;
-}
-
-static void
-dsource_fini(dsource_t *dsource)
-{
-    dsource->timestamp_index = -1;
-    dsource->date_index = -1;
-    dsource->time_index = -1;
-    dsource->duration_index = -1;
-    dsource->error = 0;
-    /* weak ref */
-    dsource->logtype = NULL;
-    /* weak ref */
-    type_destroy((lkit_type_t **)(&dsource->fields));
-}
-
-static dsource_t *
-dsource_new(void)
-{
-    dsource_t *dsource;
-
-    if ((dsource = malloc(sizeof(dsource_t))) == NULL) {
-        FAIL("malloc");
-    }
-    dsource_init(dsource);
-    return dsource;
-}
-
-UNUSED static void
-dsource_destroy(dsource_t **dsource)
-{
-    if (*dsource != NULL) {
-        dsource_fini(*dsource);
-        free(*dsource);
-        *dsource = NULL;
-    }
-}
-
-
-UNUSED static void
-dsource_dump(dsource_t *dsource)
-{
-    if (dsource->error) {
-        TRACEC("-->(dsource ");
-    } else {
-        TRACEC("(dsource ");
-    }
-    if (dsource->timestamp_index != -1) {
-        TRACEC(":timestamp-index %d ", dsource->timestamp_index);
-    }
-    if (dsource->date_index != -1) {
-        TRACEC(":date-index %d ", dsource->date_index);
-    }
-    if (dsource->time_index != -1) {
-        TRACEC(":time-index %d ", dsource->time_index);
-    }
-    lkit_type_dump((lkit_type_t *)(dsource->fields));
-    if (dsource->error) {
-        TRACEC(")<--");
-    } else {
-        TRACEC(")");
-    }
-}
-
 
 /*
  * Parser.
@@ -609,8 +525,6 @@ parse_fielddef(fparser_datum_t *dat, lkit_type_t *ty)
 
     if (ty->tag == LKIT_STRUCT) {
         DO_PARSE_FIELDDEF(ts, lkit_struct_t);
-    } else if (ty->tag == LKIT_FUNC) {
-        DO_PARSE_FIELDDEF(tf, lkit_func_t);
     } else {
         FAIL("parse_field");
     }
@@ -746,18 +660,18 @@ parse_type(fparser_datum_t *dat)
                 ty = type_new(LKIT_FUNC);
                 tf = (lkit_func_t *)ty;
 
-                /* fields */
+                /* retval and optional params are stroed in tf->fields */
                 for (tok = array_next(form, &it);
                      tok != NULL;
                      tok = array_next(form, &it)) {
 
+                    lkit_type_t **paramtype;
 
-                    if (FPARSER_DATUM_TAG(*tok) == FPARSER_SEQ) {
-                        //if (parse_fielddef_func(*tok, tf) != 0) {
-                        if (parse_fielddef(*tok, ty) != 0) {
-                            goto err;
-                        }
-                    } else {
+                    if ((paramtype = array_incr(&tf->fields)) == NULL) {
+                        FAIL("array_incr");
+                    }
+
+                    if ((*paramtype = parse_type(*tok)) == NULL) {
                         goto err;
                     }
                 }
@@ -773,63 +687,9 @@ end:
 err:
     dat->error = 1;
     if (ty != NULL) {
-        type_destroy(&ty);
+        lkit_type_destroy(&ty);
     }
     goto end;
-}
-
-/**
- * dsource ::= (dsource quals? logtype fields?)
- *
- */
-static int
-parse_dsource_quals(array_t *form,
-                   array_iter_t *it,
-                   unsigned char *qual,
-                   dsource_t *dsource)
-{
-    char *s = (char *)qual;
-
-#define DSOURCE_SET_INT(m) \
-    int64_t value; \
-    if (lparse_next_int(form, it, &value, 1) != 0) { \
-        dsource->error = 1; \
-        return 1; \
-    } \
-    dsource->m = (int)value;
-
-    if (strcmp(s, ":tsidx") == 0) {
-        DSOURCE_SET_INT(timestamp_index);
-    } else if (strcmp(s, ":dtidx") == 0) {
-        DSOURCE_SET_INT(date_index);
-    } else if (strcmp(s, ":tmidx") == 0) {
-        DSOURCE_SET_INT(time_index);
-    } else {
-        TRACE("unknown qual: %s", s);
-    }
-    return 0;
-}
-
-int
-ltype_parse_dsource(array_t *form,
-             array_iter_t *it,
-             dsource_t **dsource)
-{
-    *dsource = dsource_new();
-
-    /* logtype */
-    if (lparse_next_word(form, it, &(*dsource)->logtype, 1) != 0) {
-        (*dsource)->error = 1;
-        return 1;
-    }
-    /* quals */
-    lparse_quals(form, it, (quals_parser_t)parse_dsource_quals, *dsource);
-
-    if (next_struct(form, it, &(*dsource)->fields, 1) != 0) {
-        (*dsource)->error = 1;
-        return 1;
-    }
-    return 0;
 }
 
 int

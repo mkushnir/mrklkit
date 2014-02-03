@@ -9,7 +9,7 @@ dist_HEADERS = unittest.h
 
 BUILT_SOURCES = ../diag.c ../diag.h
 
-noinst_HEADERS = ../mrklkit.h
+noinst_HEADERS = ../mrklkit/mrklkit.h
 
 if DEBUG
     DEBUG_FLAGS = -g -O0 @CLANG_DEBUG@

@@ -99,25 +99,13 @@ typedef struct _lkit_func {
     struct _lkit_type base;
     /* lkit_type_t * */
     array_t fields;
-    /* weak refs */
-    array_t names;
 } lkit_func_t;
-
-typedef struct _dsource {
-    int timestamp_index;
-    int date_index;
-    int time_index;
-    int duration_index;
-    int error:1;
-    /* weak ref*/
-    unsigned char *logtype;
-    lkit_struct_t *fields;
-} dsource_t;
 
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
 void lkit_type_dump(lkit_type_t *);
-int ltype_parse_dsource(array_t *, array_iter_t *, dsource_t **);
+int lkit_type_destroy(lkit_type_t **);
+int ltype_next_struct(array_t *, array_iter_t *, lkit_struct_t **, int);
 void ltype_init(void);
 void ltype_fini(void);
 
