@@ -103,7 +103,7 @@ typedef struct _lkit_func {
     array_t names;
 } lkit_func_t;
 
-typedef struct _deflog {
+typedef struct _dsource {
     int timestamp_index;
     int date_index;
     int time_index;
@@ -112,12 +112,12 @@ typedef struct _deflog {
     /* weak ref*/
     unsigned char *logtype;
     lkit_struct_t *fields;
-} deflog_t;
+} dsource_t;
 
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
 void lkit_type_dump(lkit_type_t *);
-int ltype_parse_deflog(array_t *, array_iter_t *, deflog_t **);
+int ltype_parse_dsource(array_t *, array_iter_t *, dsource_t **);
 void ltype_init(void);
 void ltype_fini(void);
 

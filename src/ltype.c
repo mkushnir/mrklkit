@@ -327,79 +327,79 @@ next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int seterror
 }
 
 /**
- * deflog
+ * data source example
  *
  */
 
 static void
-deflog_init(deflog_t *deflog)
+dsource_init(dsource_t *dsource)
 {
-    deflog->timestamp_index = -1;
-    deflog->date_index = -1;
-    deflog->time_index = -1;
-    deflog->duration_index = -1;
-    deflog->error = 0;
+    dsource->timestamp_index = -1;
+    dsource->date_index = -1;
+    dsource->time_index = -1;
+    dsource->duration_index = -1;
+    dsource->error = 0;
     /* weak ref */
-    deflog->logtype = NULL;
-    deflog->fields = NULL;
+    dsource->logtype = NULL;
+    dsource->fields = NULL;
 }
 
 static void
-deflog_fini(deflog_t *deflog)
+dsource_fini(dsource_t *dsource)
 {
-    deflog->timestamp_index = -1;
-    deflog->date_index = -1;
-    deflog->time_index = -1;
-    deflog->duration_index = -1;
-    deflog->error = 0;
+    dsource->timestamp_index = -1;
+    dsource->date_index = -1;
+    dsource->time_index = -1;
+    dsource->duration_index = -1;
+    dsource->error = 0;
     /* weak ref */
-    deflog->logtype = NULL;
+    dsource->logtype = NULL;
     /* weak ref */
-    type_destroy((lkit_type_t **)(&deflog->fields));
+    type_destroy((lkit_type_t **)(&dsource->fields));
 }
 
-static deflog_t *
-deflog_new(void)
+static dsource_t *
+dsource_new(void)
 {
-    deflog_t *deflog;
+    dsource_t *dsource;
 
-    if ((deflog = malloc(sizeof(deflog_t))) == NULL) {
+    if ((dsource = malloc(sizeof(dsource_t))) == NULL) {
         FAIL("malloc");
     }
-    deflog_init(deflog);
-    return deflog;
+    dsource_init(dsource);
+    return dsource;
 }
 
 UNUSED static void
-deflog_destroy(deflog_t **deflog)
+dsource_destroy(dsource_t **dsource)
 {
-    if (*deflog != NULL) {
-        deflog_fini(*deflog);
-        free(*deflog);
-        *deflog = NULL;
+    if (*dsource != NULL) {
+        dsource_fini(*dsource);
+        free(*dsource);
+        *dsource = NULL;
     }
 }
 
 
 UNUSED static void
-deflog_dump(deflog_t *deflog)
+dsource_dump(dsource_t *dsource)
 {
-    if (deflog->error) {
-        TRACEC("-->(deflog ");
+    if (dsource->error) {
+        TRACEC("-->(dsource ");
     } else {
-        TRACEC("(deflog ");
+        TRACEC("(dsource ");
     }
-    if (deflog->timestamp_index != -1) {
-        TRACEC(":timestamp-index %d ", deflog->timestamp_index);
+    if (dsource->timestamp_index != -1) {
+        TRACEC(":timestamp-index %d ", dsource->timestamp_index);
     }
-    if (deflog->date_index != -1) {
-        TRACEC(":date-index %d ", deflog->date_index);
+    if (dsource->date_index != -1) {
+        TRACEC(":date-index %d ", dsource->date_index);
     }
-    if (deflog->time_index != -1) {
-        TRACEC(":time-index %d ", deflog->time_index);
+    if (dsource->time_index != -1) {
+        TRACEC(":time-index %d ", dsource->time_index);
     }
-    lkit_type_dump((lkit_type_t *)(deflog->fields));
-    if (deflog->error) {
+    lkit_type_dump((lkit_type_t *)(dsource->fields));
+    if (dsource->error) {
         TRACEC(")<--");
     } else {
         TRACEC(")");
@@ -779,31 +779,31 @@ err:
 }
 
 /**
- * deflog ::= (deflog quals? logtype fields?)
+ * dsource ::= (dsource quals? logtype fields?)
  *
  */
 static int
-parse_deflog_quals(array_t *form,
+parse_dsource_quals(array_t *form,
                    array_iter_t *it,
                    unsigned char *qual,
-                   deflog_t *deflog)
+                   dsource_t *dsource)
 {
     char *s = (char *)qual;
 
-#define DEFLOG_SET_INT(m) \
+#define DSOURCE_SET_INT(m) \
     int64_t value; \
     if (lparse_next_int(form, it, &value, 1) != 0) { \
-        deflog->error = 1; \
+        dsource->error = 1; \
         return 1; \
     } \
-    deflog->m = (int)value;
+    dsource->m = (int)value;
 
-    if (strcmp(s, ":timestamp-index") == 0) {
-        DEFLOG_SET_INT(timestamp_index);
-    } else if (strcmp(s, ":date-index") == 0) {
-        DEFLOG_SET_INT(date_index);
-    } else if (strcmp(s, ":time-index") == 0) {
-        DEFLOG_SET_INT(time_index);
+    if (strcmp(s, ":tsidx") == 0) {
+        DSOURCE_SET_INT(timestamp_index);
+    } else if (strcmp(s, ":dtidx") == 0) {
+        DSOURCE_SET_INT(date_index);
+    } else if (strcmp(s, ":tmidx") == 0) {
+        DSOURCE_SET_INT(time_index);
     } else {
         TRACE("unknown qual: %s", s);
     }
@@ -811,22 +811,22 @@ parse_deflog_quals(array_t *form,
 }
 
 int
-ltype_parse_deflog(array_t *form,
+ltype_parse_dsource(array_t *form,
              array_iter_t *it,
-             deflog_t **deflog)
+             dsource_t **dsource)
 {
-    *deflog = deflog_new();
+    *dsource = dsource_new();
 
     /* logtype */
-    if (lparse_next_word(form, it, &(*deflog)->logtype, 1) != 0) {
-        (*deflog)->error = 1;
+    if (lparse_next_word(form, it, &(*dsource)->logtype, 1) != 0) {
+        (*dsource)->error = 1;
         return 1;
     }
     /* quals */
-    lparse_quals(form, it, (quals_parser_t)parse_deflog_quals, *deflog);
+    lparse_quals(form, it, (quals_parser_t)parse_dsource_quals, *dsource);
 
-    if (next_struct(form, it, &(*deflog)->fields, 1) != 0) {
-        (*deflog)->error = 1;
+    if (next_struct(form, it, &(*dsource)->fields, 1) != 0) {
+        (*dsource)->error = 1;
         return 1;
     }
     return 0;

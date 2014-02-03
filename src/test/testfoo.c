@@ -182,7 +182,7 @@ test3(void)
     int fd;
     int res;
 
-    if ((fd = open("deflog", O_RDONLY)) == -1) {
+    if ((fd = open("dsource", O_RDONLY)) == -1) {
         FAIL("open");
     }
 

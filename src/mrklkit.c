@@ -25,14 +25,14 @@ LLVMExecutionEngineRef ee;
 
 /* mrklkit ctx */
 static fparser_datum_t *root;
-static array_t deflogs;
+static array_t dsources;
 static array_t defvars;
 static array_t defqueries;
 
 /**
  * Generic form parser
  *
- * deflog defvars? defqueries?
+ * dsource defvars? defqueries?
  *
  */
 int
@@ -71,9 +71,9 @@ mrklkit_parse(int fd)
             glob_form = (array_t *)((*glob_tok)->body);
 
             if (lparse_first_word(glob_form, &glob_it, &first, 1) == 0) {
-                if (strcmp((char *)first, "deflog") == 0) {
-                    deflog_t *deflog = NULL;
-                    if (ltype_parse_deflog(glob_form, &glob_it, &deflog) != 0) {
+                if (strcmp((char *)first, "dsource") == 0) {
+                    dsource_t *dsource = NULL;
+                    if (ltype_parse_dsource(glob_form, &glob_it, &dsource) != 0) {
                         (*glob_tok)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
@@ -177,7 +177,7 @@ void mrklkit_init_module(void)
     ltype_init();
     root = NULL;
 
-    if (array_init(&deflogs, sizeof(deflog_t *), 0, NULL, NULL) != 0) {
+    if (array_init(&dsources, sizeof(dsource_t *), 0, NULL, NULL) != 0) {
         FAIL("array_init");
     }
 
@@ -197,7 +197,7 @@ mrklkit_fini_module(void)
 {
     array_fini(&defqueries);
     array_fini(&defvars);
-    array_fini(&deflogs);
+    array_fini(&dsources);
 
     if (root != NULL) {
         fparser_datum_destroy(&root);
