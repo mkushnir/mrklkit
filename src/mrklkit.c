@@ -26,13 +26,13 @@ LLVMExecutionEngineRef ee;
 /* mrklkit ctx */
 static fparser_datum_t *root;
 static array_t dsources;
-static array_t defvars;
-static array_t defqueries;
+static array_t vars;
+static array_t queries;
 
 /**
  * Generic form parser
  *
- * dsource defvars? defqueries?
+ * dsource vars? queries?
  *
  */
 int
@@ -79,8 +79,8 @@ mrklkit_parse(int fd)
                         return 1;
                     }
 
-                } else if (strcmp((char *)first, "defvar") == 0){
-                } else if (strcmp((char *)first, "defquery") == 0){
+                } else if (strcmp((char *)first, "var") == 0){
+                } else if (strcmp((char *)first, "query") == 0){
                 } else {
                     /* ignore */
                 }
@@ -181,11 +181,11 @@ void mrklkit_init_module(void)
         FAIL("array_init");
     }
 
-    if (array_init(&defvars, sizeof(defvar_t *), 0, NULL, NULL) != 0) {
+    if (array_init(&vars, sizeof(var_t *), 0, NULL, NULL) != 0) {
         FAIL("array_init");
     }
 
-    if (array_init(&defqueries, sizeof(defquery_t *), 0, NULL, NULL) != 0) {
+    if (array_init(&queries, sizeof(query_t *), 0, NULL, NULL) != 0) {
         FAIL("array_init");
     }
 
@@ -195,8 +195,8 @@ void mrklkit_init_module(void)
 void
 mrklkit_fini_module(void)
 {
-    array_fini(&defqueries);
-    array_fini(&defvars);
+    array_fini(&queries);
+    array_fini(&vars);
     array_fini(&dsources);
 
     if (root != NULL) {

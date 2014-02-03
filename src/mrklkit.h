@@ -25,14 +25,14 @@ typedef struct _mrklkit_expr {
     array_t referrals;
 } mrklkit_expr_t;
 
-typedef struct _defvar {
+typedef struct _var {
     unsigned char *name;
     mrklkit_expr_t value;
-} defvar_t;
+} var_t;
 
-typedef struct _defquery {
+typedef struct _query {
     uint64_t id;
-} defquery_t;
+} query_t;
 
 
 int mrklkit_parse(int);
