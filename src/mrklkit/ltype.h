@@ -3,6 +3,8 @@
 
 #include <mrkcommon/array.h>
 
+#include <mrklkit/fparser.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -106,6 +108,8 @@ int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
 void lkit_type_dump(lkit_type_t *);
 int lkit_type_destroy(lkit_type_t **);
 int ltype_next_struct(array_t *, array_iter_t *, lkit_struct_t **, int);
+lkit_type_t *ltype_parse_type(fparser_datum_t *);
+
 void ltype_init(void);
 void ltype_fini(void);
 

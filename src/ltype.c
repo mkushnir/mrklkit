@@ -5,14 +5,12 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
 #include <mrkcommon/util.h>
-#include <fparser.h>
 
-#include "ltype.h"
-#include "lparse.h"
+#include <mrklkit/fparser.h>
+#include <mrklkit/ltype.h>
+#include <mrklkit/lparse.h>
 
 #include "diag.h"
-
-static lkit_type_t *parse_type(fparser_datum_t *);
 
 /* types */
 static array_t types;
@@ -312,7 +310,7 @@ ltype_next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int se
         return 1;
     }
 
-    if ((ty = parse_type(*tok)) != NULL) {
+    if ((ty = ltype_parse_type(*tok)) != NULL) {
         if (ty->tag == LKIT_STRUCT) {
             *value = (lkit_struct_t *)ty;
             return 0;
@@ -512,7 +510,7 @@ parse_fielddef(fparser_datum_t *dat, lkit_type_t *ty)
         if ((ty = array_incr(&var->fields)) == NULL) { \
             FAIL("array_incr"); \
         } \
-        if ((*ty = parse_type(*tok)) == NULL) { \
+        if ((*ty = ltype_parse_type(*tok)) == NULL) { \
             LKIT_ERROR(var) = 1; \
             (*tok)->error = 1; \
             return 1; \
@@ -532,8 +530,8 @@ parse_fielddef(fparser_datum_t *dat, lkit_type_t *ty)
     return 0;
 }
 
-static lkit_type_t *
-parse_type(fparser_datum_t *dat)
+lkit_type_t *
+ltype_parse_type(fparser_datum_t *dat)
 {
     lkit_type_t *ty = NULL;
     fparser_tag_t tag;
@@ -591,7 +589,7 @@ parse_type(fparser_datum_t *dat)
                     FAIL("array_incr");
                 }
 
-                if ((*elemtype = parse_type(*tok)) == NULL) {
+                if ((*elemtype = ltype_parse_type(*tok)) == NULL) {
                     goto err;
                 }
 
@@ -619,7 +617,7 @@ parse_type(fparser_datum_t *dat)
                     FAIL("array_incr");
                 }
 
-                if ((*elemtype = parse_type(*tok)) == NULL) {
+                if ((*elemtype = ltype_parse_type(*tok)) == NULL) {
                     goto err;
                 }
 
@@ -671,7 +669,7 @@ parse_type(fparser_datum_t *dat)
                         FAIL("array_incr");
                     }
 
-                    if ((*paramtype = parse_type(*tok)) == NULL) {
+                    if ((*paramtype = ltype_parse_type(*tok)) == NULL) {
                         goto err;
                     }
                 }

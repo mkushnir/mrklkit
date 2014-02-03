@@ -11,12 +11,12 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
 #include <mrkcommon/util.h>
-#include <fparser.h>
 
-#include "lparse.h"
-#include "ltype.h"
-#include "mrklkit.h"
-#include "dsource.h"
+#include <mrklkit/fparser.h>
+#include <mrklkit/lparse.h>
+#include <mrklkit/ltype.h>
+#include <mrklkit/mrklkit.h>
+#include <mrklkit/dsource.h>
 
 #include "diag.h"
 
@@ -72,16 +72,45 @@ mrklkit_parse(int fd)
             glob_form = (array_t *)((*glob_tok)->body);
 
             if (lparse_first_word(glob_form, &glob_it, &first, 1) == 0) {
-                if (strcmp((char *)first, "dsource") == 0) {
-                    dsource_t *dsource = NULL;
-                    if (ltype_parse_dsource(glob_form, &glob_it, &dsource) != 0) {
+
+                if (strcmp((char *)first, "type") == 0) {
+                    unsigned char *typename = NULL;
+                    fparser_datum_t **loc_tok;
+                    lkit_type_t *ty;
+
+                    if (lparse_next_word(glob_form,
+                                         &glob_it,
+                                         &typename,
+                                         1) != 0) {
                         (*glob_tok)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
 
-                } else if (strcmp((char *)first, "var") == 0){
-                } else if (strcmp((char *)first, "query") == 0){
+                    if ((loc_tok = array_next(glob_form, &glob_it)) == NULL) {
+                        (*glob_tok)->error = 1;
+                        fparser_datum_dump_formatted(root);
+                        return 1;
+                    }
+
+                    if ((ty = ltype_parse_type(*loc_tok)) == NULL) {
+                        (*loc_tok)->error = 1;
+                        fparser_datum_dump_formatted(root);
+                        return 1;
+                    }
+
+                } else if (strcmp((char *)first, "var") == 0) {
+                } else if (strcmp((char *)first, "dsource") == 0) {
+                    dsource_t *dsource = NULL;
+
+                    if (ltype_parse_dsource(glob_form,
+                                            &glob_it,
+                                            &dsource) != 0) {
+                        (*glob_tok)->error = 1;
+                        fparser_datum_dump_formatted(root);
+                        return 1;
+                    }
+
                 } else {
                     /* ignore */
                 }
