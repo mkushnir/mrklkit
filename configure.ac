@@ -81,7 +81,5 @@ AC_ARG_ENABLE(debug,
 
 # pass LDFLAGS=-L${LOCALBASE}/lib in the environment
 AC_CHECK_LIB(mrkcommon, _fini, [], [AC_MSG_FAILURE(libmrkcommon.so is required. Please find it at git@github.com:mkushnir/mrkcommon.git)])
-AC_CHECK_LIB(fparser, _fini, [], [AC_MSG_FAILURE(libfparser.so is required. Please find it at git@github.com:mkushnir/mrkdata.git)])
-AC_CHECK_LIB(mrkapp, _fini, [], [AC_MSG_FAILURE(libmrkapp.so is required. Please find it at git@github.com:mkushnir/mrkapp.git)])
 
 AC_OUTPUT
