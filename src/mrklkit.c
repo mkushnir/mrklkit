@@ -15,7 +15,9 @@
 #include <mrklkit/fparser.h>
 #include <mrklkit/lparse.h>
 #include <mrklkit/ltype.h>
+#include <mrklkit/lexpr.h>
 #include <mrklkit/mrklkit.h>
+
 #include <mrklkit/dsource.h>
 
 #include "diag.h"
@@ -26,9 +28,6 @@ LLVMExecutionEngineRef ee;
 
 /* mrklkit ctx */
 static fparser_datum_t *root;
-static array_t vars;
-static array_t dsources;
-static array_t queries;
 
 /**
  * Generic form parser
@@ -40,7 +39,7 @@ int
 mrklkit_parse(int fd)
 {
     int res = 0;
-    fparser_datum_t **glob_tok;
+    fparser_datum_t **glob_node;
     array_t *form;
     array_iter_t it;
 
@@ -55,27 +54,25 @@ mrklkit_parse(int fd)
     }
 
     form = (array_t *)root->body;
-    for (glob_tok = array_first(form, &it);
-         glob_tok != NULL;
-         glob_tok = array_next(form, &it)) {
+    for (glob_node = array_first(form, &it);
+         glob_node != NULL;
+         glob_node = array_next(form, &it)) {
 
 
         /* here tag can be either SEQ, or one of INT, WORD, FLOAT */
-        //TRACE("tag=%s", FPARSER_TAG_STR(FPARSER_DATUM_TAG(*tok)));
-
-        switch (FPARSER_DATUM_TAG(*glob_tok)) {
+        switch (FPARSER_DATUM_TAG(*glob_node)) {
             array_t *glob_form;
             array_iter_t glob_it;
             unsigned char *first = NULL;
 
         case FPARSER_SEQ:
-            glob_form = (array_t *)((*glob_tok)->body);
+            glob_form = (array_t *)((*glob_node)->body);
 
             if (lparse_first_word(glob_form, &glob_it, &first, 1) == 0) {
 
                 if (strcmp((char *)first, "type") == 0) {
                     if (lkit_parse_typedef(glob_form, &glob_it) != 0) {
-                        (*glob_tok)->error = 1;
+                        (*glob_node)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
@@ -83,25 +80,25 @@ mrklkit_parse(int fd)
 
                 } else if (strcmp((char *)first, "var") == 0) {
                     unsigned char *varname = NULL;
-                    fparser_datum_t **loc_tok;
+                    fparser_datum_t **loc_node;
                     lkit_type_t *ty;
 
                     if (lparse_next_word(glob_form,
                                          &glob_it,
                                          &varname,
                                          1) != 0) {
-                        (*glob_tok)->error = 1;
+                        (*glob_node)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
 
-                    if ((loc_tok = array_next(glob_form, &glob_it)) == NULL) {
-                        (*glob_tok)->error = 1;
+                    if ((loc_node = array_next(glob_form, &glob_it)) == NULL) {
+                        (*glob_node)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
 
-                    if ((ty = lkit_type_parse(*loc_tok)) == NULL) {
+                    if ((ty = lkit_type_parse(*loc_node)) == NULL) {
                         /* expr found ? */
                     } else {
                     }
@@ -114,7 +111,7 @@ mrklkit_parse(int fd)
                     if (lkit_parse_dsource(glob_form,
                                             &glob_it,
                                             &dsource) != 0) {
-                        (*glob_tok)->error = 1;
+                        (*glob_node)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
@@ -136,7 +133,6 @@ mrklkit_parse(int fd)
 
         default:
             /* ignore */
-            //fparser_datum_dump(tok, NULL);
             ;
         }
     }
@@ -218,20 +214,13 @@ void mrklkit_init_module(void)
 {
     llvm_init();
 
-    ltype_init();
     root = NULL;
 
-    if (array_init(&dsources, sizeof(dsource_t *), 0, NULL, NULL) != 0) {
-        FAIL("array_init");
-    }
+    ltype_init();
+    lexpr_init();
 
-    if (array_init(&vars, sizeof(var_t *), 0, NULL, NULL) != 0) {
-        FAIL("array_init");
-    }
-
-    if (array_init(&queries, sizeof(query_t *), 0, NULL, NULL) != 0) {
-        FAIL("array_init");
-    }
+    /* dsource module? */
+    dsource_init_module();
 
 }
 
@@ -239,14 +228,15 @@ void mrklkit_init_module(void)
 void
 mrklkit_fini_module(void)
 {
-    array_fini(&queries);
-    array_fini(&vars);
-    array_fini(&dsources);
+    /* dsource module? */
+    dsource_fini_module();
+
+    lexpr_fini();
+    ltype_fini();
 
     if (root != NULL) {
         fparser_datum_destroy(&root);
     }
-    ltype_fini();
 
     llvm_fini();
 }

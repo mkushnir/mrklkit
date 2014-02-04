@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
+#include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 #include <mrklkit/fparser.h>
 
@@ -17,6 +17,8 @@
  * data source example
  *
  */
+
+static array_t dsources;
 
 static void
 dsource_init(dsource_t *dsource)
@@ -146,5 +148,20 @@ lkit_parse_dsource(array_t *form,
         return 1;
     }
     return 0;
+}
+
+
+void
+dsource_init_module(void)
+{
+    if (array_init(&dsources, sizeof(dsource_t *), 0, NULL, NULL) != 0) {
+        FAIL("array_init");
+    }
+}
+
+void
+dsource_fini_module(void)
+{
+    array_fini(&dsources);
 }
 

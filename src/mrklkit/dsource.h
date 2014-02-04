@@ -21,6 +21,9 @@ typedef struct _dsource {
 
 int lkit_parse_dsource(array_t *, array_iter_t *, dsource_t **);
 
+void dsource_init_module(void);
+void dsource_fini_module(void);
+
 #ifdef __cplusplus
 }
 #endif

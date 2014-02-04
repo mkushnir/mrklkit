@@ -7,6 +7,9 @@
 extern "C" {
 #endif
 
+void lexpr_init(void);
+void lexpr_fini(void);
+
 #ifdef __cplusplus
 }
 #endif
