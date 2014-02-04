@@ -4,7 +4,7 @@
 
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
-#include <fparser.h>
+#include <mrklkit/fparser.h>
 
 #include "lexpr.h"
 

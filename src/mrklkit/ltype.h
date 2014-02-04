@@ -1,7 +1,10 @@
 #ifndef LTYPE_H_DEFINED
 #define LTYPE_H_DEFINED
 
+#include <stdint.h>
+
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytestream.h>
 
 #include <mrklkit/fparser.h>
 
@@ -43,10 +46,41 @@ typedef enum _lkit_parser {
 } lkit_parser_t;
 
 typedef struct _lkit_type {
+    uint64_t hash64;
     lkit_tag_t tag;
     /* weak ref */
     char *name;
     int error:1;
+    //union {
+    //    struct {
+    //        lkit_parser_t parser;
+    //        /* weak ref */
+    //        unsigned char *delim;
+    //        /* lkit_type_t * */
+    //        array_t fields;
+    //    } array;
+    //    struct {
+    //        /* weak ref */
+    //        unsigned char *kvdelim;
+    //        /* weak ref */
+    //        unsigned char *fdelim;
+    //        /* lkit_type_t * */
+    //        array_t fields;
+    //    } dict;
+    //    struct {
+    //        lkit_parser_t parser;
+    //        /* weak ref */
+    //        unsigned char *delim;
+    //        /* lkit_type_t * */
+    //        array_t fields;
+    //        /* weak refs */
+    //        array_t names;
+    //    } struc;
+    //    struct {
+    //        /* lkit_type_t * */
+    //        array_t fields;
+    //    } func;
+    //} ext;
 } lkit_type_t;
 
 #define LKIT_ERROR(pty) (((lkit_type_t *)(pty))->error)
@@ -103,12 +137,23 @@ typedef struct _lkit_func {
     array_t fields;
 } lkit_func_t;
 
+typedef struct _lkit_typedef {
+    /* weakref */
+    unsigned char *name;
+    lkit_type_t *type;
+} lkit_typedef_t;
+
+int ltype_next_struct(array_t *, array_iter_t *, lkit_struct_t **, int);
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
 void lkit_type_dump(lkit_type_t *);
+void lkit_type_str(lkit_type_t *, bytestream_t *);
 int lkit_type_destroy(lkit_type_t **);
-int ltype_next_struct(array_t *, array_iter_t *, lkit_struct_t **, int);
-lkit_type_t *ltype_parse_type(fparser_datum_t *);
+int lkit_type_fini_dict(lkit_type_t *, lkit_type_t *);
+lkit_type_t *lkit_type_parse(fparser_datum_t *);
+int lkit_parse_typedef(array_t *, array_iter_t *);
+uint64_t lkit_type_hash(lkit_type_t *);
+int lkit_type_cmp(lkit_type_t *, lkit_type_t *);
 
 void ltype_init(void);
 void ltype_fini(void);

@@ -26,8 +26,8 @@ LLVMExecutionEngineRef ee;
 
 /* mrklkit ctx */
 static fparser_datum_t *root;
-static array_t dsources;
 static array_t vars;
+static array_t dsources;
 static array_t queries;
 
 /**
@@ -74,13 +74,21 @@ mrklkit_parse(int fd)
             if (lparse_first_word(glob_form, &glob_it, &first, 1) == 0) {
 
                 if (strcmp((char *)first, "type") == 0) {
-                    unsigned char *typename = NULL;
+                    if (lkit_parse_typedef(glob_form, &glob_it) != 0) {
+                        (*glob_tok)->error = 1;
+                        fparser_datum_dump_formatted(root);
+                        return 1;
+                    }
+
+
+                } else if (strcmp((char *)first, "var") == 0) {
+                    unsigned char *varname = NULL;
                     fparser_datum_t **loc_tok;
                     lkit_type_t *ty;
 
                     if (lparse_next_word(glob_form,
                                          &glob_it,
-                                         &typename,
+                                         &varname,
                                          1) != 0) {
                         (*glob_tok)->error = 1;
                         fparser_datum_dump_formatted(root);
@@ -93,23 +101,29 @@ mrklkit_parse(int fd)
                         return 1;
                     }
 
-                    if ((ty = ltype_parse_type(*loc_tok)) == NULL) {
-                        (*loc_tok)->error = 1;
-                        fparser_datum_dump_formatted(root);
-                        return 1;
+                    if ((ty = lkit_type_parse(*loc_tok)) == NULL) {
+                        /* expr found ? */
+                    } else {
                     }
 
-                } else if (strcmp((char *)first, "var") == 0) {
+
                 } else if (strcmp((char *)first, "dsource") == 0) {
                     dsource_t *dsource = NULL;
+                    bytestream_t bs;
 
-                    if (ltype_parse_dsource(glob_form,
+                    if (lkit_parse_dsource(glob_form,
                                             &glob_it,
                                             &dsource) != 0) {
                         (*glob_tok)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
+
+                    bytestream_init(&bs);
+                    lkit_type_str((lkit_type_t *)(dsource->fields), &bs);
+                    bytestream_cat(&bs, 2, "\n\0");
+                    bytestream_write(&bs, 2, bs.eod);
+                    bytestream_fini(&bs);
 
                 } else {
                     /* ignore */

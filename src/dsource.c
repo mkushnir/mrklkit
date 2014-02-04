@@ -5,7 +5,7 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
 #include <mrkcommon/util.h>
-#include <fparser.h>
+#include <mrklkit/fparser.h>
 
 #include "dsource.h"
 #include "lparse.h"
@@ -42,7 +42,7 @@ dsource_fini(dsource_t *dsource)
     /* weak ref */
     dsource->logtype = NULL;
     /* weak ref */
-    lkit_type_destroy((lkit_type_t **)(&dsource->fields));
+    dsource->fields = NULL;
 }
 
 static dsource_t *
@@ -127,7 +127,7 @@ parse_dsource_quals(array_t *form,
 }
 
 int
-ltype_parse_dsource(array_t *form,
+lkit_parse_dsource(array_t *form,
              array_iter_t *it,
              dsource_t **dsource)
 {

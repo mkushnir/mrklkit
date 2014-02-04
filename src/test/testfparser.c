@@ -3,11 +3,11 @@
 #include <time.h>
 #include <fcntl.h>
 
-#include "mrkcommon/dumpm.h"
-#include "mrkcommon/util.h"
+#include <mrkcommon/dumpm.h>
+#include <mrkcommon/util.h>
+#include <mrklkit/fparser.h>
 
 #include "unittest.h"
-#include "fparser.h"
 
 static int
 mycb(UNUSED const unsigned char *buf,

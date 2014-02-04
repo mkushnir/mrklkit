@@ -17,5 +17,5 @@ struct tokenizer_ctx {
 }
 #endif
 
-#include "fparser.h"
+#include <mrklkit/fparser.h>
 #endif

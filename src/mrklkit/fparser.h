@@ -1,7 +1,8 @@
 #ifndef FPARSER_H
 #define FPARSER_H
 
-#include "mrkcommon/array.h"
+#include <mrkcommon/array.h>
+#include <mrkcommon/bytestream.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,6 +66,7 @@ typedef enum {
 
 typedef struct _bytes {
     size_t sz;
+    uint64_t hash;
     unsigned char data[];
 } bytes_t;
 
@@ -83,6 +85,7 @@ void fparser_escape(unsigned char *, size_t, const unsigned char *, size_t);
 
 int fparser_datum_dump(fparser_datum_t **, void *);
 void fparser_datum_dump_formatted(fparser_datum_t *);
+void fparser_datum_dump_bytestream(fparser_datum_t *, bytestream_t *);
 
 
 void fparser_datum_destroy(fparser_datum_t **);

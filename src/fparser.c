@@ -3,10 +3,11 @@
 #include <stdlib.h>
 
 //#define TRRET_DEBUG
-#include "mrkcommon/array.h"
+#include <mrkcommon/array.h>
+#include <mrkcommon/bytestream.h>
 #define DUMPM_INDENT_SIZE 1
-#include "mrkcommon/dumpm.h"
-#include "mrkcommon/util.h"
+#include <mrkcommon/dumpm.h>
+#include <mrkcommon/util.h>
 
 #include "diag.h"
 #include "fparser_private.h"
@@ -504,6 +505,7 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
 struct _fparser_datum_dump_info {
     array_t *ar;
     int level;
+    bytestream_t *bs;
 };
 
 static int
@@ -515,62 +517,82 @@ checkseq(fparser_datum_t **dat, void *udata)
 }
 
 static int
-fparser_datum_dump2(fparser_datum_t **dat, void *udata)
+datum_dump_bytestream(fparser_datum_t **dat, void *udata)
 {
     fparser_datum_t *rdat = *dat;
     struct _fparser_datum_dump_info *di = udata;
 
     if (di->level != 0) {
         if (array_index(di->ar, dat) != 0) {
-            TRACEC(" ");
+            bytestream_cat(di->bs, 1, " ");
+            //TRACEC(" ");
         }
     }
 
-    //TRACE("tag=%d", rdat->tag);
     if (rdat->tag == FPARSER_SEQ) {
         int hasforms = 0;
         array_t *form = (array_t *)(&rdat->body);
 
         if (di->level > 0) {
-            TRACEC("\n");
+            bytestream_cat(di->bs, 1, "\n");
+            //TRACEC("\n");
             if (rdat->error) {
-                LTRACEN(di->level, "-->(");
+                bytestream_nprintf(di->bs,
+                                   di->level * DUMPM_INDENT_SIZE + 10 + 4,
+                                   "%*c-->(", di->level * DUMPM_INDENT_SIZE, ' ');
+                //LTRACEN(di->level, "-->(");
             } else {
-                LTRACEN(di->level, "(");
+                bytestream_nprintf(di->bs,
+                                   di->level * DUMPM_INDENT_SIZE + 10 + 1,
+                                   "%*c(", di->level * DUMPM_INDENT_SIZE, ' ');
+                //LTRACEN(di->level, "(");
             }
         } else {
             if (rdat->error) {
-                TRACEC("(");
+                bytestream_cat(di->bs, 4, "-->(");
+                //TRACEC("-->(");
             } else {
-                TRACEC("(");
+                bytestream_cat(di->bs, 1, "(");
+                //TRACEC("(");
             }
         }
 
         ++(di->level);
         di->ar = form;
-        array_traverse(form, (array_traverser_t)fparser_datum_dump2, udata);
+        array_traverse(form, (array_traverser_t)datum_dump_bytestream, udata);
         array_traverse(form, (array_traverser_t)checkseq, &hasforms);
         --(di->level);
         if (hasforms) {
-            TRACEC("\n");
+            bytestream_cat(di->bs, 1, "\n");
+            //TRACEC("\n");
             if (di->level > 0) {
                 if (rdat->error) {
-                    LTRACEN(di->level, ")<--");
+                    bytestream_nprintf(di->bs,
+                                       di->level * DUMPM_INDENT_SIZE + 10 + 4,
+                                       "%*c)<--", di->level * DUMPM_INDENT_SIZE, ' ');
+                    //LTRACEN(di->level, ")<--");
                 } else {
-                    LTRACEN(di->level, ")");
+                    bytestream_nprintf(di->bs,
+                                       di->level * DUMPM_INDENT_SIZE + 10 + 1,
+                                       "%*c)", di->level * DUMPM_INDENT_SIZE, ' ');
+                    //LTRACEN(di->level, ")");
                 }
             } else {
                 if (rdat->error) {
-                    TRACEC(")<--");
+                    bytestream_cat(di->bs, 4, ")<--");
+                    //TRACEC(")<--");
                 } else {
-                    TRACEC(")");
+                    bytestream_cat(di->bs, 1, ")");
+                    //TRACEC(")");
                 }
             }
         } else {
             if (rdat->error) {
-                TRACEC(")<--");
+                bytestream_cat(di->bs, 4, ")<--");
+                //TRACEC(")<--");
             } else {
-                TRACEC(")");
+                bytestream_cat(di->bs, 1, ")");
+                //TRACEC(")");
             }
         }
 
@@ -586,9 +608,11 @@ fparser_datum_dump2(fparser_datum_t **dat, void *udata)
         memset(dst, '\0', sz * 2 + 1);
         fparser_escape(dst, sz * 2, v->data, sz);
         if (rdat->error) {
-            TRACEC("-->\"%s\"<--", dst);
+            bytestream_nprintf(di->bs, sz * 2 + 10 + 8, "-->\"%s\"<--", dst);
+            //TRACEC("-->\"%s\"<--", dst);
         } else {
-            TRACEC("\"%s\"", dst);
+            bytestream_nprintf(di->bs, sz * 2 + 10 + 2, "\"%s\"", dst);
+            //TRACEC("\"%s\"", dst);
         }
         free(dst);
 
@@ -596,23 +620,33 @@ fparser_datum_dump2(fparser_datum_t **dat, void *udata)
         bytes_t *v;
         v = (bytes_t *)(rdat->body);
         if (rdat->error) {
-            TRACEC("-->%s<--", v->data);
+            bytestream_nprintf(di->bs, v->sz + 10 + 6, "-->%s<--", v->data);
+            //TRACEC("-->%s<--", v->data);
         } else {
-            TRACEC("%s", v->data);
+            bytestream_nprintf(di->bs, v->sz + 10 + 0, "%s", v->data);
+            //TRACEC("%s", v->data);
         }
 
     } else if (rdat->tag == FPARSER_INT) {
         if (rdat->error) {
-            TRACEC("-->%ld<--", *((int64_t *)(rdat->body)));
+            bytestream_nprintf(di->bs, 20 + 10 + 6, "-->%ld<--",
+                               *((int64_t *)(rdat->body)));
+            //TRACEC("-->%ld<--", *((int64_t *)(rdat->body)));
         } else {
-            TRACEC("%ld", *((int64_t *)(rdat->body)));
+            bytestream_nprintf(di->bs, 20 + 10 + 0, "%ld",
+                               *((int64_t *)(rdat->body)));
+            //TRACEC("%ld", *((int64_t *)(rdat->body)));
         }
 
     } else if (rdat->tag == FPARSER_FLOAT) {
         if (rdat->error) {
-            TRACEC("-->%f<--", *((double *)(rdat->body)));
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 6, "-->%f<--",
+                               *((double *)(rdat->body)));
+            //TRACEC("-->%f<--", *((double *)(rdat->body)));
         } else {
-            TRACEC("%f", *((double *)(rdat->body)));
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 0, "%f",
+                               *((double *)(rdat->body)));
+            //TRACEC("%f", *((double *)(rdat->body)));
         }
     }
 
@@ -620,16 +654,27 @@ fparser_datum_dump2(fparser_datum_t **dat, void *udata)
 }
 
 void
-fparser_datum_dump_formatted(fparser_datum_t *dat)
+fparser_datum_dump_bytestream(fparser_datum_t *dat, bytestream_t *bs)
 {
     struct _fparser_datum_dump_info di;
 
     di.level = 0;
     di.ar = NULL;
-    fparser_datum_dump2(&dat, &di);
-    TRACEC("\n");
+    di.bs = bs;
+    datum_dump_bytestream(&dat, &di);
+    bytestream_cat(bs, 2, "\n\0");
 }
 
+void
+fparser_datum_dump_formatted(fparser_datum_t *dat)
+{
+    bytestream_t bs;
+
+    bytestream_init(&bs);
+    fparser_datum_dump_bytestream(dat, &bs);
+    bytestream_write(&bs, 2, bs.eod);
+    bytestream_fini(&bs);
+}
 
 void
 fparser_datum_destroy(fparser_datum_t **dat)

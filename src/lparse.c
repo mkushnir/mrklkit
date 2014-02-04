@@ -4,7 +4,7 @@
 
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
-#include <fparser.h>
+#include <mrklkit/fparser.h>
 
 #include "lparse.h"
 
@@ -43,6 +43,26 @@ lparse_next_word(array_t *form, array_iter_t *it, unsigned char **value, int set
     if (tag == FPARSER_WORD) {
         bytes_t *v = (bytes_t *)((*tok)->body);
         *value = (unsigned char *)(v->data);
+        return 0;
+    }
+    (void)array_prev(form, it);
+    *value = NULL;
+    (*tok)->error = seterror;
+    return 1;
+}
+
+int
+lparse_next_word_bytes(array_t *form, array_iter_t *it, bytes_t **value, int seterror)
+{
+    fparser_datum_t **tok;
+    fparser_tag_t tag;
+    if ((tok = array_next(form, it)) == NULL) {
+        *value = NULL;
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*tok);
+    if (tag == FPARSER_WORD) {
+        *value = (bytes_t *)((*tok)->body);
         return 0;
     }
     (void)array_prev(form, it);
