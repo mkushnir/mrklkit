@@ -52,6 +52,7 @@ typedef enum {
     FPARSER_WORD,
     FPARSER_INT,
     FPARSER_FLOAT,
+    FPARSER_BOOL,
     FPARSER_SEQ,
 } fparser_tag_t;
 
@@ -60,6 +61,7 @@ typedef enum {
     (tag) == FPARSER_WORD ? "WORD" : \
     (tag) == FPARSER_INT ? "INT" : \
     (tag) == FPARSER_FLOAT ? "FLOAT" : \
+    (tag) == FPARSER_BOOL ? "BOOL" : \
     (tag) == FPARSER_SEQ ? "SEQ" : \
     "<unknown>" \
 )

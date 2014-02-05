@@ -130,8 +130,8 @@ parse_dsource_quals(array_t *form,
 }
 
 int
-lkit_parse_dsource(array_t *form,
-             array_iter_t *it)
+dsource_parse(array_t *form,
+              array_iter_t *it)
 {
     dsource_t **dsource;
     bytestream_t bs;

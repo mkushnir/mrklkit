@@ -2,6 +2,7 @@
 #define LEXPR_H_DEFINED
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/dict.h>
 
 #include <mrklkit/fparser.h>
 #include <mrklkit/ltype.h>
@@ -19,11 +20,16 @@ typedef struct _lkit_expr {
     int isref:1;
     /* lkit_expr_t * */
     array_t subs;
+    /* bytes_t *, lkit_expr_t * */
+    dict_t ctx;
+    struct _lkit_expr *parent;
 
 } lkit_expr_t;
 
-lkit_expr_t *lkit_expr_parse(fparser_datum_t *, int);
-int lkit_parse_exprdef(array_t *, array_iter_t *);
+lkit_expr_t *lkit_expr_parse(lkit_expr_t *, fparser_datum_t *, int);
+lkit_expr_t *lkit_expr_find(lkit_expr_t *, bytes_t *);
+int lkit_parse_exprdef(lkit_expr_t *, array_t *, array_iter_t *);
+int lexpr_parse(array_t *, array_iter_t *);
 
 void lexpr_init(void);
 void lexpr_fini(void);

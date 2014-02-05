@@ -83,25 +83,20 @@ compile_value(struct tokenizer_ctx *ctx,
         bytes_t *value;
 
         if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(bytes_t) + sz + 1)) == NULL) {
-            perror("malloc");
-            return 1;
+            FAIL("malloc");
         }
-        if (fparser_datum_init(dat, FPARSER_STR) != 0) {
-            perror("fparser_datum_init");
-            return 1;
-        }
+        fparser_datum_init(dat, FPARSER_STR);
         value = (bytes_t *)(dat->body);
         value->sz = (size_t)sz;
 
         _unescape(value->data, ctx->tokstart, sz);
 
         if (fparser_datum_form_add(ctx->form, dat) != 0) {
-            perror("fparser_datum_form_add");
-            return 1;
+            TRRET(COMPILE_VALUE + 1);
         }
 
         if (cb != NULL && cb(ctx->tokstart, dat, udata) != 0) {
-            return 1;
+            TRRET(COMPILE_VALUE + 2);
         }
 
         //LTRACE(ctx->indent, " '%s'", dat->body);
@@ -111,6 +106,7 @@ compile_value(struct tokenizer_ctx *ctx,
         ssize_t sz = buf + idx - ctx->tokstart;
 #define _NUMKIND_INT 1
 #define _NUMKIND_FLOAT 2
+#define _NUMKIND_BOOL 3
         int numkind = 0;
 
         /*
@@ -129,6 +125,29 @@ compile_value(struct tokenizer_ctx *ctx,
                         break;
                     }
                 }
+            } else if (sz == 2 && ch == '#') {
+                ch = ctx->tokstart[1];
+                if (ch == 't') {
+                    char *value;
+
+                    numkind = _NUMKIND_BOOL;
+                    if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(char))) == NULL) {
+                        FAIL("malloc");
+                    }
+                    fparser_datum_init(dat, FPARSER_BOOL);
+                    value = (char *)(dat->body);
+                    *value = 1;
+                } else if (ch == 'f') {
+                    char *value;
+
+                    numkind = _NUMKIND_BOOL;
+                    if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(char))) == NULL) {
+                        FAIL("malloc");
+                    }
+                    fparser_datum_init(dat, FPARSER_BOOL);
+                    value = (char *)(dat->body);
+                    *value = 0;
+                }
             }
         } else {
             if (ch >= '0' && ch <= '9') {
@@ -140,39 +159,33 @@ compile_value(struct tokenizer_ctx *ctx,
             int64_t *value;
 
             if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(int64_t))) == NULL) {
-                perror("malloc");
-                return 1;
+                FAIL("malloc");
             }
-            if (fparser_datum_init(dat, FPARSER_INT) != 0) {
-                perror("fparser_datum_init");
-                return 1;
-            }
+            fparser_datum_init(dat, FPARSER_INT);
             value = (int64_t *)(dat->body);
             *value = (int64_t)strtoll((const char *)ctx->tokstart, NULL, 10);
+
         } else if (numkind == _NUMKIND_FLOAT) {
             double *value;
 
             if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(double))) == NULL) {
-                perror("malloc");
-                return 1;
+                FAIL("malloc");
             }
-            if (fparser_datum_init(dat, FPARSER_FLOAT) != 0) {
-                perror("fparser_datum_init");
-                return 1;
-            }
+            fparser_datum_init(dat, FPARSER_FLOAT);
             value = (double *)(dat->body);
             *value = strtod((const char *)ctx->tokstart, NULL);
+
+        } else if (numkind == _NUMKIND_BOOL) {
+            /* already done */
+            ;
+
         } else {
             bytes_t *value;
 
             if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(bytes_t) + sz + 1)) == NULL) {
-                perror("malloc");
-                return 1;
+                FAIL("malloc");
             }
-            if (fparser_datum_init(dat, FPARSER_WORD) != 0) {
-                perror("fparser_datum_init");
-                return 1;
-            }
+            fparser_datum_init(dat, FPARSER_WORD);
             value = (bytes_t *)(dat->body);
             value->sz = (size_t)sz;
 
@@ -181,12 +194,11 @@ compile_value(struct tokenizer_ctx *ctx,
         }
 
         if (fparser_datum_form_add(ctx->form, dat) != 0) {
-            perror("fparser_datum_form_add");
-            return 1;
+            TRRET(COMPILE_VALUE + 3);
         }
 
         if (cb != NULL && cb(ctx->tokstart, dat, udata) != 0) {
-            return 1;
+            TRRET(COMPILE_VALUE + 4);
         }
 
         //LTRACE(ctx->indent, " %s", dat->body);
@@ -196,31 +208,26 @@ compile_value(struct tokenizer_ctx *ctx,
 
         if ((dat = malloc(sizeof(fparser_datum_t) +
                           sizeof(array_t))) == NULL) {
-            perror("malloc");
-            return 1;
+            FAIL("malloc");
         }
-        if (fparser_datum_init(dat, FPARSER_SEQ) != 0) {
-            perror("fparser_datum_init");
-            return 1;
-        }
+        fparser_datum_init(dat, FPARSER_SEQ);
 
         if (fparser_datum_form_add(ctx->form, dat) != 0) {
-            perror("fparser_datum_form_add");
-            return 1;
+            TRRET(COMPILE_VALUE + 5);
         }
 
         ctx->form = dat;
 
         ctx->form->seqout = 0;
         if (cb != NULL && cb(ctx->tokstart, dat, udata) != 0) {
-            return 1;
+            TRRET(COMPILE_VALUE + 6);
         }
 
 
     } else if (state & LEX_SEQOUT) {
 
         if (ctx->indent <= 0) {
-            return 1;
+            TRRET(COMPILE_VALUE + 7);
         }
         --(ctx->indent);
 
@@ -230,7 +237,7 @@ compile_value(struct tokenizer_ctx *ctx,
         }
         ctx->form->seqout = 1;
         if (cb != NULL && cb(ctx->tokstart, ctx->form, udata) != 0) {
-            return 1;
+            TRRET(COMPILE_VALUE + 8);
         }
         ctx->form = ctx->form->parent;
 
@@ -498,6 +505,9 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
 
     } else if (rdat->tag == FPARSER_FLOAT) {
         TRACE("FLOAT '%f'", *((double *)(rdat->body)));
+
+    } else if (rdat->tag == FPARSER_BOOL) {
+        TRACE("BOOL '#%c'", *((char *)(rdat->body)) ? 't' : 'f');
     }
 
     return 0;
@@ -526,7 +536,6 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
     if (di->level != 0) {
         if (array_index(di->ar, dat) != 0) {
             bytestream_cat(di->bs, 1, " ");
-            //TRACEC(" ");
         }
     }
 
@@ -536,25 +545,20 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
 
         if (di->level > 0) {
             bytestream_cat(di->bs, 1, "\n");
-            //TRACEC("\n");
             if (rdat->error) {
                 bytestream_nprintf(di->bs,
                                    di->level * DUMPM_INDENT_SIZE + 10 + 4,
                                    "%*c-->(", di->level * DUMPM_INDENT_SIZE, ' ');
-                //LTRACEN(di->level, "-->(");
             } else {
                 bytestream_nprintf(di->bs,
                                    di->level * DUMPM_INDENT_SIZE + 10 + 1,
                                    "%*c(", di->level * DUMPM_INDENT_SIZE, ' ');
-                //LTRACEN(di->level, "(");
             }
         } else {
             if (rdat->error) {
                 bytestream_cat(di->bs, 4, "-->(");
-                //TRACEC("-->(");
             } else {
                 bytestream_cat(di->bs, 1, "(");
-                //TRACEC("(");
             }
         }
 
@@ -565,35 +569,28 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
         --(di->level);
         if (hasforms) {
             bytestream_cat(di->bs, 1, "\n");
-            //TRACEC("\n");
             if (di->level > 0) {
                 if (rdat->error) {
                     bytestream_nprintf(di->bs,
                                        di->level * DUMPM_INDENT_SIZE + 10 + 4,
                                        "%*c)<--", di->level * DUMPM_INDENT_SIZE, ' ');
-                    //LTRACEN(di->level, ")<--");
                 } else {
                     bytestream_nprintf(di->bs,
                                        di->level * DUMPM_INDENT_SIZE + 10 + 1,
                                        "%*c)", di->level * DUMPM_INDENT_SIZE, ' ');
-                    //LTRACEN(di->level, ")");
                 }
             } else {
                 if (rdat->error) {
                     bytestream_cat(di->bs, 4, ")<--");
-                    //TRACEC(")<--");
                 } else {
                     bytestream_cat(di->bs, 1, ")");
-                    //TRACEC(")");
                 }
             }
         } else {
             if (rdat->error) {
                 bytestream_cat(di->bs, 4, ")<--");
-                //TRACEC(")<--");
             } else {
                 bytestream_cat(di->bs, 1, ")");
-                //TRACEC(")");
             }
         }
 
@@ -610,10 +607,8 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
         fparser_escape(dst, sz * 2, v->data, sz);
         if (rdat->error) {
             bytestream_nprintf(di->bs, sz * 2 + 10 + 8, "-->\"%s\"<--", dst);
-            //TRACEC("-->\"%s\"<--", dst);
         } else {
             bytestream_nprintf(di->bs, sz * 2 + 10 + 2, "\"%s\"", dst);
-            //TRACEC("\"%s\"", dst);
         }
         free(dst);
 
@@ -622,32 +617,35 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
         v = (bytes_t *)(rdat->body);
         if (rdat->error) {
             bytestream_nprintf(di->bs, v->sz + 10 + 6, "-->%s<--", v->data);
-            //TRACEC("-->%s<--", v->data);
         } else {
             bytestream_nprintf(di->bs, v->sz + 10 + 0, "%s", v->data);
-            //TRACEC("%s", v->data);
         }
 
     } else if (rdat->tag == FPARSER_INT) {
         if (rdat->error) {
             bytestream_nprintf(di->bs, 20 + 10 + 6, "-->%ld<--",
                                *((int64_t *)(rdat->body)));
-            //TRACEC("-->%ld<--", *((int64_t *)(rdat->body)));
         } else {
             bytestream_nprintf(di->bs, 20 + 10 + 0, "%ld",
                                *((int64_t *)(rdat->body)));
-            //TRACEC("%ld", *((int64_t *)(rdat->body)));
         }
 
     } else if (rdat->tag == FPARSER_FLOAT) {
         if (rdat->error) {
             bytestream_nprintf(di->bs, 13 * 2 + 10 + 6, "-->%f<--",
                                *((double *)(rdat->body)));
-            //TRACEC("-->%f<--", *((double *)(rdat->body)));
         } else {
             bytestream_nprintf(di->bs, 13 * 2 + 10 + 0, "%f",
                                *((double *)(rdat->body)));
-            //TRACEC("%f", *((double *)(rdat->body)));
+        }
+
+    } else if (rdat->tag == FPARSER_BOOL) {
+        if (rdat->error) {
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 6, "-->#%c<--",
+                               *((char *)(rdat->body)) ? 't' : 'f');
+        } else {
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 0, "#%c",
+                               *((char *)(rdat->body)) ? 't' : 'f');
         }
     }
 
@@ -702,8 +700,7 @@ fparser_datum_init(fparser_datum_t *dat, fparser_tag_t tag)
         if (array_init(form,
                        sizeof(fparser_datum_t *), 0,
                        NULL, NULL) != 0) {
-
-            TRRET(FPARSER_DATUM_INIT + 1);
+            FAIL("array_init");
         }
 
     }

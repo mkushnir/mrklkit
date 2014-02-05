@@ -19,7 +19,7 @@ typedef struct _dsource {
     lkit_struct_t *fields;
 } dsource_t;
 
-int lkit_parse_dsource(array_t *, array_iter_t *);
+int dsource_parse(array_t *, array_iter_t *);
 
 void dsource_init_module(void);
 void dsource_fini_module(void);

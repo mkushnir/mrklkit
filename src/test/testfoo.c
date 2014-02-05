@@ -24,6 +24,8 @@ const char *_malloc_options = "AJ";
 LLVMModuleRef module;
 LLVMPassManagerRef pm;
 
+const char *fname;
+
 UNUSED static void
 test0(void)
 {
@@ -182,7 +184,7 @@ test3(void)
     int fd;
     int res;
 
-    if ((fd = open("dsource", O_RDONLY)) == -1) {
+    if ((fd = open(fname, O_RDONLY)) == -1) {
         FAIL("open");
     }
 
@@ -194,9 +196,12 @@ test3(void)
 }
 
 int
-main(void)
+main(int argc, char **argv)
 {
 
+    if (argc > 1) {
+        fname = argv[1];
+    }
     //test_init();
     //test1();
     //test2();

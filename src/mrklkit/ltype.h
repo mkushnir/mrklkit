@@ -15,9 +15,10 @@ extern "C" {
 typedef enum _lkit_tag {
     LKIT_UNDEF,
     LKIT_INT,
-    LKIT_TIMESTAMP,
     LKIT_STR,
     LKIT_FLOAT,
+    LKIT_BOOL,
+    LKIT_VARARG,
     _LKIT_END_OF_BUILTIN_TYPES,
     /* custom types */
     LKIT_ARRAY,
@@ -28,9 +29,10 @@ typedef enum _lkit_tag {
 
 #define LKIT_TAG_STR(tag) ( \
     (tag) == LKIT_INT ? "INT" : \
-    (tag) == LKIT_TIMESTAMP ? "TIMESTAMP" : \
     (tag) == LKIT_STR ? "STR" : \
     (tag) == LKIT_FLOAT ? "FLOAT" : \
+    (tag) == LKIT_BOOL ? "BOOL" : \
+    (tag) == LKIT_VARARG ? "VARARG" : \
     (tag) == LKIT_ARRAY ? "ARRAY" : \
     (tag) == LKIT_DICT ? "DICT" : \
     (tag) == LKIT_STRUCT ? "STRUCT" : \
@@ -51,36 +53,6 @@ typedef struct _lkit_type {
     /* weak ref */
     char *name;
     int error:1;
-    //union {
-    //    struct {
-    //        lkit_parser_t parser;
-    //        /* weak ref */
-    //        unsigned char *delim;
-    //        /* lkit_type_t * */
-    //        array_t fields;
-    //    } array;
-    //    struct {
-    //        /* weak ref */
-    //        unsigned char *kvdelim;
-    //        /* weak ref */
-    //        unsigned char *fdelim;
-    //        /* lkit_type_t * */
-    //        array_t fields;
-    //    } dict;
-    //    struct {
-    //        lkit_parser_t parser;
-    //        /* weak ref */
-    //        unsigned char *delim;
-    //        /* lkit_type_t * */
-    //        array_t fields;
-    //        /* weak refs */
-    //        array_t names;
-    //    } struc;
-    //    struct {
-    //        /* lkit_type_t * */
-    //        array_t fields;
-    //    } func;
-    //} ext;
 } lkit_type_t;
 
 #define LKIT_ERROR(pty) (((lkit_type_t *)(pty))->error)
@@ -89,13 +61,17 @@ typedef struct _lkit_int {
     struct _lkit_type base;
 } lkit_int_t;
 
-typedef struct _lkit_timestamp {
-    struct _lkit_type base;
-} lkit_timestamp_t;
-
 typedef struct _lkit_float {
     struct _lkit_type base;
 } lkit_float_t;
+
+typedef struct _lkit_bool {
+    struct _lkit_type base;
+} lkit_bool_t;
+
+typedef struct _lkit_vararg {
+    struct _lkit_type base;
+} lkit_vararg_t;
 
 typedef struct _lkit_str {
     struct _lkit_type base;

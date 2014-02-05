@@ -32,7 +32,7 @@ static fparser_datum_t *root;
 /**
  * Generic form parser
  *
- * dsource vars? queries?
+ * types? vars?
  *
  */
 int
@@ -78,7 +78,7 @@ mrklkit_parse(int fd)
 
 
                 } else if (strcmp((char *)first, "var") == 0) {
-                    if (lkit_parse_exprdef(nform, &nit) != 0) {
+                    if (lexpr_parse(nform, &nit) != 0) {
                         (*fnode)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
@@ -86,7 +86,7 @@ mrklkit_parse(int fd)
 
                 } else if (strcmp((char *)first, "dsource") == 0) {
 
-                    if (lkit_parse_dsource(nform, &nit) != 0) {
+                    if (dsource_parse(nform, &nit) != 0) {
                         (*fnode)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
