@@ -478,7 +478,8 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
 
         array_t *form = (array_t *)(&rdat->body);
 
-        TRACE("%s form len %ld", rdat->seqout? "<<<" : ">>>", form->elnum);
+        //TRACE("%s form len %ld", rdat->seqout? "<<<" : ">>>", form->elnum);
+        TRACE("SEQ:%ld", form->elnum);
 
         array_traverse(form, (array_traverser_t)fparser_datum_dump, udata);
 

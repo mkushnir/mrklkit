@@ -12,6 +12,7 @@
 #include <mrklkit/fparser.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lparse.h>
+#include <mrklkit/util.h>
 
 #include "diag.h"
 
@@ -89,7 +90,6 @@ lkit_type_destroy(lkit_type_t **ty)
         default:
             /* builtin? */
             assert(ty->tag < _LKIT_END_OF_BUILTIN_TYPES);
-            //FAIL("type_destroy");
 
         }
 
@@ -106,8 +106,8 @@ lkit_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
     return 0;
 }
 
-static lkit_type_t *
-type_new(lkit_tag_t tag)
+lkit_type_t *
+lkit_type_new(lkit_tag_t tag)
 {
     lkit_type_t *ty = NULL;
 
@@ -255,88 +255,118 @@ lkit_dict_get_element_type(lkit_dict_t *td)
 }
 
 
-void
-lkit_type_dump(lkit_type_t *ty)
+static void
+_lkit_type_dump(lkit_type_t *ty, int level)
 {
     if (ty == NULL) {
         LTRACEN(0, " <null>");
         return;
     }
-    if (ty->tag < _LKIT_END_OF_BUILTIN_TYPES) {
-        LTRACEN(0, "%s", ty->name);
-    } else {
-        //LTRACEN(0, " (%s", ty->name);
-        if (LKIT_ERROR(ty)) {
-            TRACEC("-->(%s", ty->name);
-        } else {
-            TRACEC("(%s", ty->name);
-        }
-        switch (ty->tag) {
-            lkit_type_t **elty;
-            array_iter_t it;
-            lkit_array_t *ta;
-            //lkit_dict_t *td;
-            lkit_struct_t *ts;
-            //lkit_func_t *tf;
-            unsigned char *dst;
-            size_t sz;
 
-        case LKIT_ARRAY:
-            ta = (lkit_array_t *)ty;
-            if (ta->delim != NULL) {
-                sz = strlen((char *)(ta->delim));
-                if ((dst = malloc(sz * 2 + 1)) == NULL) {
-                    FAIL("malloc");
-                }
-                memset(dst, '\0', sz * 2 + 1);
-                fparser_escape(dst, sz * 2, ta->delim, sz);
-                TRACEC(" \"%s\"", dst);
-                free(dst);
+    LTRACEN(0, "%s", ty->name);
+
+    switch (ty->tag) {
+        lkit_type_t **elty;
+        array_iter_t it;
+        lkit_array_t *ta;
+        lkit_dict_t *td;
+        lkit_struct_t *ts;
+        lkit_func_t *tf;
+        unsigned char *dst;
+        size_t sz;
+
+    case LKIT_ARRAY:
+        ta = (lkit_array_t *)ty;
+        if (ta->delim != NULL) {
+            sz = strlen((char *)(ta->delim));
+            if ((dst = malloc(sz * 2 + 1)) == NULL) {
+                FAIL("malloc");
             }
-            lkit_type_dump(lkit_array_get_element_type(ta));
-            break;
+            memset(dst, '\0', sz * 2 + 1);
+            fparser_escape(dst, sz * 2, ta->delim, sz);
+            TRACEC("\"%s\" ", dst);
+            free(dst);
+        }
+        _lkit_type_dump(lkit_array_get_element_type(ta), level + 1);
+        break;
 
-        case LKIT_STRUCT:
-            ts = (lkit_struct_t *)ty;
-            if (ts->delim != NULL) {
-                sz = strlen((char *)(ts->delim));
-                if ((dst = malloc(sz * 2 + 1)) == NULL) {
-                    FAIL("malloc");
-                }
-                memset(dst, '\0', sz * 2 + 1);
-                fparser_escape(dst, sz * 2, ts->delim, sz);
-                TRACEC(" \"%s\"", dst);
-                free(dst);
+    case LKIT_DICT:
+        td = (lkit_dict_t *)ty;
+        if (td->kvdelim != NULL) {
+            sz = strlen((char *)(td->kvdelim));
+            if ((dst = malloc(sz * 2 + 1)) == NULL) {
+                FAIL("malloc");
+            }
+            memset(dst, '\0', sz * 2 + 1);
+            fparser_escape(dst, sz * 2, td->kvdelim, sz);
+            TRACEC("\"%s\" ", dst);
+            free(dst);
+        }
+        if (td->fdelim != NULL) {
+            sz = strlen((char *)(td->fdelim));
+            if ((dst = malloc(sz * 2 + 1)) == NULL) {
+                FAIL("malloc");
+            }
+            memset(dst, '\0', sz * 2 + 1);
+            fparser_escape(dst, sz * 2, td->fdelim, sz);
+            TRACEC("\"%s\" ", dst);
+            free(dst);
+        }
+        _lkit_type_dump(lkit_dict_get_element_type(td), level + 1);
+        break;
+
+    case LKIT_STRUCT:
+        ts = (lkit_struct_t *)ty;
+        if (ts->delim != NULL) {
+            sz = strlen((char *)(ts->delim));
+            if ((dst = malloc(sz * 2 + 1)) == NULL) {
+                FAIL("malloc");
+            }
+            memset(dst, '\0', sz * 2 + 1);
+            fparser_escape(dst, sz * 2, ts->delim, sz);
+            TRACEC("\"%s\" ", dst);
+            free(dst);
+        }
+
+        for (elty = array_first(&ts->fields, &it);
+             elty != NULL;
+             elty = array_next(&ts->fields, &it)) {
+
+            unsigned char **name;
+
+            if ((name = array_get(&ts->names, it.iter)) != NULL) {
+                TRACEC("%s:", *name);
+                _lkit_type_dump(*elty, level + 1);
+            } else {
+                _lkit_type_dump(*elty, level + 1);
             }
 
-            for (elty = array_first(&ts->fields, &it);
-                 elty != NULL;
-                 elty = array_next(&ts->fields, &it)) {
 
-                unsigned char **name;
-
-                if ((name = array_get(&ts->names, it.iter)) != NULL) {
-                    TRACEC(" (%s ", *name);
-                    lkit_type_dump(*elty);
-                    TRACEC(")");
-                } else {
-                    lkit_type_dump(*elty);
-                }
-
-
-            }
-            break;
-
-
-        default:
-            FAIL("lkit_type_dump");
         }
-        if (LKIT_ERROR(ty)) {
-            TRACEC(")<--");
-        } else {
-            TRACEC(")");
+        break;
+
+
+    case LKIT_FUNC:
+        tf = (lkit_func_t *)ty;
+        for (elty = array_first(&tf->fields, &it);
+             elty != NULL;
+             elty = array_next(&tf->fields, &it)) {
+            _lkit_type_dump(*elty, level + 1);
         }
+        break;
+
+
+    default:
+        /* biultin */
+        break;
     }
+}
+
+void
+lkit_type_dump(lkit_type_t *ty)
+{
+    _lkit_type_dump(ty, 0);
+    TRACEC("\n");
 }
 
 void
@@ -414,7 +444,7 @@ ltype_next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int se
         return 1;
     }
 
-    if ((ty = lkit_type_parse(*node)) != NULL) {
+    if ((ty = lkit_type_parse(*node, seterror)) != NULL) {
         if (ty->tag == LKIT_STRUCT) {
             *value = (lkit_struct_t *)ty;
             return 0;
@@ -648,7 +678,7 @@ parse_fielddef(fparser_datum_t *dat, lkit_type_t *ty)
         if ((ty = array_incr(&var->fields)) == NULL) { \
             FAIL("array_incr"); \
         } \
-        if ((*ty = lkit_type_parse(*node)) == NULL) { \
+        if ((*ty = lkit_type_parse(*node, 1)) == NULL) { \
             LKIT_ERROR(var) = 1; \
             (*node)->error = 1; \
             return 1; \
@@ -669,7 +699,7 @@ parse_fielddef(fparser_datum_t *dat, lkit_type_t *ty)
 }
 
 lkit_type_t *
-lkit_type_parse(fparser_datum_t *dat)
+lkit_type_parse(fparser_datum_t *dat, int seterror)
 {
     lkit_type_t *ty = NULL;
     lkit_type_t *probe = NULL;
@@ -685,32 +715,42 @@ lkit_type_parse(fparser_datum_t *dat)
 
         /* simple types */
         if (strcmp(typename, "int") == 0) {
-            ty = type_new(LKIT_INT);
+            ty = lkit_type_new(LKIT_INT);
         } else if (strcmp(typename, "timestamp") == 0) {
-            ty = type_new(LKIT_TIMESTAMP);
+            ty = lkit_type_new(LKIT_TIMESTAMP);
         } else if (strcmp(typename, "str") == 0) {
-            ty = type_new(LKIT_STR);
+            ty = lkit_type_new(LKIT_STR);
         } else if (strcmp(typename, "float") == 0) {
-            ty = type_new(LKIT_FLOAT);
+            ty = lkit_type_new(LKIT_FLOAT);
         //} else if (strcmp(typename, "bool") == 0) {
         } else {
-            goto err;
+            /*
+             * XXX handle typedefs here, or unknown type ...
+             */
+            if ((probe = dict_get_item(&typedefs, (bytes_t *)(dat->body))) != NULL) {
+                ty = probe;
+            }
+            /*
+             * either already registered type, or NULL, skip type
+             * registration.
+             */
+            goto end;
         }
     } else if (tag == FPARSER_SEQ) {
         array_t *form;
         array_iter_t it;
-        unsigned char *first;
+        bytes_t *first;
 
         form = (array_t *)dat->body;
 
-        if (lparse_first_word(form, &it, &first, 1) == 0) {
+        if (lparse_first_word_bytes(form, &it, &first, 1) == 0) {
 
-            if (strcmp((char *)first, "array") == 0) {
+            if (strcmp((char *)first->data, "array") == 0) {
                 lkit_array_t *ta;
                 fparser_datum_t **node;
                 lkit_type_t **elemtype;
 
-                ty = type_new(LKIT_ARRAY);
+                ty = lkit_type_new(LKIT_ARRAY);
                 ta = (lkit_array_t *)ty;
 
                 /* quals */
@@ -728,16 +768,16 @@ lkit_type_parse(fparser_datum_t *dat)
                     FAIL("array_incr");
                 }
 
-                if ((*elemtype = lkit_type_parse(*node)) == NULL) {
+                if ((*elemtype = lkit_type_parse(*node, 1)) == NULL) {
                     goto err;
                 }
 
-            } else if (strcmp((char *)first, "dict") == 0) {
+            } else if (strcmp((char *)first->data, "dict") == 0) {
                 lkit_dict_t *td;
                 fparser_datum_t **node;
                 lkit_type_t **elemtype;
 
-                ty = type_new(LKIT_DICT);
+                ty = lkit_type_new(LKIT_DICT);
                 td = (lkit_dict_t *)ty;
 
                 if (lparse_next_str(form, &it, &td->kvdelim, 1) != 0) {
@@ -756,15 +796,15 @@ lkit_type_parse(fparser_datum_t *dat)
                     FAIL("array_incr");
                 }
 
-                if ((*elemtype = lkit_type_parse(*node)) == NULL) {
+                if ((*elemtype = lkit_type_parse(*node, 1)) == NULL) {
                     goto err;
                 }
 
-            } else if (strcmp((char *)first, "struct") == 0) {
+            } else if (strcmp((char *)first->data, "struct") == 0) {
                 lkit_struct_t *ts;
                 fparser_datum_t **node;
 
-                ty = type_new(LKIT_STRUCT);
+                ty = lkit_type_new(LKIT_STRUCT);
                 ts = (lkit_struct_t *)ty;
 
                 /* quals */
@@ -790,11 +830,11 @@ lkit_type_parse(fparser_datum_t *dat)
                     }
                 }
 
-            } else if (strcmp((char *)first, "func") == 0) {
+            } else if (strcmp((char *)first->data, "func") == 0) {
                 lkit_func_t *tf;
                 fparser_datum_t **node;
 
-                ty = type_new(LKIT_FUNC);
+                ty = lkit_type_new(LKIT_FUNC);
                 tf = (lkit_func_t *)ty;
 
                 /* retval and optional params are stroed in tf->fields */
@@ -808,15 +848,14 @@ lkit_type_parse(fparser_datum_t *dat)
                         FAIL("array_incr");
                     }
 
-                    if ((*paramtype = lkit_type_parse(*node)) == NULL) {
+                    if ((*paramtype = lkit_type_parse(*node, 1)) == NULL) {
                         goto err;
                     }
                 }
 
             } else {
-                /*
-                 * XXX handle typedefs here, or unknown type ...
-                 */
+                /* unknown */
+                goto err;
             }
         }
     }
@@ -832,20 +871,15 @@ end:
     return ty;
 
 err:
-    dat->error = 1;
-    if (ty != NULL) {
-        lkit_type_destroy(&ty);
-    }
+    dat->error = seterror;
+    lkit_type_destroy(&ty);
     goto end;
 }
 
-static uint64_t
-bytes_hash(bytes_t *bytes)
+lkit_type_t *
+lkit_type_find(lkit_type_t *sample)
 {
-    if (bytes->hash == 0) {
-        bytes->hash = fasthash(0, bytes->data, bytes->sz);
-    }
-    return bytes->hash;
+    return dict_get_item(&types, sample);
 }
 
 static int
@@ -885,7 +919,7 @@ lkit_parse_typedef(array_t *form, array_iter_t *it)
         goto err;
     }
 
-    if ((type = lkit_type_parse(*node)) == NULL) {
+    if ((type = lkit_type_parse(*node, 1)) == NULL) {
         (*node)->error = 1;
         goto err;
     }

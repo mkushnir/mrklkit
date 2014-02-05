@@ -187,7 +187,7 @@ test3(void)
     }
 
     if ((res = mrklkit_compile(fd)) != 0) {
-        FAIL("mrklkit_compile");
+        perror("mrklkit_compile");
     }
 
     close(fd);

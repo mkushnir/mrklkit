@@ -31,6 +31,25 @@ lparse_first_word(array_t *form, array_iter_t *it, unsigned char **value, int se
 }
 
 int
+lparse_first_word_bytes(array_t *form, array_iter_t *it, bytes_t **value, int seterror)
+{
+    fparser_datum_t **node;
+    fparser_tag_t tag;
+    if ((node = array_first(form, it)) == NULL) {
+        *value = NULL;
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*node);
+    if (tag == FPARSER_WORD) {
+        *value = (bytes_t *)((*node)->body);
+        return 0;
+    }
+    *value = NULL;
+    (*node)->error = seterror;
+    return 1;
+}
+
+int
 lparse_next_word(array_t *form, array_iter_t *it, unsigned char **value, int seterror)
 {
     fparser_datum_t **node;

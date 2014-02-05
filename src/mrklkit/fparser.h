@@ -57,7 +57,7 @@ typedef enum {
 
 #define FPARSER_TAG_STR(tag) ( \
     (tag) == FPARSER_STR ? "STR" : \
-    (tag) == FPARSER_STR ? "WORD" : \
+    (tag) == FPARSER_WORD ? "WORD" : \
     (tag) == FPARSER_INT ? "INT" : \
     (tag) == FPARSER_FLOAT ? "FLOAT" : \
     (tag) == FPARSER_SEQ ? "SEQ" : \

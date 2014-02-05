@@ -13,6 +13,7 @@ typedef int (* quals_parser_t)(array_t *,
                                void *);
 
 int lparse_first_word(array_t *, array_iter_t *, unsigned char **, int);
+int lparse_first_word_bytes(array_t *, array_iter_t *, bytes_t **, int);
 int lparse_next_word(array_t *, array_iter_t *, unsigned char **, int);
 int lparse_next_word_bytes(array_t *, array_iter_t *, bytes_t **, int);
 int lparse_next_str(array_t *, array_iter_t *, unsigned char **, int);

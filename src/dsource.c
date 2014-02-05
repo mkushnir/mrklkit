@@ -5,11 +5,12 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
+
 #include <mrklkit/fparser.h>
 
-#include "dsource.h"
-#include "lparse.h"
-#include "ltype.h"
+#include <mrklkit/dsource.h>
+#include <mrklkit/lparse.h>
+#include <mrklkit/ltype.h>
 
 #include "diag.h"
 
@@ -59,7 +60,7 @@ dsource_new(void)
     return dsource;
 }
 
-UNUSED static void
+static void
 dsource_destroy(dsource_t **dsource)
 {
     if (*dsource != NULL) {
@@ -130,9 +131,15 @@ parse_dsource_quals(array_t *form,
 
 int
 lkit_parse_dsource(array_t *form,
-             array_iter_t *it,
-             dsource_t **dsource)
+             array_iter_t *it)
 {
+    dsource_t **dsource;
+    bytestream_t bs;
+
+
+    if ((dsource = array_incr(&dsources)) == NULL) {
+        FAIL("array_incr");
+    }
     *dsource = dsource_new();
 
     /* logtype */
@@ -147,6 +154,13 @@ lkit_parse_dsource(array_t *form,
         (*dsource)->error = 1;
         return 1;
     }
+
+    bytestream_init(&bs);
+    lkit_type_str((lkit_type_t *)((*dsource)->fields), &bs);
+    bytestream_cat(&bs, 2, "\n\0");
+    bytestream_write(&bs, 2, bs.eod);
+    bytestream_fini(&bs);
+
     return 0;
 }
 
@@ -154,7 +168,9 @@ lkit_parse_dsource(array_t *form,
 void
 dsource_init_module(void)
 {
-    if (array_init(&dsources, sizeof(dsource_t *), 0, NULL, NULL) != 0) {
+    if (array_init(&dsources, sizeof(dsource_t *), 0,
+                   NULL,
+                   (array_finalizer_t)dsource_destroy) != 0) {
         FAIL("array_init");
     }
 }

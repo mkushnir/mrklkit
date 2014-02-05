@@ -39,9 +39,9 @@ int
 mrklkit_parse(int fd)
 {
     int res = 0;
-    fparser_datum_t **glob_node;
     array_t *form;
     array_iter_t it;
+    fparser_datum_t **fnode;
 
     if ((root = fparser_parse(fd, NULL, NULL)) == NULL) {
         FAIL("fparser_parse");
@@ -54,73 +54,43 @@ mrklkit_parse(int fd)
     }
 
     form = (array_t *)root->body;
-    for (glob_node = array_first(form, &it);
-         glob_node != NULL;
-         glob_node = array_next(form, &it)) {
+    for (fnode = array_first(form, &it);
+         fnode != NULL;
+         fnode = array_next(form, &it)) {
 
 
         /* here tag can be either SEQ, or one of INT, WORD, FLOAT */
-        switch (FPARSER_DATUM_TAG(*glob_node)) {
-            array_t *glob_form;
-            array_iter_t glob_it;
+        switch (FPARSER_DATUM_TAG(*fnode)) {
+            array_t *nform;
+            array_iter_t nit;
             unsigned char *first = NULL;
 
         case FPARSER_SEQ:
-            glob_form = (array_t *)((*glob_node)->body);
+            nform = (array_t *)((*fnode)->body);
 
-            if (lparse_first_word(glob_form, &glob_it, &first, 1) == 0) {
-
+            if (lparse_first_word(nform, &nit, &first, 1) == 0) {
                 if (strcmp((char *)first, "type") == 0) {
-                    if (lkit_parse_typedef(glob_form, &glob_it) != 0) {
-                        (*glob_node)->error = 1;
+                    if (lkit_parse_typedef(nform, &nit) != 0) {
+                        (*fnode)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
 
 
                 } else if (strcmp((char *)first, "var") == 0) {
-                    unsigned char *varname = NULL;
-                    fparser_datum_t **loc_node;
-                    lkit_type_t *ty;
-
-                    if (lparse_next_word(glob_form,
-                                         &glob_it,
-                                         &varname,
-                                         1) != 0) {
-                        (*glob_node)->error = 1;
+                    if (lkit_expr_parse(nform, &nit) != 0) {
+                        (*fnode)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
-
-                    if ((loc_node = array_next(glob_form, &glob_it)) == NULL) {
-                        (*glob_node)->error = 1;
-                        fparser_datum_dump_formatted(root);
-                        return 1;
-                    }
-
-                    if ((ty = lkit_type_parse(*loc_node)) == NULL) {
-                        /* expr found ? */
-                    } else {
-                    }
-
 
                 } else if (strcmp((char *)first, "dsource") == 0) {
-                    dsource_t *dsource = NULL;
-                    bytestream_t bs;
 
-                    if (lkit_parse_dsource(glob_form,
-                                            &glob_it,
-                                            &dsource) != 0) {
-                        (*glob_node)->error = 1;
+                    if (lkit_parse_dsource(nform, &nit) != 0) {
+                        (*fnode)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;
                     }
-
-                    bytestream_init(&bs);
-                    lkit_type_str((lkit_type_t *)(dsource->fields), &bs);
-                    bytestream_cat(&bs, 2, "\n\0");
-                    bytestream_write(&bs, 2, bs.eod);
-                    bytestream_fini(&bs);
 
                 } else {
                     /* ignore */
