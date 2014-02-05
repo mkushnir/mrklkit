@@ -8,8 +8,9 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/Transforms/Scalar.h>
 
-#include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
+#define TRRET_DEBUG_VERBOSE
+#include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
 #include <mrklkit/fparser.h>
@@ -19,6 +20,7 @@
 #include <mrklkit/mrklkit.h>
 
 #include <mrklkit/dsource.h>
+#include <mrklkit/sample.h>
 
 #include "diag.h"
 
@@ -35,7 +37,7 @@ static fparser_datum_t *root;
  * types? vars?
  *
  */
-int
+static int
 mrklkit_parse(int fd)
 {
     int res = 0;
@@ -50,7 +52,7 @@ mrklkit_parse(int fd)
 
     if (FPARSER_DATUM_TAG(root) != FPARSER_SEQ) {
         root->error = 1;
-        return 1;
+        goto err;
     }
 
     form = (array_t *)root->body;
@@ -72,24 +74,21 @@ mrklkit_parse(int fd)
                 if (strcmp((char *)first, "type") == 0) {
                     if (lkit_parse_typedef(nform, &nit) != 0) {
                         (*fnode)->error = 1;
-                        fparser_datum_dump_formatted(root);
-                        return 1;
+                        goto err;
                     }
 
 
                 } else if (strcmp((char *)first, "var") == 0) {
                     if (lexpr_parse(nform, &nit) != 0) {
                         (*fnode)->error = 1;
-                        fparser_datum_dump_formatted(root);
-                        return 1;
+                        goto err;
                     }
 
                 } else if (strcmp((char *)first, "dsource") == 0) {
 
                     if (dsource_parse(nform, &nit) != 0) {
                         (*fnode)->error = 1;
-                        fparser_datum_dump_formatted(root);
-                        return 1;
+                        goto err;
                     }
 
                 } else {
@@ -107,8 +106,13 @@ mrklkit_parse(int fd)
         }
     }
 
+end:
     fparser_datum_dump_formatted(root);
     return res;
+
+err:
+    res = 1;
+    goto end;
 }
 
 int
@@ -117,8 +121,14 @@ mrklkit_compile(int fd)
     if (mrklkit_parse(fd) != 0) {
         return 1;
     }
+    lexpr_transform((dict_traverser_t)sample_remove_undef, NULL);
     return 0;
 }
+
+/*
+ * Module
+ *
+ */
 
 static void
 llvm_init(void)

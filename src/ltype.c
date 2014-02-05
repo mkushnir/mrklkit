@@ -1086,7 +1086,7 @@ ltype_init(void)
 
 }
 
-static int
+UNUSED static int
 dump_type(lkit_type_t *key, UNUSED lkit_type_t *value)
 {
     bytestream_t bs;
@@ -1101,6 +1101,6 @@ dump_type(lkit_type_t *key, UNUSED lkit_type_t *value)
 void
 ltype_fini(void)
 {
-    dict_traverse(&types, (dict_traverser_t)dump_type, NULL);
+    //dict_traverse(&types, (dict_traverser_t)dump_type, NULL);
     dict_fini(&types);
 }

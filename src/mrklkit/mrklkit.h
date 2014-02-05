@@ -35,7 +35,6 @@ typedef struct _query {
 } query_t;
 
 
-int mrklkit_parse(int);
 int mrklkit_compile(int);
 void mrklkit_init_module(void);
 void mrklkit_fini_module(void);

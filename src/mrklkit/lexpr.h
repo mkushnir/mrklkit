@@ -13,11 +13,13 @@ extern "C" {
 
 typedef struct _lkit_expr {
     lkit_type_t *type;
+    bytes_t *name;
     union {
         fparser_datum_t *literal;
         struct _lkit_expr *ref;
     } value;
     int isref:1;
+    int error:1;
     /* lkit_expr_t * */
     array_t subs;
     /* bytes_t *, lkit_expr_t * */
@@ -26,10 +28,13 @@ typedef struct _lkit_expr {
 
 } lkit_expr_t;
 
+void lkit_expr_dump(lkit_expr_t *);
 lkit_expr_t *lkit_expr_parse(lkit_expr_t *, fparser_datum_t *, int);
 lkit_expr_t *lkit_expr_find(lkit_expr_t *, bytes_t *);
+lkit_type_t *lkit_type_of_expr(lkit_expr_t *);
 int lkit_parse_exprdef(lkit_expr_t *, array_t *, array_iter_t *);
 int lexpr_parse(array_t *, array_iter_t *);
+int lexpr_transform(dict_traverser_t, void *);
 
 void lexpr_init(void);
 void lexpr_fini(void);
