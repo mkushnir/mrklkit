@@ -21,15 +21,19 @@
  */
 static dict_t exprs;
 
+static lkit_type_t *type_of_expr(lkit_expr_t *);
+
 static int
 lexpr_dump(bytes_t *key, lkit_expr_t *value)
 {
     bytestream_t bs;
     bytestream_init(&bs);
 
+    lkit_type_str(type_of_expr(value), &bs);
+    bytestream_cat(&bs, 4, " <- ");
     lkit_type_str(value->type, &bs);
     bytestream_cat(&bs, 1, "\0");
-    TRACE("EXPR: %s:%s", (key != NULL) ? (char *)(key->data) : "<null>", SDATA(&bs, 0));
+    TRACE("EXPR: %s: %s", (key != NULL) ? (char *)(key->data) : "<null>", SDATA(&bs, 0));
     if (value->isref) {
         lexpr_dump(NULL, value->value.ref);
     } else {
@@ -215,8 +219,8 @@ lkit_expr_parse(fparser_datum_t *dat, int seterror)
                     goto err;
                 }
 
-                TRACE("arg:");
-                lexpr_dump(NULL, *arg);
+                //TRACE("arg:");
+                //lexpr_dump(NULL, *arg);
 
                 if ((paramtype = array_get(&tf->fields, it.iter)) == NULL) {
                     goto err;
@@ -229,8 +233,11 @@ lkit_expr_parse(fparser_datum_t *dat, int seterror)
                 if ((argtype = type_of_expr(*arg)) == NULL) {
                     goto err;
                 }
-                if (lkit_type_cmp(*paramtype, argtype) != 0) {
-                    goto err;
+
+                if ((*paramtype)->tag != LKIT_UNDEF) {
+                    if (lkit_type_cmp(*paramtype, argtype) != 0) {
+                        goto err;
+                    }
                 }
             }
 

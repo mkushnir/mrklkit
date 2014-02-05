@@ -121,6 +121,15 @@ lkit_type_new(lkit_tag_t tag)
         lkit_struct_t *ts;
         lkit_func_t *tf;
 
+    case LKIT_UNDEF:
+        if ((ty = malloc(sizeof(lkit_type_t))) == NULL) {
+            FAIL("malloc");
+        }
+        ty->tag = tag;
+        ty->name = "undef";
+        ty->error = 0;
+        break;
+
     case LKIT_INT:
         ti = (lkit_int_t *)ty;
         if ((ti = malloc(sizeof(lkit_int_t))) == NULL) {
@@ -469,6 +478,7 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
     if (a == b) {
         return 0;
     }
+
     if (a->tag < _LKIT_END_OF_BUILTIN_TYPES) {
         if (a->tag == b->tag) {
             return 0;
@@ -714,7 +724,9 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
         typename = (char *)(b->data);
 
         /* simple types */
-        if (strcmp(typename, "int") == 0) {
+        if (strcmp(typename, "undef") == 0) {
+            ty = lkit_type_new(LKIT_UNDEF);
+        } else if (strcmp(typename, "int") == 0) {
             ty = lkit_type_new(LKIT_INT);
         } else if (strcmp(typename, "timestamp") == 0) {
             ty = lkit_type_new(LKIT_TIMESTAMP);
@@ -833,6 +845,8 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
             } else if (strcmp((char *)first->data, "func") == 0) {
                 lkit_func_t *tf;
                 fparser_datum_t **node;
+                lkit_type_t **paramtype;
+
 
                 ty = lkit_type_new(LKIT_FUNC);
                 tf = (lkit_func_t *)ty;
@@ -842,8 +856,6 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                      node != NULL;
                      node = array_next(form, &it)) {
 
-                    lkit_type_t **paramtype;
-
                     if ((paramtype = array_incr(&tf->fields)) == NULL) {
                         FAIL("array_incr");
                     }
@@ -851,6 +863,16 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                     if ((*paramtype = lkit_type_parse(*node, 1)) == NULL) {
                         goto err;
                     }
+                    /* no function params or return values */
+                    if ((*paramtype)->tag == LKIT_FUNC) {
+                        (*node)->error = 1;
+                        goto err;
+                    }
+                }
+
+                /* no void functions */
+                if (tf->fields.elnum < 1) {
+                    goto err;
                 }
 
             } else {
@@ -858,6 +880,8 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 goto err;
             }
         }
+    } else {
+        goto end;
     }
 
     if ((probe = dict_get_item(&types, ty)) == NULL) {

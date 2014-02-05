@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 typedef enum _lkit_tag {
+    LKIT_UNDEF,
     LKIT_INT,
     LKIT_TIMESTAMP,
     LKIT_STR,
@@ -23,7 +24,6 @@ typedef enum _lkit_tag {
     LKIT_DICT,
     LKIT_STRUCT,
     LKIT_FUNC,
-    LKIT_UNDEF,
 } lkit_tag_t;
 
 #define LKIT_TAG_STR(tag) ( \
