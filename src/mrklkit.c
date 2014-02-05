@@ -78,7 +78,7 @@ mrklkit_parse(int fd)
 
 
                 } else if (strcmp((char *)first, "var") == 0) {
-                    if (lkit_expr_parse(nform, &nit) != 0) {
+                    if (lkit_parse_exprdef(nform, &nit) != 0) {
                         (*fnode)->error = 1;
                         fparser_datum_dump_formatted(root);
                         return 1;

@@ -11,7 +11,6 @@ extern "C" {
 #endif
 
 typedef struct _lkit_expr {
-    bytes_t *name;
     lkit_type_t *type;
     union {
         fparser_datum_t *literal;
@@ -23,7 +22,8 @@ typedef struct _lkit_expr {
 
 } lkit_expr_t;
 
-int lkit_expr_parse(array_t *, array_iter_t *);
+lkit_expr_t *lkit_expr_parse(fparser_datum_t *, int);
+int lkit_parse_exprdef(array_t *, array_iter_t *);
 
 void lexpr_init(void);
 void lexpr_fini(void);
