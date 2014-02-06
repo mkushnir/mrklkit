@@ -37,7 +37,7 @@ lkit_type_destroy(lkit_type_t **ty)
 
         tag = (*ty)->tag;
 
-        (*ty)->hash64 = 0;
+        (*ty)->hash = 0;
 
         if (((*ty)->name) != NULL) {
             /* weak ref */
@@ -247,7 +247,7 @@ lkit_type_new(lkit_tag_t tag)
 
     }
 
-    ty->hash64 = 0;
+    ty->hash = 0;
 
     return ty;
 }
@@ -565,15 +565,15 @@ lkit_type_hash(lkit_type_t *ty)
     if (ty == NULL) {
         return 0;
     }
-    if (ty->hash64 == 0) {
+    if (ty->hash == 0) {
         bytestream_t bs;
         bytestream_init(&bs);
         lkit_type_str(ty, &bs);
-        ty->hash64 = fasthash(0,
+        ty->hash = fasthash(0,
             (const unsigned char *)SDATA(&bs, 0), SEOD(&bs));
         bytestream_fini(&bs);
     }
-    return ty->hash64;
+    return ty->hash;
 }
 
 int

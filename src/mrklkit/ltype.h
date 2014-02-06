@@ -48,7 +48,7 @@ typedef enum _lkit_parser {
 } lkit_parser_t;
 
 typedef struct _lkit_type {
-    uint64_t hash64;
+    uint64_t hash;
     lkit_tag_t tag;
     /* weak ref */
     char *name;

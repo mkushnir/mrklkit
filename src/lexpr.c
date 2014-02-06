@@ -183,6 +183,7 @@ lkit_expr_t *
 lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 {
     lkit_expr_t *expr;
+    lkit_type_t *type = NULL;
 
     if ((expr = malloc(sizeof(lkit_expr_t))) == NULL) {
         FAIL("malloc");
@@ -201,7 +202,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
     /* first probe for type/reference */
     if ((expr->type = lkit_type_parse(dat, 0)) == NULL) {
-        lkit_type_t *type, **paramtype = NULL;
+        lkit_type_t **paramtype = NULL;
         array_t *form;
         array_iter_t it;
         fparser_datum_t **node;
@@ -383,6 +384,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
     }
 
 end:
+    lkit_type_destroy(&type);
     return expr;
 
 err:
