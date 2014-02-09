@@ -15,7 +15,7 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
-#include <mrklkit.h>
+#include <mrklkit/mrklkit.h>
 
 #ifndef NDEBUG
 const char *_malloc_options = "AJ";
@@ -190,7 +190,15 @@ test3(void)
 
     if ((res = mrklkit_compile(fd)) != 0) {
         perror("mrklkit_compile");
+    } else {
+        if ((res = mrklkit_run(".mrklkit.init.qwe")) != 0) {
+            perror("mrklkit_run");
+        }
+        if ((res = mrklkit_run(".mrklkit.init.asd")) != 0) {
+            perror("mrklkit_run");
+        }
     }
+
 
     close(fd);
 }

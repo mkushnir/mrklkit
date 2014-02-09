@@ -132,7 +132,7 @@ mrklkit_compile(int fd)
     if (mrklkit_parse(fd) != 0) {
         TRRET(MRKLKIT_COMPILE + 1);
     }
-    if (ltype_transform((dict_traverser_t)ltype_set_backend,
+    if (ltype_transform((dict_traverser_t)ltype_compile,
                         NULL) != 0) {
         TRRET(MRKLKIT_COMPILE + 2);
     }
@@ -140,18 +140,18 @@ mrklkit_compile(int fd)
         TRRET(MRKLKIT_COMPILE + 3);
     }
 
-#if 1
-    if (lexpr_transform((dict_traverser_t)sample_compile_globals, module) != 0) {
-        TRRET(MRKLKIT_COMPILE + 3);
+    if (lexpr_transform((dict_traverser_t)sample_compile_globals,
+                        module) != 0) {
+        TRRET(MRKLKIT_COMPILE + 4);
     }
 
-    /**/
     res = LLVMRunPassManager(pm, module);
-    TRACE("res=%d", res);
-    if (res != 0) {
-        TRACE("erorr: %s", error_msg);
-    }
+    //TRACE("res=%d", res);
+    //if (res != 0) {
+    //    TRACE("module was modified");
+    //}
 
+    TRACEC("-----------------------------------------------\n");
     LLVMDumpModule(module);
     tr = LLVMGetFirstTarget();
     //TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",
@@ -161,16 +161,56 @@ mrklkit_compile(int fd)
     //      LLVMTargetHasTargetMachine(tr),
     //      LLVMTargetHasAsmBackend(tr),
     //      LLVMGetTarget(module));
-    tmr = LLVMCreateTargetMachine(tr, (char *)LLVMGetTarget(module), "", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
-    res = LLVMTargetMachineEmitToMemoryBuffer(tmr, module, LLVMAssemblyFile, &error_msg, &mb);
+    tmr = LLVMCreateTargetMachine(tr,
+                                  (char *)LLVMGetTarget(module),
+                                  "",
+                                  "",
+                                  LLVMCodeGenLevelDefault,
+                                  LLVMRelocDefault,
+                                  LLVMCodeModelDefault);
+
+    res = LLVMTargetMachineEmitToMemoryBuffer(tmr,
+                                              module,
+                                              LLVMAssemblyFile,
+                                              &error_msg,
+                                              &mb);
     if (res != 0) {
         TRACE("res=%d %s", res, error_msg);
+        TRRET(MRKLKIT_COMPILE + 6);
     }
-    TRACE("%s", LLVMGetBufferStart(mb));
+    TRACEC("-----------------------------------------------\n%s", LLVMGetBufferStart(mb));
     LLVMDisposeMemoryBuffer(mb);
-#endif
 
     return 0;
+}
+
+int
+mrklkit_run(const char *name)
+{
+    int res;
+    LLVMValueRef fn;
+    LLVMGenericValueRef rv;
+
+    LLVMRunStaticConstructors(ee);
+
+    res = LLVMFindFunction(ee, name, &fn);
+    TRACE("res=%d", res);
+    if (res == 0) {
+        rv = LLVMRunFunction(ee, fn, 0, NULL);
+        TRACE("rv=%p", rv);
+        TRACE("rv=%llu", LLVMGenericValueToInt(rv, 0));
+        LLVMDisposeGenericValue(rv);
+    }
+    LLVMRunStaticDestructors(ee);
+    return res;
+}
+
+int LTEST
+(char *arg)
+{
+    TRACE("arg %p", arg);
+    TRACE("argval: '%s'", arg);
+    return 123;
 }
 
 /*
@@ -230,7 +270,6 @@ llvm_init(void)
         TRACE("%s", error_msg);
         FAIL("LLVMCreateExecutionEngineForModule");
     }
-    LLVMRunStaticConstructors(ee);
 
     if ((pm = LLVMCreatePassManager()) == NULL) {
         FAIL("LLVMCreatePassManager");
@@ -250,7 +289,6 @@ llvm_init(void)
 static void
 llvm_fini(void)
 {
-    LLVMRunStaticDestructors(ee);
     LLVMDisposePassManager(pm);
     LLVMDisposeExecutionEngine(ee);
 }

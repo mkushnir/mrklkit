@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-int ltype_set_backend(lkit_type_t *, void *);
+int ltype_compile(lkit_type_t *, void *);
 
 #ifdef __cplusplus
 }

@@ -21,7 +21,7 @@
  */
 
 int
-ltype_set_backend(lkit_type_t *ty,
+ltype_compile(lkit_type_t *ty,
                           UNUSED void *udata)
 {
     lkit_struct_t *ts;
@@ -40,7 +40,7 @@ ltype_set_backend(lkit_type_t *ty,
         break;
 
     case LKIT_STR:
-        ty->backend = LLVMIntType(8);
+        ty->backend = LLVMPointerType(LLVMIntType(8), 0);
         break;
 
     case LKIT_FLOAT:
@@ -49,6 +49,10 @@ ltype_set_backend(lkit_type_t *ty,
 
     case LKIT_BOOL:
         ty->backend = LLVMIntType(1);
+        break;
+
+    case LKIT_UNDEF:
+        ty->backend = LLVMPointerType(LLVMIntType(8), 0);
         break;
 
     case LKIT_ARRAY:
@@ -72,8 +76,8 @@ ltype_set_backend(lkit_type_t *ty,
                 goto end_struct;
             }
 
-            if (ltype_set_backend(*field, udata) != 0) {
-                TRRET(LTYPE_SET_BACKEND + 1);
+            if (ltype_compile(*field, udata) != 0) {
+                TRRET(LTYPE_COMPILE + 1);
             }
 
             bfields[it.iter] = (*field)->backend;
@@ -93,14 +97,14 @@ end_struct:
         if ((field = array_first(&tf->fields, &it)) == NULL) {
             FAIL("array_first");
         }
-        if ((*field)->tag == LKIT_UNDEF) {
-            goto end_func;
-        }
+        //if ((*field)->tag == LKIT_UNDEF) {
+        //    goto end_func;
+        //}
         if ((*field)->tag == LKIT_VARARG) {
-            TRRET(LTYPE_SET_BACKEND + 2);
+            TRRET(LTYPE_COMPILE + 2);
         }
-        if (ltype_set_backend(*field, udata) != 0) {
-            TRRET(LTYPE_SET_BACKEND + 3);
+        if (ltype_compile(*field, udata) != 0) {
+            TRRET(LTYPE_COMPILE + 3);
         }
 
         retty = (*field)->backend;
@@ -109,16 +113,16 @@ end_struct:
              field != NULL;
              field = array_next(&tf->fields, &it)) {
 
-            if ((*field)->tag == LKIT_UNDEF) {
-                goto end_func;
-            }
+            //if ((*field)->tag == LKIT_UNDEF) {
+            //    goto end_func;
+            //}
 
             if ((*field)->tag == LKIT_VARARG) {
                 break;
             }
 
-            if (ltype_set_backend(*field, udata) != 0) {
-                TRRET(LTYPE_SET_BACKEND + 4);
+            if (ltype_compile(*field, udata) != 0) {
+                TRRET(LTYPE_COMPILE + 4);
             }
 
             bfields[it.iter - 1] = (*field)->backend;
@@ -128,13 +132,13 @@ end_struct:
             FAIL("array_first");
         }
         if ((*field)->tag == LKIT_VARARG) {
-            ty->backend = LLVMPointerType(LLVMFunctionType(retty, bfields, tf->fields.elnum - 2, 1), 0);
+            ty->backend = LLVMFunctionType(retty, bfields, tf->fields.elnum - 2, 1);
         } else {
-            ty->backend = LLVMPointerType(LLVMFunctionType(retty, bfields, tf->fields.elnum - 1, 0), 0);
+            ty->backend = LLVMFunctionType(retty, bfields, tf->fields.elnum - 1, 0);
         }
 
 
-end_func:
+//end_func:
         break;
 
     default:

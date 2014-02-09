@@ -40,9 +40,9 @@ lkit_expr_dump(lkit_expr_t *expr)
     bytestream_cat(&bs, 1, "\0");
     if (expr->isref) {
         if (expr->name != NULL) {
-            TRACE("%s:", expr->name->data);
+            TRACE("<REF>:%s", expr->name->data);
         } else {
-            TRACE("<NONAME>:");
+            TRACE("<REF>:");
         }
         lkit_expr_dump(expr->value.ref);
     } else {
@@ -55,9 +55,9 @@ lkit_expr_dump(lkit_expr_t *expr)
             }
         } else {
             if (expr->value.literal == NULL) {
-                TRACE("<NONAME>: <null>");
+                TRACE("<LITERAL>: <null>");
             } else {
-                TRACE("<NONAME>:");
+                TRACE("<LITERAL>:");
                 fparser_datum_dump(&expr->value.literal, NULL);
             }
         }
@@ -296,15 +296,15 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
             //TRACE("ISREF");
             expr->isref = 1;
-            expr->type = expr->value.ref->type;
+            expr->type = lkit_type_of_expr(expr->value.ref);
 
             /* functions only ATM */
-            if (expr->type->tag != LKIT_FUNC) {
+            if (expr->value.ref->type->tag != LKIT_FUNC) {
                 TR(LKIT_EXPR_PARSE + 8);
                 goto err;
             }
 
-            tf = (lkit_func_t *)(expr->type);
+            tf = (lkit_func_t *)(expr->value.ref->type);
 
             for (node = array_next(form, &it);
                  node != NULL;
@@ -424,6 +424,7 @@ lkit_parse_exprdef(lkit_expr_t *ctx, array_t *form, array_iter_t *it)
         goto err;
     }
 
+    /* must be unique */
     if (lkit_expr_find(ctx, name) != NULL) {
         TR(LKIT_PARSE_EXPRDEF + 2);
         goto err;
