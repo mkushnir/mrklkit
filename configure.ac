@@ -77,7 +77,7 @@ AC_TYPE_UINT64_T
 
 AC_SUBST(LLVM_CFLAGS, ["`llvm-config33 --cflags`"])
 AC_SUBST(LLVM_LDFLAGS, ["`llvm-config33 --ldflags`"])
-AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets`"])
+AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets ipo`"])
 
 AC_PRESERVE_HELP_ORDER
 

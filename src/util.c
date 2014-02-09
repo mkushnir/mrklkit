@@ -23,7 +23,7 @@ char *newvar(char *buf, size_t sz, const char *prefix)
         buf = mybuf;
         sz = sizeof(mybuf);
     }
-    snprintf(buf, sz, "%s%ld", prefix, ++idx);
+    snprintf(buf, sz, "%s.%ld", prefix, ++idx);
     return buf;
 }
 

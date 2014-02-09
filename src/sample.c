@@ -277,10 +277,14 @@ compile_dynamic_initializer(LLVMModuleRef module,
 static LLVMValueRef
 sample_compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
 {
+    LLVMValueRef fn;
+
     assert(type->tag == LKIT_FUNC);
     assert(type->backend != NULL);
 
-    return LLVMAddFunction(module, (char *)name->data, type->backend);
+    fn = LLVMAddFunction(module, (char *)name->data, type->backend);
+    LLVMAddFunctionAttr(fn, LLVMNoUnwindAttribute);
+    return fn;
 }
 
 int

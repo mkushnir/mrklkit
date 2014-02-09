@@ -7,6 +7,7 @@
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
+#include <llvm-c/Transforms/IPO.h>
 #include <llvm-c/Transforms/Scalar.h>
 
 #include <mrkcommon/array.h>
@@ -239,7 +240,7 @@ llvm_init(void)
 
     LLVMInitializeInstCombine(pr);
 
-    //?LLVMInitializeIPO(pr);
+    LLVMInitializeIPO(pr);
     //?LLVMInitializeInstrumentation(pr);
 
     LLVMInitializeAnalysis(pr);
@@ -284,6 +285,7 @@ llvm_init(void)
     LLVMAddPromoteMemoryToRegisterPass(pm);
     LLVMAddSimplifyLibCallsPass(pm);
     LLVMAddTailCallEliminationPass(pm);
+    LLVMAddConstantMergePass(pm);
 }
 
 static void
