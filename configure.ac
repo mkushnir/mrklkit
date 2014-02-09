@@ -67,9 +67,17 @@ AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 
+AC_CHECK_FUNCS([memset])
+AC_CHECK_HEADERS([fcntl.h])
+AC_CHECK_HEADERS([limits.h])
+AC_FUNC_STRTOD
+AC_TYPE_INT64_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UINT64_T
+
 AC_SUBST(LLVM_CFLAGS, ["`llvm-config33 --cflags`"])
 AC_SUBST(LLVM_LDFLAGS, ["`llvm-config33 --ldflags`"])
-AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter`"])
+AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets`"])
 
 AC_PRESERVE_HELP_ORDER
 

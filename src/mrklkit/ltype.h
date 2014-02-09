@@ -3,7 +3,10 @@
 
 #include <stdint.h>
 
+#include <llvm-c/Core.h>
+
 #include <mrkcommon/array.h>
+#include <mrkcommon/dict.h>
 #include <mrkcommon/bytestream.h>
 
 #include <mrklkit/fparser.h>
@@ -47,11 +50,14 @@ typedef enum _lkit_parser {
     LKIT_PARSER_W3C,
 } lkit_parser_t;
 
+struct _lkit_type;
+
 typedef struct _lkit_type {
-    uint64_t hash;
-    lkit_tag_t tag;
     /* weak ref */
     char *name;
+    uint64_t hash;
+    LLVMTypeRef backend;
+    lkit_tag_t tag;
     int error:1;
 } lkit_type_t;
 
@@ -122,6 +128,8 @@ typedef struct _lkit_typedef {
 int ltype_next_struct(array_t *, array_iter_t *, lkit_struct_t **, int);
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
+int ltype_transform(dict_traverser_t, void *);
+
 void lkit_type_dump(lkit_type_t *);
 void lkit_type_str(lkit_type_t *, bytestream_t *);
 int lkit_type_destroy(lkit_type_t **);

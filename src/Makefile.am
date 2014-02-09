@@ -27,6 +27,7 @@ libmrklkit_la_SOURCES = \
 	lexpr.c \
 	lparse.c \
 	ltype.c \
+	ltypegen.c \
 	mrklkit.c \
 	sample.c \
 	util.c \

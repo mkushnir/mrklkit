@@ -39,13 +39,27 @@ lkit_expr_dump(lkit_expr_t *expr)
     lkit_type_str(expr->type, &bs);
     bytestream_cat(&bs, 1, "\0");
     if (expr->isref) {
+        if (expr->name != NULL) {
+            TRACE("%s:", expr->name->data);
+        } else {
+            TRACE("<NONAME>:");
+        }
         lkit_expr_dump(expr->value.ref);
     } else {
-        if (expr->value.literal == NULL) {
-            TRACE("LITERAL: <null>");
+        if (expr->name != NULL) {
+            if (expr->value.literal == NULL) {
+                TRACE("%s: <null>", expr->name->data);
+            } else {
+                TRACE("%s:", expr->name->data);
+                fparser_datum_dump(&expr->value.literal, NULL);
+            }
         } else {
-            TRACE("LITERAL:");
-            fparser_datum_dump(&expr->value.literal, NULL);
+            if (expr->value.literal == NULL) {
+                TRACE("<NONAME>: <null>");
+            } else {
+                TRACE("<NONAME>:");
+                fparser_datum_dump(&expr->value.literal, NULL);
+            }
         }
     }
     if (expr->subs.elnum > 0) {
@@ -170,6 +184,8 @@ lkit_expr_find(lkit_expr_t *ctx, bytes_t *name)
 {
     lkit_expr_t *expr = NULL;
     lkit_expr_t *cctx;
+
+    //TRACE("ctx=%p name=%s", ctx, name->data);
 
     for (cctx = ctx; cctx!= NULL; cctx = cctx->parent) {
         if ((expr = dict_get_item(&cctx->ctx, name)) != NULL) {
@@ -399,6 +415,7 @@ lkit_parse_exprdef(lkit_expr_t *ctx, array_t *form, array_iter_t *it)
     int res = 0;
     bytes_t *name = NULL;
     lkit_expr_t *expr = NULL;
+    lkit_gitem_t *gitem;
     fparser_datum_t **node = NULL;
 
     /* name */
@@ -425,6 +442,11 @@ lkit_parse_exprdef(lkit_expr_t *ctx, array_t *form, array_iter_t *it)
     }
 
     dict_set_item(&ctx->ctx, name, expr);
+    if ((gitem = array_incr(&ctx->glist)) == NULL) {
+        FAIL("array_incr");
+    }
+    gitem->name = name;
+    gitem->expr = expr;
 
 end:
     return res;
@@ -435,10 +457,26 @@ err:
     goto end;
 }
 
+static int
+_acb(void *item, void *udata)
+{
+    lkit_gitem_t *gitem = item;
+    struct {
+        dict_traverser_t cb;
+        void *udata;
+    } *params = udata;
+    return params->cb(gitem->name, gitem->expr, params->udata);
+}
+
 int
 lexpr_transform(dict_traverser_t cb, void *udata)
 {
-    return dict_traverse(&root.ctx, cb, udata);
+    struct {
+        dict_traverser_t cb;
+        void *udata;
+    } params = {cb, udata};
+    return array_traverse(&root.glist, _acb, &params);
+    //return dict_traverse(&root.ctx, cb, udata);
 }
 
 int
@@ -454,6 +492,7 @@ lexpr_init_ctx(lkit_expr_t *ctx)
               (dict_hashfn_t)lkit_expr_hash,
               (dict_item_comparator_t)lkit_expr_cmp,
               (dict_item_finalizer_t)lkit_expr_fini_dict);
+    array_init(&ctx->glist, sizeof(lkit_gitem_t), 0, NULL, NULL);
 }
 
 static void
@@ -461,6 +500,7 @@ lexpr_fini_ctx(lkit_expr_t *ctx)
 {
     //dict_traverse(&ctx->ctx, (dict_traverser_t)lexpr_dump, NULL);
     dict_fini(&ctx->ctx);
+    array_fini(&ctx->glist);
 }
 
 void

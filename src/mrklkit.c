@@ -6,16 +6,19 @@
 #include <llvm-c/Initialization.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/Target.h>
+#include <llvm-c/TargetMachine.h>
 #include <llvm-c/Transforms/Scalar.h>
 
 #include <mrkcommon/array.h>
-#define TRRET_DEBUG_VERBOSE
+#include <mrkcommon/dict.h>
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
 #include <mrklkit/fparser.h>
 #include <mrklkit/lparse.h>
 #include <mrklkit/ltype.h>
+#include <mrklkit/ltypegen.h>
 #include <mrklkit/lexpr.h>
 #include <mrklkit/mrklkit.h>
 
@@ -118,10 +121,55 @@ err:
 int
 mrklkit_compile(int fd)
 {
+    int res;
+    char *error_msg = NULL;
+    LLVMTargetRef tr;
+    LLVMTargetMachineRef tmr;
+    LLVMMemoryBufferRef mb = NULL;
+    //char *s;
+    //size_t sz;
+
     if (mrklkit_parse(fd) != 0) {
-        return 1;
+        TRRET(MRKLKIT_COMPILE + 1);
     }
-    lexpr_transform((dict_traverser_t)sample_remove_undef, NULL);
+    if (ltype_transform((dict_traverser_t)ltype_set_backend,
+                        NULL) != 0) {
+        TRRET(MRKLKIT_COMPILE + 2);
+    }
+    if (lexpr_transform((dict_traverser_t)sample_remove_undef, NULL) != 0) {
+        TRRET(MRKLKIT_COMPILE + 3);
+    }
+
+#if 1
+    if (lexpr_transform((dict_traverser_t)sample_compile_globals, module) != 0) {
+        TRRET(MRKLKIT_COMPILE + 3);
+    }
+
+    /**/
+    res = LLVMRunPassManager(pm, module);
+    TRACE("res=%d", res);
+    if (res != 0) {
+        TRACE("erorr: %s", error_msg);
+    }
+
+    LLVMDumpModule(module);
+    tr = LLVMGetFirstTarget();
+    //TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",
+    //      LLVMGetTargetName(tr),
+    //      LLVMGetTargetDescription(tr),
+    //      LLVMTargetHasJIT(tr),
+    //      LLVMTargetHasTargetMachine(tr),
+    //      LLVMTargetHasAsmBackend(tr),
+    //      LLVMGetTarget(module));
+    tmr = LLVMCreateTargetMachine(tr, (char *)LLVMGetTarget(module), "", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+    res = LLVMTargetMachineEmitToMemoryBuffer(tmr, module, LLVMAssemblyFile, &error_msg, &mb);
+    if (res != 0) {
+        TRACE("res=%d %s", res, error_msg);
+    }
+    TRACE("%s", LLVMGetBufferStart(mb));
+    LLVMDisposeMemoryBuffer(mb);
+#endif
+
     return 0;
 }
 
@@ -136,33 +184,50 @@ llvm_init(void)
     LLVMPassRegistryRef pr;
     char *error_msg = NULL;
 
+    LLVMInitializeAllAsmPrinters();
+    LLVMInitializeNativeTarget();
     if ((pr = LLVMGetGlobalPassRegistry()) == NULL) {
         FAIL("LLVMGetGlobalRegistry");
     }
     LLVMInitializeCore(pr);
+
     LLVMInitializeTransformUtils(pr);
     LLVMInitializeScalarOpts(pr);
     LLVMInitializeObjCARCOpts(pr);
-    //LLVMInitializeVectorization(pr);
+
+    //?LLVMInitializeVectorization(pr);
+
     LLVMInitializeInstCombine(pr);
-    //LLVMInitializeIPO(pr);
-    //LLVMInitializeInstrumentation(pr);
+
+    //?LLVMInitializeIPO(pr);
+    //?LLVMInitializeInstrumentation(pr);
+
     LLVMInitializeAnalysis(pr);
     LLVMInitializeIPA(pr);
     LLVMInitializeCodeGen(pr);
-    LLVMInitializeTarget(pr);
-    LLVMInitializeNativeTarget();
 
-    //LLVMLinkInJIT();
-    LLVMLinkInInterpreter();
+    LLVMInitializeTarget(pr);
 
     if ((module = LLVMModuleCreateWithName("test")) == NULL) {
         FAIL("LLVMModuleCreateWithName");
     }
 
+    LLVMLinkInJIT();
+    //LLVMLinkInMCJIT();
+    //LLVMLinkInInterpreter();
+
+    //if (LLVMCreateJITCompilerForModule(&ee,
+    //                                   module,
+    //                                   0,
+    //                                   &error_msg) != 0) {
+    //    TRACE("%s", error_msg);
+    //    FAIL("LLVMCreateExecutionEngineForModule");
+    //}
+    //if (LLVMCreateInterpreterForModule(&ee,
     if (LLVMCreateExecutionEngineForModule(&ee,
                                            module,
                                            &error_msg) != 0) {
+        TRACE("%s", error_msg);
         FAIL("LLVMCreateExecutionEngineForModule");
     }
     LLVMRunStaticConstructors(ee);

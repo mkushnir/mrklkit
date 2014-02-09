@@ -38,6 +38,7 @@ lkit_type_destroy(lkit_type_t **ty)
         tag = (*ty)->tag;
 
         (*ty)->hash = 0;
+        (*ty)->backend = NULL;
 
         if (((*ty)->name) != NULL) {
             /* weak ref */
@@ -248,6 +249,7 @@ lkit_type_new(lkit_tag_t tag)
     }
 
     ty->hash = 0;
+    ty->backend = NULL;
 
     return ty;
 }
@@ -992,9 +994,6 @@ lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
     lkit_struct_t *ts;
     lkit_func_t *tf;
 
-    if (cb(ty, udata) != 0) {
-        TRRET(LKIT_TYPE_TRAVERSE + 1);
-    }
     switch (ty->tag) {
 
     case LKIT_ARRAY:
@@ -1004,7 +1003,7 @@ lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
              pty != NULL;
              pty = array_next(&ta->fields, &it)) {
             if (cb(*pty, udata) != 0) {
-                TRRET(LKIT_TYPE_TRAVERSE + 2);
+                TRRET(LKIT_TYPE_TRAVERSE + 1);
             }
         }
 
@@ -1017,7 +1016,7 @@ lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
              pty != NULL;
              pty = array_next(&td->fields, &it)) {
             if (cb(*pty, udata) != 0) {
-                TRRET(LKIT_TYPE_TRAVERSE + 3);
+                TRRET(LKIT_TYPE_TRAVERSE + 2);
             }
         }
 
@@ -1030,7 +1029,7 @@ lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
              pty != NULL;
              pty = array_next(&ts->fields, &it)) {
             if (cb(*pty, udata) != 0) {
-                TRRET(LKIT_TYPE_TRAVERSE + 4);
+                TRRET(LKIT_TYPE_TRAVERSE + 3);
             }
         }
 
@@ -1043,7 +1042,7 @@ lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
              pty != NULL;
              pty = array_next(&tf->fields, &it)) {
             if (cb(*pty, udata) != 0) {
-                TRRET(LKIT_TYPE_TRAVERSE + 5);
+                TRRET(LKIT_TYPE_TRAVERSE + 4);
             }
         }
 
@@ -1053,7 +1052,18 @@ lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
         FAIL("ltype_traverse");
 
     }
+
+    if (cb(ty, udata) != 0) {
+        TRRET(LKIT_TYPE_TRAVERSE + 5);
+    }
+
     return 0;
+}
+
+int
+ltype_transform(dict_traverser_t cb, void *udata)
+{
+    return dict_traverse(&types, cb, udata);
 }
 
 void

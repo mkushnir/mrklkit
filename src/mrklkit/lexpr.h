@@ -1,6 +1,8 @@
 #ifndef LEXPR_H_DEFINED
 #define LEXPR_H_DEFINED
 
+#include <llvm-c/Core.h>
+
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
 
@@ -24,9 +26,18 @@ typedef struct _lkit_expr {
     array_t subs;
     /* bytes_t *, lkit_expr_t * */
     dict_t ctx;
+    /* lkit_gitem_t */
+    array_t glist;
     struct _lkit_expr *parent;
 
 } lkit_expr_t;
+
+typedef struct _lkit_gitem {
+    /* weakref */
+    bytes_t *name;
+    /* weakref */
+    lkit_expr_t *expr;
+} lkit_gitem_t;
 
 void lkit_expr_dump(lkit_expr_t *);
 lkit_expr_t *lkit_expr_parse(lkit_expr_t *, fparser_datum_t *, int);

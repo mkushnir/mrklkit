@@ -20,9 +20,10 @@ static int fparser_datum_fini(fparser_datum_t *);
 static int fparser_datum_form_add(fparser_datum_t *, fparser_datum_t *);
 
 
-static void
+static ssize_t
 _unescape(unsigned char *dst, const unsigned char *src, ssize_t sz)
 {
+    ssize_t res = 0;
     ssize_t i;
     int j;
     char ch;
@@ -31,6 +32,7 @@ _unescape(unsigned char *dst, const unsigned char *src, ssize_t sz)
         ch = *(src + i);
         if (ch == '\\') {
             ++i;
+            ++res;
             if (i < sz) {
                 *(dst + j) = *(src + i);
             }
@@ -39,6 +41,7 @@ _unescape(unsigned char *dst, const unsigned char *src, ssize_t sz)
         }
     }
     *(dst + j) = '\0';
+    return res;
 }
 
 void
@@ -81,6 +84,7 @@ compile_value(struct tokenizer_ctx *ctx,
     } else if (state & (LEX_QSTROUT)) {
         ssize_t sz = buf + idx - ctx->tokstart;
         bytes_t *value;
+        ssize_t escaped;
 
         if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(bytes_t) + sz + 1)) == NULL) {
             FAIL("malloc");
@@ -90,7 +94,8 @@ compile_value(struct tokenizer_ctx *ctx,
         value->hash = 0;
         value->sz = (size_t)sz;
 
-        _unescape(value->data, ctx->tokstart, sz);
+        escaped = _unescape(value->data, ctx->tokstart, sz);
+        value->sz -= escaped;
 
         if (fparser_datum_form_add(ctx->form, dat) != 0) {
             TRRET(COMPILE_VALUE + 1);
