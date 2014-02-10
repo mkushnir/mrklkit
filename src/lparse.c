@@ -5,8 +5,7 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
 #include <mrklkit/fparser.h>
-
-#include "lparse.h"
+#include <mrklkit/lparse.h>
 
 #include "diag.h"
 

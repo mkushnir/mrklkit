@@ -4,7 +4,8 @@
 #include <stdint.h> /* uint64_t */
 
 #include <mrkcommon/array.h>
-#include "ltype.h"
+#include <mrklkit/fparser.h>
+#include <mrklkit/ltype.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +35,8 @@ typedef struct _query {
     uint64_t id;
 } query_t;
 
+typedef int (*mrklkit_parser_t)(fparser_datum_t *, array_iter_t *, void *);
+int mrklkit_register_parser(const char *, mrklkit_parser_t, void *);
 
 int mrklkit_compile(int);
 int mrklkit_run(const char *);

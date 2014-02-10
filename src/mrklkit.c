@@ -41,6 +41,14 @@ static fparser_datum_t *root;
  * types? vars?
  *
  */
+
+int mrklkit_register_parser(UNUSED const char *keyword,
+                            UNUSED mrklkit_parser_t cb,
+                            UNUSED void *udata)
+{
+    return 0;
+}
+
 static int
 mrklkit_parse(int fd)
 {
@@ -89,7 +97,6 @@ mrklkit_parse(int fd)
                     }
 
                 } else if (strcmp((char *)first, "dsource") == 0) {
-
                     if (dsource_parse(nform, &nit) != 0) {
                         (*fnode)->error = 1;
                         goto err;
@@ -181,6 +188,7 @@ mrklkit_compile(int fd)
     }
     TRACEC("-----------------------------------------------\n%s", LLVMGetBufferStart(mb));
     LLVMDisposeMemoryBuffer(mb);
+    LLVMDisposeTargetMachine(tmr);
 
     return 0;
 }

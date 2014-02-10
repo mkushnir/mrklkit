@@ -140,6 +140,10 @@ lkit_type_t *lkit_type_find(lkit_type_t *);
 int lkit_parse_typedef(array_t *, array_iter_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);
+lkit_type_t *lkit_array_get_element_type(lkit_array_t *);
+lkit_type_t *lkit_dict_get_element_type(lkit_dict_t *);
+lkit_type_t *lkit_struct_get_field_type(lkit_struct_t *, bytes_t *);
+int lkit_struct_get_field_index(lkit_struct_t *, bytes_t *);
 
 void ltype_init(void);
 void ltype_fini(void);
