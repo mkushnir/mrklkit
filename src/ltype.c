@@ -719,7 +719,7 @@ parse_array_quals(array_t *form,
             } else if (strcmp((char *) parser, "none") == 0) {
                 ta->parser = LKIT_PARSER_NONE;
             } else {
-                /* unknonw parser */
+                /* unknown parser */
                 ta->parser = -1;
                 TRRET(PARSE_ARRAY_QUALS + 2);
             }
@@ -760,7 +760,7 @@ parse_struct_quals(array_t *form,
             } else if (strcmp((char *) parser, "none") == 0) {
                 ts->parser = LKIT_PARSER_NONE;
             } else {
-                /* unknonw parser */
+                /* unknown parser */
                 ts->parser = -1;
                 TRRET(PARSE_STRUCT_QUALS + 2);
             }

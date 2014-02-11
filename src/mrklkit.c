@@ -24,7 +24,7 @@
 #include <mrklkit/mrklkit.h>
 
 #include <mrklkit/dsource.h>
-#include <mrklkit/sample.h>
+#include <mrklkit/builtin.h>
 
 #include "diag.h"
 
@@ -144,11 +144,11 @@ mrklkit_compile(int fd)
                         NULL) != 0) {
         TRRET(MRKLKIT_COMPILE + 2);
     }
-    if (lexpr_transform((dict_traverser_t)sample_remove_undef, NULL) != 0) {
+    if (lexpr_transform((dict_traverser_t)builtin_remove_undef, NULL) != 0) {
         TRRET(MRKLKIT_COMPILE + 3);
     }
 
-    if (lexpr_transform((dict_traverser_t)sample_compile_globals,
+    if (lexpr_transform((dict_traverser_t)builtin_compile_globals,
                         module) != 0) {
         TRRET(MRKLKIT_COMPILE + 4);
     }
@@ -214,7 +214,7 @@ mrklkit_run(const char *name)
     return res;
 }
 
-int LTEST
+int64_t LTEST
 (char *arg)
 {
     TRACE("arg %p", arg);

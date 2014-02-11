@@ -16,7 +16,7 @@ nobase_include_HEADERS = \
 	mrklkit/lparse.h \
 	mrklkit/ltype.h \
 	mrklkit/mrklkit.h \
-	mrklkit/sample.h \
+	mrklkit/builtin.h \
 	mrklkit/util.h \
 	mrklkit/dsource.h
 
@@ -29,7 +29,7 @@ libmrklkit_la_SOURCES = \
 	ltype.c \
 	ltypegen.c \
 	mrklkit.c \
-	sample.c \
+	builtin.c \
 	util.c \
 	dsource.c
 

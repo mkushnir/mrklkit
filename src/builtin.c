@@ -9,7 +9,7 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
-#include <mrklkit/sample.h>
+#include <mrklkit/builtin.h>
 #include <mrklkit/util.h>
 
 #include "diag.h"
@@ -17,6 +17,7 @@
 /*
  * (var if (func undef bool undef undef))
  * (var print (func undef undef))
+ *
  * (var + (func undef undef ...))
  * (var - (func undef undef ...))
  * (var / (func undef undef ...))
@@ -49,7 +50,7 @@
  * (var reduce (func undef undef undef))
  */
 int
-sample_remove_undef(UNUSED bytes_t *key,
+builtin_remove_undef(UNUSED bytes_t *key,
                     lkit_expr_t *value,
                     UNUSED void *udata)
 {
@@ -69,30 +70,30 @@ sample_remove_undef(UNUSED bytes_t *key,
             if ((cond = array_get(&value->subs, 0)) == NULL) {
                 FAIL("array_get");
             }
-            if (sample_remove_undef(NULL, *cond, udata) != 0) {
-                TRRET(SAMPLE_REMOVE_UNDEF + 1);
+            if (builtin_remove_undef(NULL, *cond, udata) != 0) {
+                TRRET(BUILTIN_REMOVE_UNDEF + 1);
             }
 
             if (lkit_type_of_expr(*cond)->tag != LKIT_BOOL) {
                 (*cond)->error = 1;
                 //lkit_expr_dump(*cond);
-                TRRET(SAMPLE_REMOVE_UNDEF + 2);
+                TRRET(BUILTIN_REMOVE_UNDEF + 2);
             }
 
             if ((texpr = array_get(&value->subs, 1)) == NULL) {
                 FAIL("array_get");
             }
 
-            if (sample_remove_undef(NULL, *texpr, udata) != 0) {
-                TRRET(SAMPLE_REMOVE_UNDEF + 3);
+            if (builtin_remove_undef(NULL, *texpr, udata) != 0) {
+                TRRET(BUILTIN_REMOVE_UNDEF + 3);
             }
 
             if ((fexpr = array_get(&value->subs, 2)) == NULL) {
                 FAIL("array_get");
             }
 
-            if (sample_remove_undef(NULL, *fexpr, udata) != 0) {
-                TRRET(SAMPLE_REMOVE_UNDEF + 4);
+            if (builtin_remove_undef(NULL, *fexpr, udata) != 0) {
+                TRRET(BUILTIN_REMOVE_UNDEF + 4);
             }
 
             tty = lkit_type_of_expr(*texpr);
@@ -105,7 +106,7 @@ sample_remove_undef(UNUSED bytes_t *key,
                 (*fexpr)->error = 1;
                 //lkit_expr_dump((*texpr));
                 //lkit_expr_dump((*fexpr));
-                TRRET(SAMPLE_REMOVE_UNDEF + 5);
+                TRRET(BUILTIN_REMOVE_UNDEF + 5);
             }
 
         } else if (strcmp(name, "print") == 0) {
@@ -118,17 +119,19 @@ sample_remove_undef(UNUSED bytes_t *key,
                 FAIL("array_get");
             }
 
-            if (sample_remove_undef(NULL, *arg, udata) != 0) {
-                TRRET(SAMPLE_REMOVE_UNDEF + 6);
+            if (builtin_remove_undef(NULL, *arg, udata) != 0) {
+                TRRET(BUILTIN_REMOVE_UNDEF + 6);
             }
 
-            value->type = (*arg)->type;
+            value->type = lkit_type_of_expr(*arg);
 
         } else if (strcmp(name, "+") == 0 ||
                    strcmp(name, "*") == 0 ||
                    strcmp(name, "%") == 0 ||
                    strcmp(name, "-") == 0 ||
-                   strcmp(name, "/") == 0) {
+                   strcmp(name, "/") == 0 ||
+                   strcmp(name, "min") == 0 ||
+                   strcmp(name, "max") == 0) {
 
             lkit_expr_t **aexpr, **bexpr;
             array_iter_t it;
@@ -140,26 +143,50 @@ sample_remove_undef(UNUSED bytes_t *key,
                 FAIL("array_get");
             }
 
-            if (sample_remove_undef(NULL, *aexpr, udata) != 0) {
-                TRRET(SAMPLE_REMOVE_UNDEF + 7);
+            if (builtin_remove_undef(NULL, *aexpr, udata) != 0) {
+                TRRET(BUILTIN_REMOVE_UNDEF + 7);
             }
 
             for (bexpr = array_next(&value->subs, &it);
                  bexpr != NULL;
                  bexpr = array_next(&value->subs, &it)) {
 
-                if (sample_remove_undef(NULL, *bexpr, udata) != 0) {
-                    TRRET(SAMPLE_REMOVE_UNDEF + 8);
+                if (builtin_remove_undef(NULL, *bexpr, udata) != 0) {
+                    TRRET(BUILTIN_REMOVE_UNDEF + 8);
                 }
 
                 if (lkit_type_cmp((*aexpr)->type, (*bexpr)->type) != 0) {
                     (*bexpr)->error = 1;
                     //lkit_expr_dump((*aexpr));
                     //lkit_expr_dump((*bexpr));
-                    TRRET(SAMPLE_REMOVE_UNDEF + 9);
+                    TRRET(BUILTIN_REMOVE_UNDEF + 9);
                 }
             }
-            value->type = (*aexpr)->type;
+            value->type = lkit_type_of_expr(*aexpr);
+
+        } else if (strcmp(name, "==") == 0 ||
+                   strcmp(name, "!=") == 0 ||
+                   strcmp(name, "<") == 0 ||
+                   strcmp(name, "<=") == 0 ||
+                   strcmp(name, ">") == 0 ||
+                   strcmp(name, ">=") == 0) {
+
+            lkit_expr_t **expr;
+            array_iter_t it;
+
+            for (expr = array_first(&value->subs, &it);
+                 expr != NULL;
+                 expr = array_next(&value->subs, &it)) {
+
+                if (builtin_remove_undef(NULL, *expr, udata) != 0) {
+                    TRRET(BUILTIN_REMOVE_UNDEF + 10);
+                }
+
+                if (lkit_type_of_expr(*expr)->tag != LKIT_BOOL) {
+                    (*expr)->error = 1;
+                    TRRET(BUILTIN_REMOVE_UNDEF + 11);
+                }
+            }
 
         } else if (strcmp(name, "get") == 0) {
             /*
@@ -170,12 +197,12 @@ sample_remove_undef(UNUSED bytes_t *key,
             lkit_expr_t **cont, **dflt;
             lkit_type_t *ty;
 
-            if ((cont = array_get(&value->subs, 1)) == NULL) {
+            if ((cont = array_get(&value->subs, 0)) == NULL) {
                 FAIL("array_get");
             }
 
-            if (sample_remove_undef(NULL, *cont, udata) != 0) {
-                TRRET(SAMPLE_REMOVE_UNDEF + 10);
+            if (builtin_remove_undef(NULL, *cont, udata) != 0) {
+                TRRET(BUILTIN_REMOVE_UNDEF + 12);
             }
 
             ty = lkit_type_of_expr(*cont);
@@ -188,18 +215,20 @@ sample_remove_undef(UNUSED bytes_t *key,
                     bytes_t *bname;
                     lkit_type_t *elty;
 
-                    if ((name = array_get(&value->subs, 2)) == NULL) {
+                    if ((name = array_get(&value->subs, 1)) == NULL) {
                         FAIL("array_get");
                     }
 
                     /* constant str */
-                    if ((*name)->type->tag != LKIT_STR || (*name)->isref) {
-                        TRRET(SAMPLE_REMOVE_UNDEF + 11);
+                    if ((*name)->type->tag != LKIT_STR || !LKIT_EXPR_CONSTANT(*name)) {
+                        (*name)->error = 1;
+                        TRRET(BUILTIN_REMOVE_UNDEF + 13);
                     }
 
                     bname = (bytes_t *)(*name)->value.literal->body;
                     if ((elty = lkit_struct_get_field_type(ts, bname)) == NULL) {
-                        TRRET(SAMPLE_REMOVE_UNDEF + 12);
+                        (*cont)->error = 1;
+                        TRRET(BUILTIN_REMOVE_UNDEF + 14);
                     }
 
                     value->type = elty;
@@ -212,17 +241,19 @@ sample_remove_undef(UNUSED bytes_t *key,
                     lkit_type_t *elty;
                     lkit_expr_t **name;
 
-                    if ((name = array_get(&value->subs, 2)) == NULL) {
+                    if ((name = array_get(&value->subs, 1)) == NULL) {
                         FAIL("array_get");
                     }
 
                     /* constant str */
-                    if ((*name)->type->tag != LKIT_STR || (*name)->isref) {
-                        TRRET(SAMPLE_REMOVE_UNDEF + 13);
+                    if ((*name)->type->tag != LKIT_STR || !LKIT_EXPR_CONSTANT(*name)) {
+                        (*name)->error = 1;
+                        TRRET(BUILTIN_REMOVE_UNDEF + 15);
                     }
 
                     if ((elty = lkit_dict_get_element_type(td)) == NULL) {
-                        TRRET(SAMPLE_REMOVE_UNDEF + 14);
+                        (*cont)->error = 1;
+                        TRRET(BUILTIN_REMOVE_UNDEF + 16);
                     }
 
                     value->type = elty;
@@ -235,17 +266,19 @@ sample_remove_undef(UNUSED bytes_t *key,
                     lkit_type_t *elty;
                     lkit_expr_t **name;
 
-                    if ((name = array_get(&value->subs, 2)) == NULL) {
+                    if ((name = array_get(&value->subs, 1)) == NULL) {
                         FAIL("array_get");
                     }
 
                     /* constant int */
-                    if ((*name)->type->tag != LKIT_INT || (*name)->isref) {
-                        TRRET(SAMPLE_REMOVE_UNDEF + 15);
+                    if ((*name)->type->tag != LKIT_INT || !LKIT_EXPR_CONSTANT(*name)) {
+                        (*name)->error = 1;
+                        TRRET(BUILTIN_REMOVE_UNDEF + 17);
                     }
 
                     if ((elty = lkit_array_get_element_type(ta)) == NULL) {
-                        TRRET(SAMPLE_REMOVE_UNDEF + 16);
+                        (*cont)->error = 1;
+                        TRRET(BUILTIN_REMOVE_UNDEF + 18);
                     }
 
                     value->type = elty;
@@ -254,15 +287,16 @@ sample_remove_undef(UNUSED bytes_t *key,
 
             default:
                 (*cont)->error = 1;
-                TRRET(SAMPLE_REMOVE_UNDEF + 17);
+                TRRET(BUILTIN_REMOVE_UNDEF + 19);
             }
 
-            if ((dflt = array_get(&value->subs, 3)) == NULL) {
+            if ((dflt = array_get(&value->subs, 2)) == NULL) {
                 FAIL("array_get");
             }
 
             if (lkit_type_cmp(ty, lkit_type_of_expr(*dflt)) != 0) {
-                TRRET(SAMPLE_REMOVE_UNDEF + 18);
+                (*dflt)->error = 1;
+                TRRET(BUILTIN_REMOVE_UNDEF + 20);
             }
 
         } else {
@@ -273,17 +307,20 @@ sample_remove_undef(UNUSED bytes_t *key,
 }
 
 static LLVMValueRef
-sample_compile_builtin(UNUSED LLVMModuleRef module,
+compile_builtin(UNUSED LLVMModuleRef module,
                        UNUSED LLVMBuilderRef builder,
                        UNUSED lkit_expr_t *expr)
 {
     LLVMValueRef v = NULL;
 
+    //lkit_expr_dump(expr);
+    TRACE("builtin %s", expr->name->data);
+
     return v;
 }
 
 static LLVMValueRef
-sample_compile_expr(LLVMModuleRef module,
+builtin_compile_expr(LLVMModuleRef module,
                     LLVMBuilderRef builder,
                     lkit_expr_t *expr)
 {
@@ -292,19 +329,17 @@ sample_compile_expr(LLVMModuleRef module,
     if (expr->isref) {
         switch (expr->value.ref->type->tag) {
         case LKIT_FUNC:
-            {
+            assert(builder != NULL);
+
+            if ((v = compile_builtin(module, builder, expr)) == NULL) {
                 LLVMValueRef ref;
-
-                assert(builder != NULL);
-
+                /* first try user defined functions */
                 ref = LLVMGetNamedFunction(module, (char *)expr->name->data);
                 if (ref == NULL) {
-                    if ((v = sample_compile_builtin(module, builder, expr)) == NULL) {
-                        //LLVMDumpModule(module);
-                        TRACE("failed to find builtin %s",
-                              (char *)expr->name->data);
-                        TR(SAMPLE_COMPILE_EXPR + 1);
-                    }
+                    //LLVMDumpModule(module);
+                    TRACE("failed to find builtin %s",
+                          (char *)expr->name->data);
+                    TR(BUILTIN_COMPILE_EXPR + 1);
                 } else {
                     lkit_expr_t **rand;
                     array_iter_t it;
@@ -318,7 +353,7 @@ sample_compile_expr(LLVMModuleRef module,
                          rand != NULL;
                          rand = array_next(&expr->subs, &it)) {
                         args[it.iter] =
-                            sample_compile_expr(module, builder, *rand);
+                            builtin_compile_expr(module, builder, *rand);
                     }
 
                     v = LLVMBuildCall(builder,
@@ -328,6 +363,7 @@ sample_compile_expr(LLVMModuleRef module,
                                       NEWVAR((char *)expr->name->data));
                     free(args);
                 }
+
             }
             break;
 
@@ -343,7 +379,7 @@ sample_compile_expr(LLVMModuleRef module,
                 ref = LLVMGetNamedGlobal(module, (char *)expr->name->data);
                 if (ref == NULL) {
                     //LLVMDumpModule(module);
-                    TR(SAMPLE_COMPILE_EXPR + 2);
+                    TR(BUILTIN_COMPILE_EXPR + 2);
                 } else {
                     v = LLVMBuildLoad(builder, ref, NEWVAR((char *)expr->name->data));
                 }
@@ -352,7 +388,7 @@ sample_compile_expr(LLVMModuleRef module,
             break;
 
         default:
-            TR(SAMPLE_COMPILE_EXPR + 3);
+            TR(BUILTIN_COMPILE_EXPR + 3);
             break;
 
         }
@@ -401,12 +437,12 @@ sample_compile_expr(LLVMModuleRef module,
 
                 //lkit_expr_dump(expr);
                 //LLVMDumpModule(module);
-                TR(SAMPLE_COMPILE_EXPR + 4);
+                TR(BUILTIN_COMPILE_EXPR + 4);
                break;
 
             }
         } else {
-            TR(SAMPLE_COMPILE_EXPR + 5);
+            TR(BUILTIN_COMPILE_EXPR + 5);
         }
     }
 
@@ -434,7 +470,7 @@ compile_dynamic_initializer(LLVMModuleRef module,
     builder = LLVMCreateBuilder();
     bb = LLVMAppendBasicBlock(fn, "L1");
     LLVMPositionBuilderAtEnd(builder, bb);
-    LLVMBuildStore(builder, sample_compile_expr(module, builder, value), v);
+    LLVMBuildStore(builder, builtin_compile_expr(module, builder, value), v);
     //LLVMInsertIntoBuilder(builder, LLVMBuildStore());
     LLVMBuildRetVoid(builder);
     LLVMDisposeBuilder(builder);
@@ -442,7 +478,7 @@ compile_dynamic_initializer(LLVMModuleRef module,
 }
 
 static LLVMValueRef
-sample_compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
+builtin_compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
 {
     LLVMValueRef fn;
 
@@ -455,7 +491,7 @@ sample_compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
 }
 
 int
-sample_compile_globals(bytes_t *key,
+builtin_compile_globals(bytes_t *key,
                        lkit_expr_t *value,
                        void *udata)
 {
@@ -476,10 +512,10 @@ sample_compile_globals(bytes_t *key,
         if (value->value.literal != NULL) {
             v = LLVMAddGlobal(module, value->type->backend, (char *)key->data);
             LLVMSetLinkage(v, LLVMPrivateLinkage);
-            LLVMSetInitializer(v, sample_compile_expr(module, NULL, value));
+            LLVMSetInitializer(v, builtin_compile_expr(module, NULL, value));
         } else {
             /* declaration, */
-            sample_compile_decl(module, key, value->type);
+            builtin_compile_decl(module, key, value->type);
         }
     }
 

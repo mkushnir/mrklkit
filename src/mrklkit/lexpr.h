@@ -32,6 +32,8 @@ typedef struct _lkit_expr {
 
 } lkit_expr_t;
 
+#define LKIT_EXPR_CONSTANT(expr) ((!(expr)->isref) && ((expr)->value.literal != NULL))
+
 typedef struct _lkit_gitem {
     /* weakref */
     bytes_t *name;
