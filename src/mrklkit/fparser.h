@@ -4,6 +4,8 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
 
+#include <mrklkit/util.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -65,13 +67,6 @@ typedef enum {
     (tag) == FPARSER_SEQ ? "SEQ" : \
     "<unknown>" \
 )
-
-typedef struct _bytes {
-    size_t sz;
-    uint64_t hash;
-    unsigned char data[];
-} bytes_t;
-
 
 typedef struct _fparser_datum {
     fparser_tag_t tag;

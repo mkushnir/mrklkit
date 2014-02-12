@@ -89,18 +89,17 @@ mrklkit_parse(int fd)
                         goto err;
                     }
 
-
-                } else if (strcmp((char *)first, "var") == 0) {
-                    if (lexpr_parse(nform, &nit) != 0) {
+                } else if (strcmp((char *)first, "sym") == 0) {
+                    if (builtin_sym_parse(nform, &nit) != 0) {
                         (*fnode)->error = 1;
                         goto err;
                     }
 
-                } else if (strcmp((char *)first, "dsource") == 0) {
-                    if (dsource_parse(nform, &nit) != 0) {
-                        (*fnode)->error = 1;
-                        goto err;
-                    }
+                //} else if (strcmp((char *)first, "dsource") == 0) {
+                //    if (dsource_parse(nform, &nit) != 0) {
+                //        (*fnode)->error = 1;
+                //        goto err;
+                //    }
 
                 } else {
                     /* ignore */
@@ -144,12 +143,11 @@ mrklkit_compile(int fd)
                         NULL) != 0) {
         TRRET(MRKLKIT_COMPILE + 2);
     }
-    if (lexpr_transform((dict_traverser_t)builtin_remove_undef, NULL) != 0) {
+    if (builtin_remove_undef() != 0) {
         TRRET(MRKLKIT_COMPILE + 3);
     }
 
-    if (lexpr_transform((dict_traverser_t)builtin_compile_globals,
-                        module) != 0) {
+    if (builtin_sym_compile(module) != 0) {
         TRRET(MRKLKIT_COMPILE + 4);
     }
 
@@ -312,6 +310,8 @@ void mrklkit_init_module(void)
     ltype_init();
     lexpr_init();
 
+    builtin_init();
+
     /* dsource module? */
     dsource_init_module();
 
@@ -323,6 +323,8 @@ mrklkit_fini_module(void)
 {
     /* dsource module? */
     dsource_fini_module();
+
+    builtin_fini();
 
     lexpr_fini();
     ltype_fini();

@@ -313,7 +313,7 @@ lkit_struct_get_field_type(lkit_struct_t *ts, bytes_t *name)
         if ((fname = array_get(&ts->names, it.iter)) == NULL) {
             FAIL("array_get");
         }
-        if (strcmp((char *)name->data, (char *)(*fname)->data) == 0) {
+        if (bytes_cmp(name, *fname) == 0) {
             return *ty;
         }
     }
@@ -336,7 +336,7 @@ lkit_struct_get_field_index(lkit_struct_t *ts, bytes_t *name)
         if ((fname = array_get(&ts->names, it.iter)) == NULL) {
             FAIL("array_get");
         }
-        if (strcmp((char *)name->data, (char *)(*fname)->data) == 0) {
+        if (bytes_cmp(name, *fname) == 0) {
             return it.iter;
         }
     }
@@ -1030,26 +1030,6 @@ lkit_type_find(lkit_type_t *sample)
 {
     return dict_get_item(&types, sample);
 }
-
-static int
-bytes_cmp(bytes_t *a, bytes_t *b)
-{
-    uint64_t ha, hb;
-    int diff;
-
-    ha = bytes_hash(a);
-    hb = bytes_hash(b);
-    diff = (int)(ha - hb);
-    if (diff == 0) {
-        diff = (int) (a->sz - b->sz);
-        if (diff == 0) {
-            return memcmp(a->data, b->data, a->sz);
-        }
-        return diff;
-    }
-    return diff;
-}
-
 
 int
 lkit_parse_typedef(array_t *form, array_iter_t *it)

@@ -4,13 +4,20 @@
 #include <sys/types.h>
 
 #include <mrkcommon/fasthash.h>
-#include <mrklkit/fparser.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+typedef struct _bytes {
+    size_t sz;
+    uint64_t hash;
+    unsigned char data[];
+} bytes_t;
+
+
 uint64_t bytes_hash(bytes_t *);
+int bytes_cmp(bytes_t *, bytes_t *);
 char *newvar(char *, size_t, const char *);
 #define NEWVAR(prefix) newvar(NULL, 0, (prefix))
 
