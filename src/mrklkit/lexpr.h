@@ -36,6 +36,7 @@ typedef struct _lkit_expr {
 
     int isref:1;
     int error:1;
+    //int isbuiltin:1;
 
 } lkit_expr_t;
 

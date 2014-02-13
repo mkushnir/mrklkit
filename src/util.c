@@ -3,6 +3,8 @@
 #include <string.h>
 
 #include <mrkcommon/fasthash.h>
+#include <mrkcommon/util.h>
+
 #include <mrklkit/fparser.h>
 #include <mrklkit/util.h>
 

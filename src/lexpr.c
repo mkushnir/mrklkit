@@ -207,6 +207,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
     lexpr_init_ctx(expr);
     expr->name = NULL;
     expr->isref = 0;
+    //expr->isbuiltin = 0;
     expr->error = 0;
     expr->parent = ctx;
 

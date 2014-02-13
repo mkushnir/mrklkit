@@ -14,6 +14,8 @@
 
 #include "diag.h"
 
+static LLVMValueRef compile_expr(LLVMModuleRef, LLVMBuilderRef, lkit_expr_t *);
+
 /*
  * bytes_t *, lkit_expr_t *
  */
@@ -61,6 +63,19 @@ builtin_sym_parse(array_t *form, array_iter_t *it)
  * (sym reduce (func undef undef undef))
  */
 
+UNUSED static int
+check_function(bytes_t *name)
+{
+    char *n = (char *)name->data;
+    if (strcmp(n, "if") == 0) {
+        return 0;
+    }
+    if (strcmp(n, "print") == 0) {
+        return 0;
+    }
+    return 1;
+}
+
 
 static int
 remove_undef(lkit_expr_t *value)
@@ -73,15 +88,17 @@ remove_undef(lkit_expr_t *value)
         //TRACEC("undef\n");
 
         if (strcmp(name, "if") == 0) {
-            lkit_expr_t **cond, **texpr, **fexpr;
+            lkit_expr_t **cond, **texp, **fexp;
             lkit_type_t *tty, *fty;
+
+            //value->isbuiltin = 1;
 
             /*
              * (sym if (func undef bool undef undef))
              */
-            if ((cond = array_get(&value->subs, 0)) == NULL) {
-                FAIL("array_get");
-            }
+            cond = array_get(&value->subs, 0);
+            assert(cond != NULL);
+
             if (remove_undef(*cond) != 0) {
                 TRRET(REMOVE_UNDEF + 1);
             }
@@ -92,44 +109,43 @@ remove_undef(lkit_expr_t *value)
                 TRRET(REMOVE_UNDEF + 2);
             }
 
-            if ((texpr = array_get(&value->subs, 1)) == NULL) {
-                FAIL("array_get");
-            }
+            texp = array_get(&value->subs, 1);
+            assert(texp != NULL);
 
-            if (remove_undef(*texpr) != 0) {
+            if (remove_undef(*texp) != 0) {
                 TRRET(REMOVE_UNDEF + 3);
             }
 
-            if ((fexpr = array_get(&value->subs, 2)) == NULL) {
-                FAIL("array_get");
-            }
+            fexp = array_get(&value->subs, 2);
+            assert(fexp != NULL);
 
-            if (remove_undef(*fexpr) != 0) {
+            if (remove_undef(*fexp) != 0) {
                 TRRET(REMOVE_UNDEF + 4);
             }
 
-            tty = (*texpr)->type;
-            fty = (*fexpr)->type;
+            tty = (*texp)->type;
+            fty = (*fexp)->type;
 
             if (lkit_type_cmp(tty, fty) == 0) {
                 value->type = tty;
             } else {
-                (*texpr)->error = 1;
-                (*fexpr)->error = 1;
-                //lkit_expr_dump((*texpr));
-                //lkit_expr_dump((*fexpr));
+                (*texp)->error = 1;
+                (*fexp)->error = 1;
+                //lkit_expr_dump((*texp));
+                //lkit_expr_dump((*fexp));
                 TRRET(REMOVE_UNDEF + 5);
             }
 
         } else if (strcmp(name, "print") == 0) {
             lkit_expr_t **arg;
 
+            //value->isbuiltin = 1;
+
             /*
              * (sym print (func undef undef))
              */
-            if ((arg = array_get(&value->subs, 0)) == NULL) {
-                FAIL("array_get");
-            }
+            arg = array_get(&value->subs, 0);
+            assert(arg != NULL);
 
             if (remove_undef(*arg) != 0) {
                 TRRET(REMOVE_UNDEF + 6);
@@ -148,12 +164,13 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **aexpr, **bexpr;
             array_iter_t it;
 
+            //value->isbuiltin = 1;
+
             /*
              * (sym +|*|%|-|/ (func undef undef ...))
              */
-            if ((aexpr = array_first(&value->subs, &it)) == NULL) {
-                FAIL("array_get");
-            }
+            aexpr = array_first(&value->subs, &it);
+            assert(axpr != NULL);
 
             if (remove_undef(*aexpr) != 0) {
                 TRRET(REMOVE_UNDEF + 7);
@@ -186,6 +203,8 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **expr;
             array_iter_t it;
 
+            //value->isbuiltin = 1;
+
             for (expr = array_first(&value->subs, &it);
                  expr != NULL;
                  expr = array_next(&value->subs, &it)) {
@@ -209,9 +228,10 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **cont, **dflt;
             lkit_type_t *ty;
 
-            if ((cont = array_get(&value->subs, 0)) == NULL) {
-                FAIL("array_get");
-            }
+            //value->isbuiltin = 1;
+
+            cont = array_get(&value->subs, 0);
+            assert(cont != NULL);
 
             if (remove_undef(*cont) != 0) {
                 TRRET(REMOVE_UNDEF + 12);
@@ -227,18 +247,20 @@ remove_undef(lkit_expr_t *value)
                     bytes_t *bname;
                     lkit_type_t *elty;
 
-                    if ((name = array_get(&value->subs, 1)) == NULL) {
-                        FAIL("array_get");
-                    }
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
 
                     /* constant str */
-                    if ((*name)->type->tag != LKIT_STR || !LKIT_EXPR_CONSTANT(*name)) {
+                    if ((*name)->type->tag != LKIT_STR ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
                         (*name)->error = 1;
                         TRRET(REMOVE_UNDEF + 13);
                     }
 
                     bname = (bytes_t *)(*name)->value.literal->body;
-                    if ((elty = lkit_struct_get_field_type(ts, bname)) == NULL) {
+                    if ((elty =
+                            lkit_struct_get_field_type(ts, bname)) == NULL) {
                         (*cont)->error = 1;
                         TRRET(REMOVE_UNDEF + 14);
                     }
@@ -253,12 +275,13 @@ remove_undef(lkit_expr_t *value)
                     lkit_type_t *elty;
                     lkit_expr_t **name;
 
-                    if ((name = array_get(&value->subs, 1)) == NULL) {
-                        FAIL("array_get");
-                    }
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
 
                     /* constant str */
-                    if ((*name)->type->tag != LKIT_STR || !LKIT_EXPR_CONSTANT(*name)) {
+                    if ((*name)->type->tag != LKIT_STR ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
                         (*name)->error = 1;
                         TRRET(REMOVE_UNDEF + 15);
                     }
@@ -278,12 +301,13 @@ remove_undef(lkit_expr_t *value)
                     lkit_type_t *elty;
                     lkit_expr_t **name;
 
-                    if ((name = array_get(&value->subs, 1)) == NULL) {
-                        FAIL("array_get");
-                    }
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
 
                     /* constant int */
-                    if ((*name)->type->tag != LKIT_INT || !LKIT_EXPR_CONSTANT(*name)) {
+                    if ((*name)->type->tag != LKIT_INT ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
                         (*name)->error = 1;
                         TRRET(REMOVE_UNDEF + 17);
                     }
@@ -302,54 +326,323 @@ remove_undef(lkit_expr_t *value)
                 TRRET(REMOVE_UNDEF + 19);
             }
 
-            if ((dflt = array_get(&value->subs, 2)) == NULL) {
-                FAIL("array_get");
+            dflt = array_get(&value->subs, 2);
+            assert(dflt != NULL);
+
+            if (remove_undef(*dflt) != 0) {
+                TRRET(REMOVE_UNDEF + 20);
             }
 
-            if (lkit_type_cmp(ty, (*dflt)->type) != 0) {
+            if (lkit_type_cmp(value->type, (*dflt)->type) != 0) {
                 (*dflt)->error = 1;
+                TRRET(REMOVE_UNDEF + 21);
+            }
+
+        } else if (strcmp(name, "set") == 0) {
+            /*
+             * (sym set (func undef struct conststr undef))
+             * (sym set (func undef dict conststr undef))
+             * (sym set (func undef array constint undef))
+             */
+            lkit_expr_t **cont, **setv;
+            lkit_type_t *ty;
+            lkit_type_t *elty;
+
+            //value->isbuiltin = 1;
+
+            cont = array_get(&value->subs, 0);
+            assert(cont != NULL);
+
+            if (remove_undef(*cont) != 0) {
+                TRRET(REMOVE_UNDEF + 12);
+            }
+
+            ty = (*cont)->type;
+
+            switch (ty->tag) {
+            case LKIT_STRUCT:
+                {
+                    lkit_struct_t *ts = (lkit_struct_t *)*cont;
+                    lkit_expr_t **name;
+                    bytes_t *bname;
+
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
+
+                    /* constant str */
+                    if ((*name)->type->tag != LKIT_STR ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
+                        (*name)->error = 1;
+                        TRRET(REMOVE_UNDEF + 13);
+                    }
+
+                    bname = (bytes_t *)(*name)->value.literal->body;
+                    if ((elty =
+                            lkit_struct_get_field_type(ts, bname)) == NULL) {
+                        (*cont)->error = 1;
+                        TRRET(REMOVE_UNDEF + 14);
+                    }
+
+                }
+                break;
+
+            case LKIT_DICT:
+                {
+                    lkit_dict_t *td = (lkit_dict_t *)*cont;
+                    lkit_expr_t **name;
+
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
+
+                    /* constant str */
+                    if ((*name)->type->tag != LKIT_STR ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
+                        (*name)->error = 1;
+                        TRRET(REMOVE_UNDEF + 13);
+                    }
+
+                    if ((elty = lkit_dict_get_element_type(td)) == NULL) {
+                        (*cont)->error = 1;
+                        TRRET(REMOVE_UNDEF + 14);
+                    }
+
+                }
+                break;
+
+            case LKIT_ARRAY:
+                {
+                    lkit_array_t *ta = (lkit_array_t *)*cont;
+                    lkit_expr_t **name;
+
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
+
+                    /* constant str */
+                    if ((*name)->type->tag != LKIT_INT ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
+                        (*name)->error = 1;
+                        TRRET(REMOVE_UNDEF + 13);
+                    }
+
+                    if ((elty = lkit_array_get_element_type(ta)) == NULL) {
+                        (*cont)->error = 1;
+                        TRRET(REMOVE_UNDEF + 14);
+                    }
+
+                }
+                break;
+
+            default:
+                (*cont)->error = 1;
+                TRRET(REMOVE_UNDEF + 19);
+
+            }
+
+            value->type = ty;
+
+            setv = array_get(&value->subs, 2);
+            assert(setv != NULL);
+
+            if (remove_undef(*setv) != 0) {
                 TRRET(REMOVE_UNDEF + 20);
+            }
+
+            if (lkit_type_cmp((*setv)->type, elty) != 0) {
+                (*setv)->error = 1;
+                TRRET(REMOVE_UNDEF + 20);
+            }
+
+        } else if (strcmp(name, "del") == 0) {
+            /*
+             * (sym del (func undef struct conststr))
+             * (sym del (func undef dict conststr))
+             * (sym del (func undef array constint))
+             */
+            lkit_expr_t **cont;
+            lkit_type_t *ty;
+
+            //value->isbuiltin = 1;
+
+            cont = array_get(&value->subs, 0);
+            assert(cont != NULL);
+
+            if (remove_undef(*cont) != 0) {
+                TRRET(REMOVE_UNDEF + 12);
+            }
+
+            ty = (*cont)->type;
+
+            switch (ty->tag) {
+            case LKIT_STRUCT:
+                {
+                    lkit_expr_t **name;
+
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
+
+                    /* constant str */
+                    if ((*name)->type->tag != LKIT_STR ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
+                        (*name)->error = 1;
+                        TRRET(REMOVE_UNDEF + 13);
+                    }
+                }
+                break;
+
+            case LKIT_DICT:
+                {
+                    lkit_expr_t **name;
+
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
+
+                    /* constant str */
+                    if ((*name)->type->tag != LKIT_STR ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
+                        (*name)->error = 1;
+                        TRRET(REMOVE_UNDEF + 13);
+                    }
+                }
+                break;
+
+            case LKIT_ARRAY:
+                {
+                    lkit_expr_t **name;
+
+                    name = array_get(&value->subs, 1);
+                    assert(name != NULL);
+
+                    /* constant str */
+                    if ((*name)->type->tag != LKIT_INT ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
+                        (*name)->error = 1;
+                        TRRET(REMOVE_UNDEF + 13);
+                    }
+                }
+                break;
+
+            default:
+                (*cont)->error = 1;
+                TRRET(REMOVE_UNDEF + 19);
+
+            }
+
+            value->type = ty;
+
+        } else if (strcmp(name, "tostr") == 0) {
+            /*
+             * (sym tostr (func str undef))
+             */
+            lkit_expr_t **arg;
+
+            //value->isbuiltin = 1;
+
+            arg = array_get(&value->subs, 0);
+            assert(arg != NULL);
+
+            if (remove_undef(*arg) != 0) {
+                TRRET(REMOVE_UNDEF + 12);
             }
 
         } else {
             /* not undef */
         }
+
     } else {
         //TRACEC("\n");
     }
+    //lkit_type_dump(value->type);
+    //lkit_expr_dump(value);
     return 0;
 }
 
 int
-_acb(lkit_gitem_t **gitem, UNUSED void *udata)
+_acb(lkit_gitem_t **gitem, void *udata)
 {
-    return remove_undef((*gitem)->expr);
+    int (*cb)(lkit_expr_t *) = udata;
+    return cb((*gitem)->expr);
 }
 
 int
 builtin_remove_undef(void)
 {
-    return array_traverse(&root.glist, (array_traverser_t)_acb, NULL);
+    return array_traverse(&root.glist, (array_traverser_t)_acb, remove_undef);
 }
 
 static LLVMValueRef
-compile_builtin(UNUSED LLVMModuleRef module,
-                       UNUSED LLVMBuilderRef builder,
-                       UNUSED lkit_expr_t *expr)
+compile_function(LLVMModuleRef module,
+                 LLVMBuilderRef builder,
+                 lkit_expr_t *expr)
 {
     LLVMValueRef v = NULL;
+    char *name = (char *)expr->name->data;
 
     //lkit_expr_dump(expr);
-    TRACE("builtin %s", expr->name->data);
+    //TRACE("trying %s", expr->name->data);
 
-    //if () {
-    //}
+    if (strcmp(name, "if") == 0) {
+        lkit_expr_t **cond, **texp, **fexp;
+        LLVMValueRef res, ccond, ctexp, cfexp, fn, iexp[2];
+        LLVMBasicBlockRef currblock, endblock, tblock, fblock, iblock[2];
+
+        currblock = LLVMGetInsertBlock(builder);
+        fn = LLVMGetBasicBlockParent(currblock);
+
+        /**/
+        cond = array_get(&expr->subs, 0);
+        ccond = compile_expr(module, builder, *cond);
+        assert(ccond != NULL);
+
+        endblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.end"));
+
+        /**/
+        tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
+        LLVMPositionBuilderAtEnd(builder, tblock);
+
+        texp = array_get(&expr->subs, 1);
+        ctexp = compile_expr(module, builder, *texp);
+        assert(ctexp != NULL);
+        res = LLVMBuildBr(builder, endblock);
+
+        /**/
+        fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
+        LLVMPositionBuilderAtEnd(builder, fblock);
+
+        fexp = array_get(&expr->subs, 2);
+        cfexp = compile_expr(module, builder, *fexp);
+        assert(cfexp != NULL);
+        res = LLVMBuildBr(builder, endblock);
+
+        /**/
+        LLVMPositionBuilderAtEnd(builder, currblock);
+        LLVMBuildCondBr(builder, ccond, tblock, fblock);
+        LLVMPositionBuilderAtEnd(builder, endblock);
+        v = LLVMBuildPhi(builder, expr->type->backend, NEWVAR("if.result"));
+        iexp[0] = ctexp;
+        iblock[0] = LLVMIsConstant(ctexp) ? tblock :
+                    LLVMGetInstructionParent(ctexp);
+        iexp[1] = cfexp;
+        iblock[1] = LLVMIsConstant(cfexp) ? fblock :
+                    LLVMGetInstructionParent(cfexp);
+        LLVMAddIncoming(v, iexp, iblock, 2);
+
+
+
+    } else if (strcmp(name , "print") == 0) {
+    } else {
+    }
 
     return v;
 }
 
 static LLVMValueRef
-builtin_compile_expr(LLVMModuleRef module,
+compile_expr(LLVMModuleRef module,
                     LLVMBuilderRef builder,
                     lkit_expr_t *expr)
 {
@@ -360,15 +653,17 @@ builtin_compile_expr(LLVMModuleRef module,
         case LKIT_FUNC:
             assert(builder != NULL);
 
-            if ((v = compile_builtin(module, builder, expr)) == NULL) {
+            /* first try pre-defined functions */
+            if ((v = compile_function(module, builder, expr)) == NULL) {
                 LLVMValueRef ref;
-                /* first try user defined functions */
+
+                /* then user-defined */
                 ref = LLVMGetNamedFunction(module, (char *)expr->name->data);
                 if (ref == NULL) {
                     //LLVMDumpModule(module);
                     TRACE("failed to find builtin %s",
                           (char *)expr->name->data);
-                    TR(BUILTIN_COMPILE_EXPR + 1);
+                    TR(COMPILE_EXPR + 1);
                 } else {
                     lkit_expr_t **rand;
                     array_iter_t it;
@@ -382,7 +677,7 @@ builtin_compile_expr(LLVMModuleRef module,
                          rand != NULL;
                          rand = array_next(&expr->subs, &it)) {
                         args[it.iter] =
-                            builtin_compile_expr(module, builder, *rand);
+                            compile_expr(module, builder, *rand);
                     }
 
                     v = LLVMBuildCall(builder,
@@ -390,6 +685,7 @@ builtin_compile_expr(LLVMModuleRef module,
                                       args,
                                       expr->subs.elnum,
                                       NEWVAR((char *)expr->name->data));
+                    //LLVMSetTailCall(v, 1);
                     free(args);
                 }
 
@@ -408,22 +704,26 @@ builtin_compile_expr(LLVMModuleRef module,
                 ref = LLVMGetNamedGlobal(module, (char *)expr->name->data);
                 if (ref == NULL) {
                     //LLVMDumpModule(module);
-                    TR(BUILTIN_COMPILE_EXPR + 2);
+                    TR(COMPILE_EXPR + 2);
                 } else {
-                    v = LLVMBuildLoad(builder, ref, NEWVAR((char *)expr->name->data));
+                    v = LLVMBuildLoad(builder,
+                                      ref,
+                                      NEWVAR((char *)expr->name->data));
                 }
             }
 
             break;
 
         default:
-            TR(BUILTIN_COMPILE_EXPR + 3);
+            TR(COMPILE_EXPR + 3);
             break;
 
         }
 
     } else {
         if (expr->value.literal != NULL) {
+
+            assert(builder != NULL);
             assert(expr->type->backend != NULL);
 
             switch (expr->type->tag) {
@@ -450,10 +750,14 @@ builtin_compile_expr(LLVMModuleRef module,
 
                     b = (bytes_t *)expr->value.literal->body;
                     tmp = LLVMAddGlobal(module,
-                                        LLVMArrayType(LLVMIntType(8), b->sz + 1),
+                                        LLVMArrayType(LLVMIntType(8),
+                                                      b->sz + 1),
                                         NEWVAR(".mrklkit.tmp"));
                     LLVMSetLinkage(tmp, LLVMPrivateLinkage);
-                    LLVMSetInitializer(tmp, LLVMConstString((char *)b->data, b->sz, 0));
+                    LLVMSetInitializer(tmp,
+                                       LLVMConstString((char *)b->data,
+                                                       b->sz,
+                                                       0));
                     v = LLVMConstBitCast(tmp, expr->type->backend);
                 }
                 break;
@@ -466,12 +770,12 @@ builtin_compile_expr(LLVMModuleRef module,
 
                 //lkit_expr_dump(expr);
                 //LLVMDumpModule(module);
-                TR(BUILTIN_COMPILE_EXPR + 4);
+                TR(COMPILE_EXPR + 4);
                break;
 
             }
         } else {
-            TR(BUILTIN_COMPILE_EXPR + 5);
+            TR(COMPILE_EXPR + 5);
         }
     }
 
@@ -497,17 +801,16 @@ compile_dynamic_initializer(LLVMModuleRef module,
                          buf,
                          LLVMFunctionType(LLVMVoidType(), NULL, 0, 0));
     builder = LLVMCreateBuilder();
-    bb = LLVMAppendBasicBlock(fn, "L1");
+    bb = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
     LLVMPositionBuilderAtEnd(builder, bb);
-    LLVMBuildStore(builder, builtin_compile_expr(module, builder, value), v);
-    //LLVMInsertIntoBuilder(builder, LLVMBuildStore());
+    LLVMBuildStore(builder, compile_expr(module, builder, value), v);
     LLVMBuildRetVoid(builder);
     LLVMDisposeBuilder(builder);
     LLVMSetLinkage(v, LLVMPrivateLinkage);
 }
 
 static LLVMValueRef
-builtin_compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
+compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
 {
     LLVMValueRef fn;
 
@@ -531,6 +834,10 @@ sym_compile(lkit_gitem_t **gitem, void *udata)
     //lkit_type_dump(expr->type);
     //lkit_expr_dump(expr);
 
+    /* check for function */
+    if (check_function(name) == 0) {
+        return 0;
+    }
 
     if (expr->isref) {
         v = LLVMAddGlobal(module, expr->type->backend, (char *)name->data);
@@ -541,10 +848,10 @@ sym_compile(lkit_gitem_t **gitem, void *udata)
         if (expr->value.literal != NULL) {
             v = LLVMAddGlobal(module, expr->type->backend, (char *)name->data);
             LLVMSetLinkage(v, LLVMPrivateLinkage);
-            LLVMSetInitializer(v, builtin_compile_expr(module, NULL, expr));
+            LLVMSetInitializer(v, compile_expr(module, NULL, expr));
         } else {
             /* declaration, */
-            builtin_compile_decl(module, name, expr->type);
+            compile_decl(module, name, expr->type);
         }
     }
 

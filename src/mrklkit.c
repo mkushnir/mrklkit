@@ -171,6 +171,7 @@ mrklkit_compile(int fd)
                                   (char *)LLVMGetTarget(module),
                                   "",
                                   "",
+                                  //LLVMCodeGenLevelAggressive,
                                   LLVMCodeGenLevelDefault,
                                   LLVMRelocDefault,
                                   LLVMCodeModelDefault);
