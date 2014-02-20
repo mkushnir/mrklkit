@@ -49,7 +49,7 @@ typedef struct _lkit_gitem {
     lkit_expr_t *expr;
 } lkit_gitem_t;
 
-void lkit_expr_dump(lkit_expr_t *);
+int lkit_expr_dump(lkit_expr_t *);
 lkit_expr_t *lkit_expr_parse(lkit_expr_t *, fparser_datum_t *, int);
 lkit_expr_t *lkit_expr_find(lkit_expr_t *, bytes_t *);
 int lkit_parse_exprdef(lkit_expr_t *, array_t *, array_iter_t *);

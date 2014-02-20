@@ -18,7 +18,7 @@ then
         fi
     fi
 else
-    if which clang >/dev/null
+    if which clang33 >/dev/null
     then
         CC="clang -Qunused-arguments -fcolor-diagnostics"
         CXX="clang++ -Qunused-arguments -fcolor-diagnostics"
@@ -77,7 +77,8 @@ AC_TYPE_UINT64_T
 
 AC_SUBST(LLVM_CFLAGS, ["`llvm-config33 --cflags`"])
 AC_SUBST(LLVM_LDFLAGS, ["`llvm-config33 --ldflags`"])
-AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets ipo`"])
+AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs` -lclang"])
+#AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets ipo`"])
 
 AC_PRESERVE_HELP_ORDER
 

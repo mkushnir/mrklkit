@@ -9,6 +9,7 @@
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Transforms/IPO.h>
 #include <llvm-c/Transforms/Scalar.h>
+#include <llvm-c/Transforms/PassManagerBuilder.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
@@ -29,7 +30,6 @@
 #include "diag.h"
 
 LLVMModuleRef module;
-LLVMPassManagerRef pm;
 LLVMExecutionEngineRef ee;
 
 /* mrklkit ctx */
@@ -125,14 +125,69 @@ err:
     goto end;
 }
 
+
+static void
+do_opt(void)
+{
+    LLVMPassManagerBuilderRef pmb;
+    LLVMPassManagerRef fpm;
+    LLVMPassManagerRef pm;
+    int res = 0;
+    LLVMValueRef fn = NULL;
+
+    pmb = LLVMPassManagerBuilderCreate();
+
+    if ((fpm = LLVMCreateFunctionPassManagerForModule(module)) == NULL) {
+        FAIL("LLVMCreateFunctionPassManagerForModule");
+    }
+
+    if ((pm = LLVMCreatePassManager()) == NULL) {
+        FAIL("LLVMCreatePassManager");
+    }
+
+    pmb = LLVMPassManagerBuilderCreate();
+    LLVMPassManagerBuilderSetOptLevel(pmb, 3);
+
+    LLVMPassManagerBuilderPopulateFunctionPassManager(pmb, fpm);
+    LLVMPassManagerBuilderPopulateModulePassManager(pmb, pm);
+
+    if (LLVMInitializeFunctionPassManager(fpm)) {
+        TRACE("LLVMInitializeFunctionPassManager ...");
+    }
+
+    for (fn = LLVMGetFirstFunction(module);
+         fn != NULL;
+         fn = LLVMGetNextFunction(fn)) {
+
+        TRACE("Passing %s", LLVMGetValueName(fn));
+        LLVMDumpValue(fn);
+        if (LLVMRunFunctionPassManager(fpm, fn)) {
+            TRACE("%s was modified:", LLVMGetValueName(fn));
+            LLVMDumpValue(fn);
+        }
+    }
+
+    res = LLVMRunPassManager(pm, module);
+    TRACE("res=%d", res);
+    if (res != 0) {
+        TRACE("module was modified");
+    }
+
+    LLVMPassManagerBuilderDispose(pmb);
+    LLVMDisposePassManager(pm);
+    LLVMDisposePassManager(fpm);
+
+}
+
+
 int
 mrklkit_compile(int fd)
 {
-    int res;
-    char *error_msg = NULL;
+    UNUSED int res = 0;
+    UNUSED char *error_msg = NULL;
     LLVMTargetRef tr;
-    LLVMTargetMachineRef tmr;
-    LLVMMemoryBufferRef mb = NULL;
+    UNUSED LLVMTargetMachineRef tmr;
+    UNUSED LLVMMemoryBufferRef mb = NULL;
     //char *s;
     //size_t sz;
 
@@ -151,27 +206,27 @@ mrklkit_compile(int fd)
         TRRET(MRKLKIT_COMPILE + 4);
     }
 
-    res = LLVMRunPassManager(pm, module);
-    //TRACE("res=%d", res);
-    //if (res != 0) {
-    //    TRACE("module was modified");
-    //}
+    do_opt();
 
     TRACEC("-----------------------------------------------\n");
     LLVMDumpModule(module);
+
+    TRACEC("-----------------------------------------------\n");
     tr = LLVMGetFirstTarget();
-    //TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",
-    //      LLVMGetTargetName(tr),
-    //      LLVMGetTargetDescription(tr),
-    //      LLVMTargetHasJIT(tr),
-    //      LLVMTargetHasTargetMachine(tr),
-    //      LLVMTargetHasAsmBackend(tr),
-    //      LLVMGetTarget(module));
+    TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",
+          LLVMGetTargetName(tr),
+          LLVMGetTargetDescription(tr),
+          LLVMTargetHasJIT(tr),
+          LLVMTargetHasTargetMachine(tr),
+          LLVMTargetHasAsmBackend(tr),
+          LLVMGetTarget(module));
+
+#if 1
+    TRACEC("-----------------------------------------------\n");
     tmr = LLVMCreateTargetMachine(tr,
                                   (char *)LLVMGetTarget(module),
+                                  "x86-64",
                                   "",
-                                  "",
-                                  //LLVMCodeGenLevelAggressive,
                                   LLVMCodeGenLevelDefault,
                                   LLVMRelocDefault,
                                   LLVMCodeModelDefault);
@@ -185,9 +240,10 @@ mrklkit_compile(int fd)
         TRACE("res=%d %s", res, error_msg);
         TRRET(MRKLKIT_COMPILE + 6);
     }
-    TRACEC("-----------------------------------------------\n%s", LLVMGetBufferStart(mb));
+    TRACEC("%s", LLVMGetBufferStart(mb));
     LLVMDisposeMemoryBuffer(mb);
     LLVMDisposeTargetMachine(tmr);
+#endif
 
     return 0;
 }
@@ -231,6 +287,7 @@ llvm_init(void)
 {
     LLVMPassRegistryRef pr;
     char *error_msg = NULL;
+    UNUSED struct LLVMMCJITCompilerOptions opts;
 
     LLVMInitializeAllAsmPrinters();
     LLVMInitializeNativeTarget();
@@ -243,12 +300,12 @@ llvm_init(void)
     LLVMInitializeScalarOpts(pr);
     LLVMInitializeObjCARCOpts(pr);
 
-    //?LLVMInitializeVectorization(pr);
+    LLVMInitializeVectorization(pr);
 
     LLVMInitializeInstCombine(pr);
 
     LLVMInitializeIPO(pr);
-    //?LLVMInitializeInstrumentation(pr);
+    LLVMInitializeInstrumentation(pr);
 
     LLVMInitializeAnalysis(pr);
     LLVMInitializeIPA(pr);
@@ -261,44 +318,40 @@ llvm_init(void)
     }
 
     LLVMLinkInJIT();
-    //LLVMLinkInMCJIT();
-    //LLVMLinkInInterpreter();
 
-    //if (LLVMCreateJITCompilerForModule(&ee,
-    //                                   module,
-    //                                   0,
-    //                                   &error_msg) != 0) {
-    //    TRACE("%s", error_msg);
-    //    FAIL("LLVMCreateExecutionEngineForModule");
-    //}
-    //if (LLVMCreateInterpreterForModule(&ee,
-    if (LLVMCreateExecutionEngineForModule(&ee,
-                                           module,
-                                           &error_msg) != 0) {
+    if (LLVMCreateJITCompilerForModule(&ee,
+                                       module,
+                                       0,
+                                       &error_msg) != 0) {
         TRACE("%s", error_msg);
         FAIL("LLVMCreateExecutionEngineForModule");
     }
+    //LLVMLinkInInterpreter();
+    //if (LLVMCreateInterpreterForModule(&ee,
+    //if (LLVMCreateExecutionEngineForModule(&ee,
+    //                                       module,
+    //                                       &error_msg) != 0) {
+    //    TRACE("%s", error_msg);
+    //    FAIL("LLVMCreateExecutionEngineForModule");
+    //}
 
-    if ((pm = LLVMCreatePassManager()) == NULL) {
-        FAIL("LLVMCreatePassManager");
-    }
-    LLVMAddBasicAliasAnalysisPass(pm);
-    LLVMAddDeadStoreEliminationPass(pm);
-    LLVMAddConstantPropagationPass(pm);
-    LLVMAddInstructionCombiningPass(pm);
-    LLVMAddReassociatePass(pm);
-    LLVMAddGVNPass(pm);
-    LLVMAddCFGSimplificationPass(pm);
-    LLVMAddPromoteMemoryToRegisterPass(pm);
-    LLVMAddSimplifyLibCallsPass(pm);
-    LLVMAddTailCallEliminationPass(pm);
-    LLVMAddConstantMergePass(pm);
+    //LLVMLinkInMCJIT();
+    //LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
+    //opts.NoFramePointerElim = 1;
+    //opts.EnableFastISel = 1;
+    //if (LLVMCreateMCJITCompilerForModule(&ee,
+    //                                     module,
+    //                                     &opts, sizeof(opts),
+    //                                     &error_msg) != 0) {
+    //    TRACE("%s", error_msg);
+    //    FAIL("LLVMCreateMCJITCompilerForModule");
+    //}
+
 }
 
 static void
 llvm_fini(void)
 {
-    LLVMDisposePassManager(pm);
     LLVMDisposeExecutionEngine(ee);
 }
 

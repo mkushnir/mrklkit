@@ -18,91 +18,69 @@
 #include "diag.h"
 
 static lkit_type_t *type_of_expr(lkit_expr_t *);
+static void lexpr_dump(bytestream_t *, lkit_expr_t *);
 
-void
-lkit_expr_dump(lkit_expr_t *expr)
+static void
+lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
 {
-    bytestream_t bs;
-    lkit_expr_t **subexpr;
-    array_iter_t it;
-
-    bytestream_init(&bs);
-
-    lkit_type_str(type_of_expr(expr), &bs);
-    bytestream_cat(&bs, 4, " <- ");
-    lkit_type_str(expr->type, &bs);
-    bytestream_cat(&bs, 1, "\0");
+    lkit_type_str(type_of_expr(expr), bs);
+    bytestream_cat(bs, 4, " <- ");
+    lkit_type_str(expr->type, bs);
+    bytestream_cat(bs, 1, "\n");
     if (expr->isref) {
         if (expr->name != NULL) {
-            TRACE("<REF>:%s", expr->name->data);
+            bytestream_nprintf(bs,
+                strlen((char *)expr->name->data) + 7,
+                "<REF>:%s\n", expr->name->data);
         } else {
-            TRACE("<REF>:");
+            bytestream_cat(bs, 7, "<REF>:\n");
         }
-        lkit_expr_dump(expr->value.ref);
+        lexpr_dump(bs, expr->value.ref);
     } else {
         if (expr->name != NULL) {
             if (expr->value.literal == NULL) {
-                TRACE("%s: <null>", expr->name->data);
+                bytestream_nprintf(bs,
+                    strlen((char *)expr->name->data) + 9,
+                    "%s: <null>\n", expr->name->data);
             } else {
-                TRACE("%s:", expr->name->data);
-                fparser_datum_dump(&expr->value.literal, NULL);
+                bytestream_nprintf(bs,
+                    strlen((char *)expr->name->data) + 2,
+                    "%s:\n", expr->name->data);
+                fparser_datum_dump_bytestream(expr->value.literal, bs);
             }
         } else {
             if (expr->value.literal == NULL) {
-                TRACE("<LITERAL>: <null>");
+                bytestream_cat(bs, 18, "<LITERAL>: <null>\n");
             } else {
-                TRACE("<LITERAL>:");
-                fparser_datum_dump(&expr->value.literal, NULL);
+                bytestream_cat(bs, 11, "<LITERAL>:\n");
+                fparser_datum_dump_bytestream(expr->value.literal, bs);
             }
         }
     }
     if (expr->subs.elnum > 0) {
-        TRACE("SUBS:");
+        lkit_expr_t **subexpr;
+        array_iter_t it;
+
+        bytestream_cat(bs, 6, "SUBS:\n");
         for (subexpr = array_first(&expr->subs, &it);
              subexpr != NULL;
              subexpr = array_next(&expr->subs, &it)) {
 
-            lkit_expr_dump(*subexpr);
+            lexpr_dump(bs, *subexpr);
         }
     }
-
-    bytestream_fini(&bs);
 }
 
-UNUSED static int
-lexpr_dump(bytes_t *key, lkit_expr_t *value)
+int
+lkit_expr_dump(lkit_expr_t *expr)
 {
     bytestream_t bs;
-    lkit_expr_t **subexpr;
-    array_iter_t it;
 
     bytestream_init(&bs);
-
-    lkit_type_str(type_of_expr(value), &bs);
-    bytestream_cat(&bs, 4, " <- ");
-    lkit_type_str(value->type, &bs);
+    lexpr_dump(&bs, expr);
     bytestream_cat(&bs, 1, "\0");
-    TRACE("EXPR: %s: %s", (key != NULL) ? (char *)(key->data) : "<null>", SDATA(&bs, 0));
-    if (value->isref) {
-        lexpr_dump(NULL, value->value.ref);
-    } else {
-        if (value->value.literal == NULL) {
-            TRACE("LITERAL: <null>");
-        } else {
-            TRACE("LITERAL:");
-            fparser_datum_dump(&value->value.literal, NULL);
-        }
-    }
-    if (value->subs.elnum > 0) {
-        TRACE("SUBS:");
-        for (subexpr = array_first(&value->subs, &it);
-             subexpr != NULL;
-             subexpr = array_next(&value->subs, &it)) {
-
-            lexpr_dump(NULL, *subexpr);
-        }
-    }
-
+    TRACE("%s", SDATA(&bs, 0));
+    //D64(SDATA(&bs, 0), SEOD(&bs));
     bytestream_fini(&bs);
     return 0;
 }
@@ -159,16 +137,18 @@ lkit_expr_fini_dict(UNUSED bytes_t *key, lkit_expr_t *value)
 static lkit_type_t *
 type_of_expr(lkit_expr_t *expr)
 {
-    if (expr->type->tag == LKIT_FUNC) {
-        lkit_func_t *tf;
-        lkit_type_t **pty;
+    if (expr->type != NULL) {
+        if (expr->type->tag == LKIT_FUNC) {
+            lkit_func_t *tf;
+            lkit_type_t **pty;
 
-        tf = (lkit_func_t *)(expr->type);
+            tf = (lkit_func_t *)(expr->type);
 
-        if ((pty = array_get(&tf->fields, 0)) == NULL) {
-            FAIL("array_get");
+            if ((pty = array_get(&tf->fields, 0)) == NULL) {
+                FAIL("array_get");
+            }
+            return *pty;
         }
-        return *pty;
     }
     return expr->type;
 }
@@ -304,7 +284,12 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                  *
                  */
                 expr->isref = 1;
-                expr->type = type_of_expr(expr->value.ref);
+                if ((expr->type = type_of_expr(expr->value.ref)) == NULL) {
+                    TR(LKIT_EXPR_PARSE + 9);
+                    goto err;
+                }
+
+                assert(expr->type != NULL);
 
                 tf = (lkit_func_t *)(expr->value.ref->type);
 
@@ -319,7 +304,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                         FAIL("array_incr");
                     }
                     if ((*arg = lkit_expr_parse(ctx, *node, 1)) == NULL) {
-                        TR(LKIT_EXPR_PARSE + 9);
+                        TR(LKIT_EXPR_PARSE + 10);
                         goto err;
                     }
 
@@ -330,17 +315,17 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
                     if (!isvararg) {
                         if (paramtype == NULL) {
-                            TR(LKIT_EXPR_PARSE + 10);
-                            goto err;
-                        }
-
-                        if (*paramtype == NULL) {
                             TR(LKIT_EXPR_PARSE + 11);
                             goto err;
                         }
 
-                        if ((argtype = type_of_expr(*arg)) == NULL) {
+                        if (*paramtype == NULL) {
                             TR(LKIT_EXPR_PARSE + 12);
+                            goto err;
+                        }
+
+                        if ((argtype = type_of_expr(*arg)) == NULL) {
+                            TR(LKIT_EXPR_PARSE + 13);
                             goto err;
                         }
 
@@ -351,7 +336,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                                 argtype->tag != LKIT_UNDEF) {
 
                                 if (lkit_type_cmp(*paramtype, argtype) != 0) {
-                                    TR(LKIT_EXPR_PARSE + 13);
+                                    TR(LKIT_EXPR_PARSE + 14);
                                     goto err;
                                 }
                             }
@@ -360,7 +345,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                     } else {
                         if (paramtype != NULL && *paramtype != NULL) {
                             if ((*paramtype)->tag != LKIT_VARARG) {
-                                TR(LKIT_EXPR_PARSE + 14);
+                                TR(LKIT_EXPR_PARSE + 15);
                                 goto err;
                             }
                         }
@@ -376,14 +361,14 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
                 } else {
                     if (isvararg) {
-                        TR(LKIT_EXPR_PARSE + 15);
+                        TR(LKIT_EXPR_PARSE + 16);
                         goto err;
                     }
                 }
 
                 if (!isvararg) {
                     if ((tf->fields.elnum - expr->subs.elnum) != 1) {
-                        TR(LKIT_EXPR_PARSE + 16);
+                        TR(LKIT_EXPR_PARSE + 17);
                         goto err;
                     }
                 }
