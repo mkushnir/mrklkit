@@ -16,9 +16,6 @@
 
 static LLVMValueRef compile_expr(LLVMModuleRef, LLVMBuilderRef, lkit_expr_t *);
 
-/*
- * bytes_t *, lkit_expr_t *
- */
 static lkit_expr_t root;
 
 int
@@ -591,9 +588,75 @@ _acb(lkit_gitem_t **gitem, void *udata)
 int
 builtin_remove_undef(void)
 {
-    int res = array_traverse(&root.glist, (array_traverser_t)_acb, remove_undef);
+    int res = array_traverse(&root.glist,
+                             (array_traverser_t)_acb,
+                             remove_undef);
     //array_traverse(&root.glist, (array_traverser_t)_acb, lkit_expr_dump);
     return res;
+}
+
+static LLVMValueRef
+compile_if(LLVMModuleRef module,
+           LLVMBuilderRef builder,
+           lkit_expr_t *cexpr,
+           lkit_expr_t *texpr,
+           lkit_expr_t *fexpr,
+           lkit_type_t *restype)
+{
+    LLVMValueRef v = NULL, res, cond, texp, fexp, fn, iexp[2];
+    LLVMBasicBlockRef currblock, endblock, tblock, fblock, iblock[2];
+
+    currblock = LLVMGetInsertBlock(builder);
+    fn = LLVMGetBasicBlockParent(currblock);
+
+    /**/
+    cond = compile_expr(module, builder, cexpr);
+    assert(cond != NULL);
+
+    endblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.end"));
+
+    /**/
+    tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
+    LLVMPositionBuilderAtEnd(builder, tblock);
+
+    if (texpr != NULL) {
+        texp = compile_expr(module, builder, texpr);
+        assert(texp != NULL);
+        res = LLVMBuildBr(builder, endblock);
+        assert(res != NULL);
+    } else {
+        assert(restype == NULL);
+    }
+
+    /**/
+    fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
+    LLVMPositionBuilderAtEnd(builder, fblock);
+
+    if (fexpr != NULL) {
+        fexp = compile_expr(module, builder, fexpr);
+        assert(fexp != NULL);
+        res = LLVMBuildBr(builder, endblock);
+        assert(res != NULL);
+    } else {
+        assert(restype == NULL);
+    }
+
+    /**/
+    LLVMPositionBuilderAtEnd(builder, currblock);
+    LLVMBuildCondBr(builder, cond, tblock, fblock);
+    LLVMPositionBuilderAtEnd(builder, endblock);
+    if (restype != NULL) {
+        v = LLVMBuildPhi(builder, restype->backend, NEWVAR("if.result"));
+        iexp[0] = texp;
+        iblock[0] = LLVMIsConstant(texp) ? tblock :
+                    LLVMGetInstructionParent(texp);
+        iexp[1] = fexp;
+        iblock[1] = LLVMIsConstant(fexp) ? fblock :
+                    LLVMGetInstructionParent(fexp);
+        LLVMAddIncoming(v, iexp, iblock, 2);
+    }
+
+    return v;
 }
 
 static LLVMValueRef
@@ -608,52 +671,58 @@ compile_function(LLVMModuleRef module,
     //TRACE("trying %s", expr->name->data);
 
     if (strcmp(name, "if") == 0) {
-        lkit_expr_t **arg;
-        LLVMValueRef res, cond, texp, fexp, fn, iexp[2];
-        LLVMBasicBlockRef currblock, endblock, tblock, fblock, iblock[2];
+        //lkit_expr_t **arg;
+        //LLVMValueRef res, cond, texp, fexp, fn, iexp[2];
+        //LLVMBasicBlockRef currblock, endblock, tblock, fblock, iblock[2];
 
-        currblock = LLVMGetInsertBlock(builder);
-        fn = LLVMGetBasicBlockParent(currblock);
+        //currblock = LLVMGetInsertBlock(builder);
+        //fn = LLVMGetBasicBlockParent(currblock);
 
-        /**/
-        arg = array_get(&expr->subs, 0);
-        cond = compile_expr(module, builder, *arg);
-        assert(cond != NULL);
+        ///**/
+        //arg = array_get(&expr->subs, 0);
+        //cond = compile_expr(module, builder, *arg);
+        //assert(cond != NULL);
 
-        endblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.end"));
+        //endblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.end"));
 
-        /**/
-        tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
-        LLVMPositionBuilderAtEnd(builder, tblock);
+        ///**/
+        //tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
+        //LLVMPositionBuilderAtEnd(builder, tblock);
 
-        arg = array_get(&expr->subs, 1);
-        texp = compile_expr(module, builder, *arg);
-        assert(texp != NULL);
-        res = LLVMBuildBr(builder, endblock);
-        assert(res != NULL);
+        //arg = array_get(&expr->subs, 1);
+        //texp = compile_expr(module, builder, *arg);
+        //assert(texp != NULL);
+        //res = LLVMBuildBr(builder, endblock);
+        //assert(res != NULL);
 
-        /**/
-        fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
-        LLVMPositionBuilderAtEnd(builder, fblock);
+        ///**/
+        //fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
+        //LLVMPositionBuilderAtEnd(builder, fblock);
 
-        arg = array_get(&expr->subs, 2);
-        fexp = compile_expr(module, builder, *arg);
-        assert(fexp != NULL);
-        res = LLVMBuildBr(builder, endblock);
-        assert(res != NULL);
+        //arg = array_get(&expr->subs, 2);
+        //fexp = compile_expr(module, builder, *arg);
+        //assert(fexp != NULL);
+        //res = LLVMBuildBr(builder, endblock);
+        //assert(res != NULL);
 
-        /**/
-        LLVMPositionBuilderAtEnd(builder, currblock);
-        LLVMBuildCondBr(builder, cond, tblock, fblock);
-        LLVMPositionBuilderAtEnd(builder, endblock);
-        v = LLVMBuildPhi(builder, expr->type->backend, NEWVAR("if.result"));
-        iexp[0] = texp;
-        iblock[0] = LLVMIsConstant(texp) ? tblock :
-                    LLVMGetInstructionParent(texp);
-        iexp[1] = fexp;
-        iblock[1] = LLVMIsConstant(fexp) ? fblock :
-                    LLVMGetInstructionParent(fexp);
-        LLVMAddIncoming(v, iexp, iblock, 2);
+        ///**/
+        //LLVMPositionBuilderAtEnd(builder, currblock);
+        //LLVMBuildCondBr(builder, cond, tblock, fblock);
+        //LLVMPositionBuilderAtEnd(builder, endblock);
+        //v = LLVMBuildPhi(builder, expr->type->backend, NEWVAR("if.result"));
+        //iexp[0] = texp;
+        //iblock[0] = LLVMIsConstant(texp) ? tblock :
+        //            LLVMGetInstructionParent(texp);
+        //iexp[1] = fexp;
+        //iblock[1] = LLVMIsConstant(fexp) ? fblock :
+        //            LLVMGetInstructionParent(fexp);
+        //LLVMAddIncoming(v, iexp, iblock, 2);
+
+        lkit_expr_t **cexpr, **texpr, **fexpr;
+        cexpr = array_get(&expr->subs, 0);
+        texpr = array_get(&expr->subs, 1);
+        fexpr = array_get(&expr->subs, 2);
+        v = compile_if(module, builder, *cexpr, *texpr, *fexpr, expr->type);
 
 
 
@@ -827,16 +896,21 @@ compile_expr(LLVMModuleRef module,
                     char buf[1024];
                     LLVMValueRef fn;
 
-                    snprintf(buf, sizeof(buf), ".mrklkit.init.%s", (char *)expr->name->data);
+                    snprintf(buf,
+                             sizeof(buf),
+                             ".mrklkit.init.%s",
+                             (char *)expr->name->data);
                     //TRACE("init: %s", buf);
 
                     if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
-                        if (LLVMBuildCall(builder,
-                                          fn,
-                                          NULL,
-                                          0,
-                                          NEWVAR("tmp")) == NULL) {
-                            TR(COMPILE_EXPR + 3);
+                        if (expr->value.ref->lazy_init) {
+                            if (LLVMBuildCall(builder,
+                                              fn,
+                                              NULL,
+                                              0,
+                                              NEWVAR("tmp")) == NULL) {
+                                TR(COMPILE_EXPR + 3);
+                            }
                         }
                     }
 
@@ -925,21 +999,70 @@ compile_dynamic_initializer(LLVMModuleRef module,
     char buf[1024];
     LLVMBasicBlockRef bb;
     LLVMBuilderRef builder;
-    LLVMValueRef fn, storedv;
+    LLVMValueRef chkv, fn, storedv;
 
     /* dynamic initializer */
     //lkit_type_dump(value->type);
     //lkit_expr_dump(value);
+
     snprintf(buf, sizeof(buf), ".mrklkit.init.%s", (char *)name->data);
+
     fn = LLVMAddFunction(module,
                          buf,
-                         LLVMFunctionType(LLVMInt64Type(), NULL, 0, 0));
+                         LLVMFunctionType(LLVMIntType(64), NULL, 0, 0));
+                         //LLVMFunctionType(LLVMVoidType(), NULL, 0, 0));
     builder = LLVMCreateBuilder();
-    bb = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
-    LLVMPositionBuilderAtEnd(builder, bb);
-    storedv = compile_expr(module, builder, value);
-    assert(storedv != NULL);
-    LLVMBuildStore(builder, storedv, v);
+
+    //bcond = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit.cond"));
+    //LLVMPositionBuilderAtEnd(builder, bcond);
+    //chk = LLVMBuildLoad(builder, chkv, NEWVAR("chk"));
+    //LLVMBuildCondBr(builder, )
+
+
+    if (value->lazy_init) {
+        LLVMValueRef res, cond;
+        LLVMBasicBlockRef currblock, endblock, tblock, fblock;
+
+        snprintf(buf, sizeof(buf), ".mrklkit.init.done.%s", (char *)name->data);
+        chkv = LLVMAddGlobal(module, LLVMIntType(1), buf);
+        LLVMSetLinkage(chkv, LLVMPrivateLinkage);
+        LLVMSetInitializer(chkv, LLVMConstInt(LLVMIntType(1), 0, 0));
+
+        //compile_if(module, builder, new_expr(), value, NULL, NULL);
+        currblock = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
+        tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
+        fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
+        endblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.end"));
+
+        LLVMPositionBuilderAtEnd(builder, tblock);
+
+        storedv = compile_expr(module, builder, value);
+        assert(storedv != NULL);
+        LLVMBuildStore(builder, storedv, v);
+        LLVMBuildStore(builder, LLVMConstInt(LLVMIntType(1), 1, 0), chkv);
+        res = LLVMBuildBr(builder, endblock);
+
+        LLVMPositionBuilderAtEnd(builder, fblock);
+        res = LLVMBuildBr(builder, endblock);
+
+        LLVMPositionBuilderAtEnd(builder, currblock);
+        cond = LLVMBuildICmp(builder,
+                             LLVMIntEQ,
+                             LLVMBuildLoad(builder, chkv, NEWVAR("test")),
+                             LLVMConstInt(LLVMIntType(1), 0, 0),
+                             NEWVAR("test"));
+        LLVMPositionBuilderAtEnd(builder, currblock);
+        LLVMBuildCondBr(builder, cond, tblock, fblock);
+        LLVMPositionBuilderAtEnd(builder, endblock);
+
+    } else {
+        bb = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
+        LLVMPositionBuilderAtEnd(builder, bb);
+        storedv = compile_expr(module, builder, value);
+        assert(storedv != NULL);
+        LLVMBuildStore(builder, storedv, v);
+    }
+
     //LLVMBuildRetVoid(builder);
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt64Type(), 0, 0));
     LLVMDisposeBuilder(builder);

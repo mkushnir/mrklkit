@@ -159,19 +159,19 @@ do_opt(void)
          fn != NULL;
          fn = LLVMGetNextFunction(fn)) {
 
-        TRACE("Passing %s", LLVMGetValueName(fn));
-        LLVMDumpValue(fn);
+        //TRACE("Passing %s", LLVMGetValueName(fn));
+        //LLVMDumpValue(fn);
         if (LLVMRunFunctionPassManager(fpm, fn)) {
-            TRACE("%s was modified:", LLVMGetValueName(fn));
-            LLVMDumpValue(fn);
+            //TRACE("%s was modified:", LLVMGetValueName(fn));
+            //LLVMDumpValue(fn);
         }
     }
 
     res = LLVMRunPassManager(pm, module);
-    TRACE("res=%d", res);
-    if (res != 0) {
-        TRACE("module was modified");
-    }
+    //TRACE("res=%d", res);
+    //if (res != 0) {
+    //    TRACE("module was modified");
+    //}
 
     LLVMPassManagerBuilderDispose(pmb);
     LLVMDisposePassManager(pm);
@@ -188,8 +188,6 @@ mrklkit_compile(int fd)
     LLVMTargetRef tr;
     UNUSED LLVMTargetMachineRef tmr;
     UNUSED LLVMMemoryBufferRef mb = NULL;
-    //char *s;
-    //size_t sz;
 
     if (mrklkit_parse(fd) != 0) {
         TRRET(MRKLKIT_COMPILE + 1);

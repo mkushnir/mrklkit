@@ -169,6 +169,30 @@ lkit_expr_find(lkit_expr_t *ctx, bytes_t *name)
     return NULL;
 }
 
+static int
+parse_expr_quals(array_t *form,
+                 array_iter_t *it,
+                 unsigned char *qual,
+                 lkit_expr_t *expr)
+{
+    char *s = (char *)qual;
+
+#define EXPR_SET_INT(m) \
+    int64_t value; \
+    if (lparse_next_int(form, it, &value, 1) != 0) { \
+        expr->error = 1; \
+        return 1; \
+    } \
+    expr->m = (int)value;
+
+    if (strcmp(s, ":lazy") == 0) {
+        EXPR_SET_INT(lazy_init);
+    } else {
+        TRACE("unknown qual: %s", s);
+    }
+    return 0;
+}
+
 lkit_expr_t *
 lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 {
@@ -187,6 +211,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
     lexpr_init_ctx(expr);
     expr->name = NULL;
     expr->isref = 0;
+    expr->lazy_init = 0;
     //expr->isbuiltin = 0;
     expr->error = 0;
     expr->parent = ctx;
@@ -256,7 +281,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                 array_iter_t it;
                 fparser_datum_t **node;
                 lkit_func_t *tf = NULL;
-                int isvararg = 0;
+                int isvararg = 0, narg = 0;
 
                 form = (array_t *)(dat->body);
                 if (lparse_first_word_bytes(form, &it, &expr->name, 1) != 0) {
@@ -264,7 +289,8 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                     goto err;
                 }
 
-                if ((expr->value.ref = lkit_expr_find(ctx, expr->name)) == NULL) {
+                if ((expr->value.ref = lkit_expr_find(ctx,
+                                                      expr->name)) == NULL) {
                     //TRACE("failed probe '%s'", expr->name->data);
                     //dict_traverse(&ctx->ctx, (dict_traverser_t)lexpr_dump, NULL);
                     TR(LKIT_EXPR_PARSE + 7);
@@ -276,6 +302,12 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                     TR(LKIT_EXPR_PARSE + 8);
                     goto err;
                 }
+
+                /* quals */
+                lparse_quals(form,
+                             &it,
+                             (quals_parser_t)parse_expr_quals,
+                             expr);
 
                 //TRACE("ISREF");
                 /*
@@ -295,7 +327,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
                 for (node = array_next(form, &it);
                      node != NULL;
-                     node = array_next(form, &it)) {
+                     node = array_next(form, &it), ++narg) {
 
                     lkit_expr_t **arg;
                     lkit_type_t *argtype;
@@ -311,7 +343,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                     //TRACE("arg:");
                     //lexpr_dump(NULL, *arg);
 
-                    paramtype = array_get(&tf->fields, it.iter);
+                    paramtype = array_get(&tf->fields, narg);
 
                     if (!isvararg) {
                         if (paramtype == NULL) {
@@ -396,6 +428,7 @@ err:
     lexpr_destroy(&expr);
     goto end;
 }
+
 
 int
 lkit_parse_exprdef(lkit_expr_t *ctx, array_t *form, array_iter_t *it)

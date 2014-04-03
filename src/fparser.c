@@ -21,7 +21,7 @@ static int fparser_datum_form_add(fparser_datum_t *, fparser_datum_t *);
 
 
 static ssize_t
-_unescape(unsigned char *dst, const unsigned char *src, ssize_t sz)
+unesc(unsigned char *dst, const unsigned char *src, ssize_t sz)
 {
     ssize_t res = 0;
     ssize_t i;
@@ -94,7 +94,7 @@ compile_value(struct tokenizer_ctx *ctx,
         value->hash = 0;
         value->sz = (size_t)sz;
 
-        escaped = _unescape(value->data, ctx->tokstart, sz);
+        escaped = unesc(value->data, ctx->tokstart, sz);
         value->sz -= escaped;
 
         if (fparser_datum_form_add(ctx->form, dat) != 0) {
@@ -269,11 +269,9 @@ tokenize(struct tokenizer_ctx *ctx,
         ch = *(buf + i);
         if (ch == '(') {
             if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
-
                 state = LEX_SEQIN;
 
             } else if (state & LEX_TOK) {
-
                 state = LEX_TOKOUT;
                 /* extra call back */
                 if (compile_value(ctx, buf, i, state, cb, udata) != 0) {
@@ -282,11 +280,9 @@ tokenize(struct tokenizer_ctx *ctx,
                 state = LEX_SEQIN;
 
             } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-
                 state = LEX_QSTRMID;
 
             } else if (state & LEX_COMIN) {
-
                 state = LEX_COMMID;
 
             } else {
@@ -295,11 +291,9 @@ tokenize(struct tokenizer_ctx *ctx,
 
         } else if (ch == ')') {
             if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
-
                 state = LEX_SEQOUT;
 
             } else if (state & LEX_TOK) {
-
                 state = LEX_TOKOUT;
                 /* extra call back */
                 if (compile_value(ctx, buf, i, state, cb, udata) != 0) {
@@ -308,11 +302,9 @@ tokenize(struct tokenizer_ctx *ctx,
                 state = LEX_SEQOUT;
 
             } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-
                 state = LEX_QSTRMID;
 
             } else if (state & LEX_COMIN) {
-
                 state = LEX_COMMID;
 
             } else {
@@ -322,19 +314,15 @@ tokenize(struct tokenizer_ctx *ctx,
         } else if (ch == ' ' || ch == '\t') {
 
             if (state & (LEX_SEQ | LEX_OUT)) {
-
                 state = LEX_SPACE;
 
             } else if (state & LEX_TOK) {
-
                 state = LEX_TOKOUT;
 
             } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-
                 state = LEX_QSTRMID;
 
             } else if (state & LEX_COMIN) {
-
                 state = LEX_COMMID;
 
             } else {
@@ -344,19 +332,15 @@ tokenize(struct tokenizer_ctx *ctx,
         } else if (ch == '\r' || ch == '\n') {
 
             if (state & (LEX_SEQ | LEX_OUT)) {
-
                 state = LEX_SPACE;
 
             } else if (state & LEX_TOK) {
-
                 state = LEX_TOKOUT;
 
             } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-
                 state = LEX_QSTRMID;
 
             } else if (state & LEX_COM) {
-
                 state = LEX_COMOUT;
 
             } else {
@@ -366,19 +350,15 @@ tokenize(struct tokenizer_ctx *ctx,
         } else if (ch == '"') {
 
             if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
-
                 state = LEX_QSTRIN;
 
             } else if (state & LEX_QSTR) {
-
                 state = LEX_QSTROUT;
 
             } else if (state & LEX_QSTRESC) {
-
                 state = LEX_QSTRMID;
 
             } else if (state & LEX_COMIN) {
-
                 state = LEX_COMMID;
 
             } else {
@@ -387,11 +367,9 @@ tokenize(struct tokenizer_ctx *ctx,
 
         } else if (ch == '\\') {
             if (state & LEX_QSTR) {
-
                 state = LEX_QSTRESC;
 
             } else if (state & LEX_QSTRESC) {
-
                 state = LEX_QSTRMID;
 
             } else {
@@ -401,11 +379,9 @@ tokenize(struct tokenizer_ctx *ctx,
         } else if (ch == ';') {
 
             if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
-
                 state = LEX_COMIN;
 
             } else if (state & LEX_TOK) {
-
                 state = LEX_TOKOUT;
                 /* extra call back */
                 if (compile_value(ctx, buf, i, state, cb, udata) != 0) {
@@ -414,11 +390,9 @@ tokenize(struct tokenizer_ctx *ctx,
                 state = LEX_COMIN;
 
             } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-
                 state = LEX_QSTRMID;
 
             } else if (state & LEX_COMIN) {
-
                 state = LEX_COMMID;
 
             } else {
@@ -427,19 +401,15 @@ tokenize(struct tokenizer_ctx *ctx,
 
         } else {
             if (state & (LEX_SEQ | LEX_SPACE | LEX_OUT)) {
-
                 state = LEX_TOKIN;
 
             } else if (state & LEX_TOKIN) {
-
                 state = LEX_TOKMID;
 
             } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-
                 state = LEX_QSTRMID;
 
             } else if (state & LEX_COMIN) {
-
                 state = LEX_COMMID;
 
             } else {
@@ -489,7 +459,6 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
 
     //TRACE("tag=%d", rdat->tag);
     if (rdat->tag == FPARSER_SEQ) {
-
         array_t *form = (array_t *)(&rdat->body);
 
         //TRACE("%s form len %ld", rdat->seqout? "<<<" : ">>>", form->elnum);
@@ -701,7 +670,6 @@ fparser_datum_init(fparser_datum_t *dat, fparser_tag_t tag)
     dat->error = 0;
 
     if (tag == FPARSER_SEQ) {
-
         array_t *form = (array_t *)(&dat->body);
 
         if (array_init(form,
@@ -761,10 +729,8 @@ fparser_parse(int fd,
 
     while (1) {
         if ((nread = read(fd, buf, BLOCKSZ)) <= 0) {
-
             if (nread < 0) {
                 TRRETNULL(FPARSER_PARSE + 3);
-
             } else {
                 break;
             }
