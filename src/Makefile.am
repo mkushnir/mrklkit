@@ -15,6 +15,7 @@ nobase_include_HEADERS = \
 	mrklkit/lexpr.h \
 	mrklkit/lparse.h \
 	mrklkit/ltype.h \
+	mrklkit/lruntime.h \
 	mrklkit/mrklkit.h \
 	mrklkit/builtin.h \
 	mrklkit/util.h \
@@ -28,6 +29,7 @@ libmrklkit_la_SOURCES = \
 	lparse.c \
 	ltype.c \
 	ltypegen.c \
+	lruntime.c \
 	mrklkit.c \
 	builtin.c \
 	util.c \
@@ -42,7 +44,7 @@ else
 DEBUG_FLAGS = -DNDEBUG -O3
 endif
 
-libmrklkit_la_CFLAGS = $(DEBUG_FLAGS) -Wall -Wextra -Werror -std=c99 -I$(includedir) @LLVM_CFLAGS@
+libmrklkit_la_CFLAGS = -Wall -Wextra -Werror -std=c99 -I$(includedir) @LLVM_CFLAGS@ $(DEBUG_FLAGS)
 
 libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) @LLVM_LDFLAGS@ -lc++ @LLVM_LIBS@ -lmrkcommon -lmrkapp
 

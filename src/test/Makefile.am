@@ -12,14 +12,14 @@ BUILT_SOURCES = ../diag.c ../diag.h
 noinst_HEADERS = ../mrklkit/mrklkit.h
 
 if DEBUG
-    DEBUG_FLAGS = -g -O0 @CLANG_DEBUG@
+DEBUG_FLAGS = -g -O0 @CLANG_DEBUG@
 else
 DEBUG_FLAGS = -DNDEBUG -O3
 endif
 
 nodist_testfoo_SOURCES = ../diag.c
 testfoo_SOURCES = testfoo.c
-testfoo_CFLAGS = $(DEBUG_FLAGS) -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@
+testfoo_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ $(DEBUG_FLAGS)
 testfoo_LDFLAGS = -L$(libdir) @LLVM_LDFLAGS@ -lc++ @LLVM_LIBS@ -lmrkcommon -lmrklkit
 
 nodist_testfparser_SOURCES = ../diag.c

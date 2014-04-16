@@ -75,7 +75,8 @@ AC_TYPE_INT64_T
 AC_TYPE_SSIZE_T
 AC_TYPE_UINT64_T
 
-AC_SUBST(LLVM_CFLAGS, ["`llvm-config33 --cflags`"])
+# LLVM_CFALGS modulo -On
+AC_SUBST(LLVM_CFLAGS, ["`llvm-config33 --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
 AC_SUBST(LLVM_LDFLAGS, ["`llvm-config33 --ldflags`"])
 AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs`"])
 #AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets ipo`"])
