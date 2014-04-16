@@ -18,72 +18,93 @@ static LLVMValueRef compile_expr(LLVMModuleRef, LLVMBuilderRef, lkit_expr_t *);
 
 static lkit_expr_t root;
 
-int
-builtin_sym_parse(array_t *form, array_iter_t *it)
-{
-    return lkit_parse_exprdef(&root, form, it);
-}
 /*
  * libc decls:
  *  (sym printf (func int str ...))
+ *  (sym strcmp (func int str str))
  */
 
 /*
- * (sym if (func undef bool undef undef))
- * (sym print (func undef undef))
+ * (sym if (func undef bool undef undef)) done
+ * (sym print (func undef undef)) done
  *
- * (sym + (func undef undef ...))
- * (sym - (func undef undef ...))
- * (sym / (func undef undef ...))
- * (sym * (func undef undef ...))
- * (sym % (func undef undef ...))
- * (sym min (func undef undef ...))
- * (sym max (func undef undef ...))
+ * (sym + (func undef undef ...)) done
+ * (sym - (func undef undef ...)) done
+ * (sym / (func undef undef ...)) done
+ * (sym * (func undef undef ...)) done
+ * (sym % (func undef undef ...)) done
+ * (sym min (func undef undef ...)) done
+ * (sym max (func undef undef ...)) done
  *
- * (sym and (func bool bool bool ...))
- * (sym or (func bool bool bool ...))
- * (sym not (func bool bool))
+ * (sym and (func bool bool ...)) done
+ * (sym or (func bool bool ...)) done
+ * (sym not (func bool bool)) done
  *
- * (sym == (func bool undef undef))
- * (sym != (func bool undef undef))
- * (sym < (func bool undef undef))
- * (sym <= (func bool undef undef))
- * (sym > (func bool undef undef))
- * (sym >= (func bool undef undef))
+ * (sym == (func bool undef undef)) done
+ * (sym != (func bool undef undef)) done
+ * (sym < (func bool undef undef)) done
+ * (sym <= (func bool undef undef)) done
+ * (sym > (func bool undef undef)) done
+ * (sym >= (func bool undef undef)) done
  *
- * (sym get (func undef undef undef undef))
- * (sym set (func undef undef undef))
- * (sym del (func undef undef undef))
+ * (sym get (func undef undef undef undef)) done
+ * (sym set (func undef undef undef)) done
+ * (sym del (func undef undef undef)) done
  *
- * (sym itof (func float int float))
- * (sym ftoi (func int float int))
+ * (sym itof (func float int))
+ * (sym ftoi (func int float))
  * (sym tostr (func str undef))
- * (sym printf (func str str ...)) str|int|float|obj ?
  *
  * (sym map (func undef undef undef))
  * (sym reduce (func undef undef undef))
  */
 
-UNUSED static int
+static char *fnames[] = {
+    "if",
+    "print",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "min",
+    "max",
+    "and",
+    "or",
+    "not",
+    "==",
+    "!=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "get",
+    "set",
+    "del",
+    "itof",
+    "ftoi",
+    "tostr",
+};
+static int
 check_function(bytes_t *name)
 {
     char *n = (char *)name->data;
-    if (strcmp(n, "if") == 0) {
-        return 0;
-    }
-    if (strcmp(n, "print") == 0) {
-        return 0;
-    }
-    if (strcmp(n, "+") == 0) {
-        return 0;
-    }
-    if (strcmp(n, "-") == 0) {
-        return 0;
+    size_t i;
+
+    for (i = 0; i < countof(fnames); ++i) {
+        if (strcmp(fnames[i], n) == 0) {
+            return 0;
+        }
     }
     return 1;
 }
 
 
+int
+builtin_sym_parse(array_t *form, array_iter_t *it)
+{
+    return lkit_parse_exprdef(&root, form, it);
+}
 static int
 remove_undef(lkit_expr_t *value)
 {
@@ -200,32 +221,6 @@ remove_undef(lkit_expr_t *value)
             }
             value->type = (*aexpr)->type;
 
-        } else if (strcmp(name, "==") == 0 ||
-                   strcmp(name, "!=") == 0 ||
-                   strcmp(name, "<") == 0 ||
-                   strcmp(name, "<=") == 0 ||
-                   strcmp(name, ">") == 0 ||
-                   strcmp(name, ">=") == 0) {
-
-            lkit_expr_t **expr;
-            array_iter_t it;
-
-            //value->isbuiltin = 1;
-
-            for (expr = array_first(&value->subs, &it);
-                 expr != NULL;
-                 expr = array_next(&value->subs, &it)) {
-
-                if (remove_undef(*expr) != 0) {
-                    TRRET(REMOVE_UNDEF + 10);
-                }
-
-                if ((*expr)->type->tag != LKIT_BOOL) {
-                    (*expr)->error = 1;
-                    TRRET(REMOVE_UNDEF + 11);
-                }
-            }
-
         } else if (strcmp(name, "get") == 0) {
             /*
              * (sym get (func undef struct conststr undef))
@@ -241,7 +236,7 @@ remove_undef(lkit_expr_t *value)
             assert(cont != NULL);
 
             if (remove_undef(*cont) != 0) {
-                TRRET(REMOVE_UNDEF + 12);
+                TRRET(REMOVE_UNDEF + 10);
             }
 
             ty = (*cont)->type;
@@ -262,14 +257,14 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 13);
+                        TRRET(REMOVE_UNDEF + 11);
                     }
 
                     bname = (bytes_t *)(*name)->value.literal->body;
                     if ((elty =
                             lkit_struct_get_field_type(ts, bname)) == NULL) {
                         (*cont)->error = 1;
-                        TRRET(REMOVE_UNDEF + 14);
+                        TRRET(REMOVE_UNDEF + 12);
                     }
 
                     value->type = elty;
@@ -290,12 +285,12 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 15);
+                        TRRET(REMOVE_UNDEF + 13);
                     }
 
                     if ((elty = lkit_dict_get_element_type(td)) == NULL) {
                         (*cont)->error = 1;
-                        TRRET(REMOVE_UNDEF + 16);
+                        TRRET(REMOVE_UNDEF + 14);
                     }
 
                     value->type = elty;
@@ -316,12 +311,12 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 17);
+                        TRRET(REMOVE_UNDEF + 15);
                     }
 
                     if ((elty = lkit_array_get_element_type(ta)) == NULL) {
                         (*cont)->error = 1;
-                        TRRET(REMOVE_UNDEF + 18);
+                        TRRET(REMOVE_UNDEF + 16);
                     }
 
                     value->type = elty;
@@ -330,19 +325,19 @@ remove_undef(lkit_expr_t *value)
 
             default:
                 (*cont)->error = 1;
-                TRRET(REMOVE_UNDEF + 19);
+                TRRET(REMOVE_UNDEF + 17);
             }
 
             dflt = array_get(&value->subs, 2);
             assert(dflt != NULL);
 
             if (remove_undef(*dflt) != 0) {
-                TRRET(REMOVE_UNDEF + 20);
+                TRRET(REMOVE_UNDEF + 18);
             }
 
             if (lkit_type_cmp(value->type, (*dflt)->type) != 0) {
                 (*dflt)->error = 1;
-                TRRET(REMOVE_UNDEF + 21);
+                TRRET(REMOVE_UNDEF + 19);
             }
 
         } else if (strcmp(name, "set") == 0) {
@@ -361,7 +356,7 @@ remove_undef(lkit_expr_t *value)
             assert(cont != NULL);
 
             if (remove_undef(*cont) != 0) {
-                TRRET(REMOVE_UNDEF + 12);
+                TRRET(REMOVE_UNDEF + 20);
             }
 
             ty = (*cont)->type;
@@ -381,14 +376,14 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 13);
+                        TRRET(REMOVE_UNDEF + 21);
                     }
 
                     bname = (bytes_t *)(*name)->value.literal->body;
                     if ((elty =
                             lkit_struct_get_field_type(ts, bname)) == NULL) {
                         (*cont)->error = 1;
-                        TRRET(REMOVE_UNDEF + 14);
+                        TRRET(REMOVE_UNDEF + 22);
                     }
 
                 }
@@ -407,12 +402,12 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 13);
+                        TRRET(REMOVE_UNDEF + 23);
                     }
 
                     if ((elty = lkit_dict_get_element_type(td)) == NULL) {
                         (*cont)->error = 1;
-                        TRRET(REMOVE_UNDEF + 14);
+                        TRRET(REMOVE_UNDEF + 24);
                     }
 
                 }
@@ -431,12 +426,12 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 13);
+                        TRRET(REMOVE_UNDEF + 25);
                     }
 
                     if ((elty = lkit_array_get_element_type(ta)) == NULL) {
                         (*cont)->error = 1;
-                        TRRET(REMOVE_UNDEF + 14);
+                        TRRET(REMOVE_UNDEF + 26);
                     }
 
                 }
@@ -444,7 +439,7 @@ remove_undef(lkit_expr_t *value)
 
             default:
                 (*cont)->error = 1;
-                TRRET(REMOVE_UNDEF + 19);
+                TRRET(REMOVE_UNDEF + 27);
 
             }
 
@@ -454,12 +449,12 @@ remove_undef(lkit_expr_t *value)
             assert(setv != NULL);
 
             if (remove_undef(*setv) != 0) {
-                TRRET(REMOVE_UNDEF + 20);
+                TRRET(REMOVE_UNDEF + 28);
             }
 
             if (lkit_type_cmp((*setv)->type, elty) != 0) {
                 (*setv)->error = 1;
-                TRRET(REMOVE_UNDEF + 20);
+                TRRET(REMOVE_UNDEF + 29);
             }
 
         } else if (strcmp(name, "del") == 0) {
@@ -477,7 +472,7 @@ remove_undef(lkit_expr_t *value)
             assert(cont != NULL);
 
             if (remove_undef(*cont) != 0) {
-                TRRET(REMOVE_UNDEF + 12);
+                TRRET(REMOVE_UNDEF + 30);
             }
 
             ty = (*cont)->type;
@@ -495,7 +490,7 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 13);
+                        TRRET(REMOVE_UNDEF + 31);
                     }
                 }
                 break;
@@ -512,7 +507,7 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 13);
+                        TRRET(REMOVE_UNDEF + 32);
                     }
                 }
                 break;
@@ -529,18 +524,50 @@ remove_undef(lkit_expr_t *value)
                         !LKIT_EXPR_CONSTANT(*name)) {
 
                         (*name)->error = 1;
-                        TRRET(REMOVE_UNDEF + 13);
+                        TRRET(REMOVE_UNDEF + 33);
                     }
                 }
                 break;
 
             default:
                 (*cont)->error = 1;
-                TRRET(REMOVE_UNDEF + 19);
+                TRRET(REMOVE_UNDEF + 34);
 
             }
 
             value->type = ty;
+
+        } else {
+            lkit_expr_t *ref;
+
+            /* not builtin */
+            if ((ref = dict_get_item(&root.ctx, value->name)) == NULL) {
+                TRRET(REMOVE_UNDEF + 35);
+            }
+            value->type = ref->type;
+        }
+
+    } else {
+        if (strcmp(name, "==") == 0 ||
+                   strcmp(name, "!=") == 0 ||
+                   strcmp(name, "<") == 0 ||
+                   strcmp(name, "<=") == 0 ||
+                   strcmp(name, ">") == 0 ||
+                   strcmp(name, ">=") == 0) {
+
+            lkit_expr_t **expr;
+            array_iter_t it;
+
+            //value->isbuiltin = 1;
+
+            for (expr = array_first(&value->subs, &it);
+                 expr != NULL;
+                 expr = array_next(&value->subs, &it)) {
+
+                if (remove_undef(*expr) != 0) {
+                    TRRET(REMOVE_UNDEF + 36);
+                }
+            }
 
         } else if (strcmp(name, "tostr") == 0) {
             /*
@@ -554,23 +581,18 @@ remove_undef(lkit_expr_t *value)
             assert(arg != NULL);
 
             if (remove_undef(*arg) != 0) {
-                TRRET(REMOVE_UNDEF + 12);
+                TRRET(REMOVE_UNDEF + 37);
             }
 
         } else {
-            lkit_expr_t *ref;
-
-            /* not builtin */
-            if ((ref = dict_get_item(&root.ctx, value->name)) == NULL) {
-                TRRET(REMOVE_UNDEF + 13);
-            }
-            value->type = ref->type;
+            //TRACEC("\n");
+            //lkit_expr_dump(value);
+            //TRACE("........");
         }
 
-    } else {
-        //TRACEC("\n");
     }
     if (value->type->tag == LKIT_UNDEF) {
+        /* should not be reached */
         lkit_type_dump(value->type);
         lkit_expr_dump(value);
         assert(0);
@@ -578,7 +600,7 @@ remove_undef(lkit_expr_t *value)
     return 0;
 }
 
-int
+static int
 _acb(lkit_gitem_t **gitem, void *udata)
 {
     int (*cb)(lkit_expr_t *) = udata;
@@ -594,6 +616,10 @@ builtin_remove_undef(void)
     //array_traverse(&root.glist, (array_traverser_t)_acb, lkit_expr_dump);
     return res;
 }
+
+/**
+ * LLVM IR emitter.
+ */
 
 static LLVMValueRef
 compile_if(LLVMModuleRef module,
@@ -660,6 +686,72 @@ compile_if(LLVMModuleRef module,
 }
 
 static LLVMValueRef
+compile_cmp(LLVMModuleRef module,
+           LLVMBuilderRef builder,
+           lkit_expr_t *expr,
+           LLVMIntPredicate ip,
+           LLVMRealPredicate rp)
+{
+    LLVMValueRef v = NULL;
+    lkit_expr_t **arg;
+    array_iter_t it;
+    LLVMValueRef rand;
+
+    arg = array_first(&expr->subs, &it);
+    if ((v = compile_expr(module, builder, *arg)) == NULL) {
+        TR(COMPILE_CMP + 1);
+        goto end;
+    }
+
+    arg = array_next(&expr->subs, &it);
+    if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+        TR(COMPILE_CMP + 2);
+        goto end;
+    }
+
+    if ((*arg)->type->tag == LKIT_INT || (*arg)->type->tag == LKIT_BOOL) {
+        v = LLVMBuildICmp(builder, ip, v, rand, NEWVAR("cmp"));
+
+    } else if ((*arg)->type->tag == LKIT_FLOAT) {
+        v = LLVMBuildFCmp(builder, rp, v, rand, NEWVAR("cmp"));
+
+    } else if ((*arg)->type->tag == LKIT_STR) {
+        LLVMValueRef ref, args[2], rv;
+
+        /* then user-defined */
+        ref = LLVMGetNamedFunction(module, "strcmp");
+
+        if (ref == NULL) {
+            v = NULL;
+            TR(COMPILE_CMP + 3);
+            goto end;
+
+        } else {
+            args[0] = v;
+            args[1] = rand;
+            rv = LLVMBuildCall(builder,
+                              ref,
+                              args,
+                              2,
+                              NEWVAR("strcmp"));
+            //LLVMSetTailCall(v, 1);
+            v = LLVMBuildICmp(builder,
+                              ip,
+                              rv,
+                              LLVMConstInt(LLVMIntType(64), 0, 0),
+                              NEWVAR("cmp"));
+        }
+
+    } else {
+        TR(COMPILE_CMP + 4);
+        goto end;
+    }
+
+end:
+    return v;
+}
+
+static LLVMValueRef
 compile_function(LLVMModuleRef module,
                  LLVMBuilderRef builder,
                  lkit_expr_t *expr)
@@ -671,60 +763,12 @@ compile_function(LLVMModuleRef module,
     //TRACE("trying %s", expr->name->data);
 
     if (strcmp(name, "if") == 0) {
-        //lkit_expr_t **arg;
-        //LLVMValueRef res, cond, texp, fexp, fn, iexp[2];
-        //LLVMBasicBlockRef currblock, endblock, tblock, fblock, iblock[2];
-
-        //currblock = LLVMGetInsertBlock(builder);
-        //fn = LLVMGetBasicBlockParent(currblock);
-
-        ///**/
-        //arg = array_get(&expr->subs, 0);
-        //cond = compile_expr(module, builder, *arg);
-        //assert(cond != NULL);
-
-        //endblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.end"));
-
-        ///**/
-        //tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
-        //LLVMPositionBuilderAtEnd(builder, tblock);
-
-        //arg = array_get(&expr->subs, 1);
-        //texp = compile_expr(module, builder, *arg);
-        //assert(texp != NULL);
-        //res = LLVMBuildBr(builder, endblock);
-        //assert(res != NULL);
-
-        ///**/
-        //fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
-        //LLVMPositionBuilderAtEnd(builder, fblock);
-
-        //arg = array_get(&expr->subs, 2);
-        //fexp = compile_expr(module, builder, *arg);
-        //assert(fexp != NULL);
-        //res = LLVMBuildBr(builder, endblock);
-        //assert(res != NULL);
-
-        ///**/
-        //LLVMPositionBuilderAtEnd(builder, currblock);
-        //LLVMBuildCondBr(builder, cond, tblock, fblock);
-        //LLVMPositionBuilderAtEnd(builder, endblock);
-        //v = LLVMBuildPhi(builder, expr->type->backend, NEWVAR("if.result"));
-        //iexp[0] = texp;
-        //iblock[0] = LLVMIsConstant(texp) ? tblock :
-        //            LLVMGetInstructionParent(texp);
-        //iexp[1] = fexp;
-        //iblock[1] = LLVMIsConstant(fexp) ? fblock :
-        //            LLVMGetInstructionParent(fexp);
-        //LLVMAddIncoming(v, iexp, iblock, 2);
-
         lkit_expr_t **cexpr, **texpr, **fexpr;
+
         cexpr = array_get(&expr->subs, 0);
         texpr = array_get(&expr->subs, 1);
         fexpr = array_get(&expr->subs, 2);
         v = compile_if(module, builder, *cexpr, *texpr, *fexpr, expr->type);
-
-
 
     } else if (strcmp(name , "print") == 0) {
         LLVMValueRef fn, res, args[2];
@@ -783,30 +827,245 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
-        v = LLVMConstInt(LLVMInt64Type(), 0, 1);
+        if (expr->type->tag == LKIT_INT) {
+            v = LLVMConstInt(expr->type->backend, 0, 1);
+            for (arg = array_first(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
 
-        for (arg = array_first(&expr->subs, &it);
-             arg != NULL;
-             arg = array_next(&expr->subs, &it)) {
+                LLVMValueRef rand;
 
-            LLVMValueRef rand;
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 2);
+                    break;
+                }
 
-            if ((rand = compile_expr(module, builder, *arg)) == NULL) {
-                v = NULL;
-                TR(COMPILE_FUNCTION + 2);
-                break;
+                v = LLVMBuildAdd(builder, v, rand, NEWVAR("plus"));
             }
 
-            v = LLVMBuildAdd(builder, v, rand, NEWVAR("plus"));
+        } else if (expr->type->tag == LKIT_FLOAT) {
+            v = LLVMConstReal(expr->type->backend, 0.0);
+            for (arg = array_first(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 3);
+                    break;
+                }
+
+                v = LLVMBuildFAdd(builder, v, rand, NEWVAR("plus"));
+            }
+        } else {
+            TR(COMPILE_FUNCTION + 4);
+            return v;
         }
 
     } else if (strcmp(name , "-") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
 
-        v = LLVMConstInt(LLVMInt64Type(), 0, 1);
+        /*
+         * (- 1 2 3 4) -> (+ 1 (- 0 2 3 4)) -> -8
+         *   not:
+         * (- 1 2 3 4) -> (- 0 1 2 3 4) -> -10
+         */
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 5);
+            return v;
+        }
+        if (expr->type->tag == LKIT_INT) {
 
-        for (arg = array_first(&expr->subs, &it);
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 6);
+                    break;
+                }
+
+                v = LLVMBuildSub(builder, v, rand, NEWVAR("minus"));
+            }
+        } else if (expr->type->tag == LKIT_FLOAT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 7);
+                    break;
+                }
+
+                v = LLVMBuildFSub(builder, v, rand, NEWVAR("minus"));
+            }
+        } else {
+            TR(COMPILE_FUNCTION + 8);
+            return v;
+        }
+
+    } else if (strcmp(name , "/") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 9);
+            return v;
+        }
+
+        if (expr->type->tag == LKIT_INT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 10);
+                    break;
+                }
+
+                v = LLVMBuildSDiv(builder, v, rand, NEWVAR("div"));
+            }
+        } else if (expr->type->tag == LKIT_FLOAT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 11);
+                    break;
+                }
+
+                v = LLVMBuildFDiv(builder, v, rand, NEWVAR("div"));
+            }
+        } else {
+            TR(COMPILE_FUNCTION + 12);
+            return v;
+        }
+
+    } else if (strcmp(name , "*") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        if (expr->type->tag == LKIT_INT) {
+            v = LLVMConstInt(expr->type->backend, 0, 1);
+            for (arg = array_first(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 13);
+                    break;
+                }
+
+                v = LLVMBuildMul(builder, v, rand, NEWVAR("mul"));
+            }
+
+        } else if (expr->type->tag == LKIT_FLOAT) {
+            v = LLVMConstReal(expr->type->backend, 0.0);
+            for (arg = array_first(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 14);
+                    break;
+                }
+
+                v = LLVMBuildFAdd(builder, v, rand, NEWVAR("mul"));
+            }
+        } else {
+            TR(COMPILE_FUNCTION + 15);
+            return v;
+        }
+
+    } else if (strcmp(name , "%") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 16);
+            return v;
+        }
+
+        if (expr->type->tag == LKIT_INT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 17);
+                    break;
+                }
+
+                v = LLVMBuildSRem(builder, v, rand, NEWVAR("rem"));
+            }
+        } else if (expr->type->tag == LKIT_FLOAT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 18);
+                    break;
+                }
+
+                v = LLVMBuildFRem(builder, v, rand, NEWVAR("rem"));
+            }
+        } else {
+            TR(COMPILE_FUNCTION + 19);
+            return v;
+        }
+
+    } else if (strcmp(name , "min") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 20);
+            return v;
+        }
+
+#if 0
+        LLVMValueRef mem;
+        mem = LLVMBuildAlloca(builder, expr->type->backend, NEWVAR("mem"));
+        LLVMBuildStore(builder, v, mem);
+        for (arg = array_next(&expr->subs, &it);
              arg != NULL;
              arg = array_next(&expr->subs, &it)) {
 
@@ -818,7 +1077,245 @@ compile_function(LLVMModuleRef module,
                 break;
             }
 
-            v = LLVMBuildSub(builder, v, rand, NEWVAR("minus"));
+            LLVMBuildAtomicRMW(builder,
+                               LLVMAtomicRMWBinOpMin,
+                               mem,
+                               rand,
+                               LLVMAtomicOrderingNotAtomic,
+                               1);
+        }
+
+        v = LLVMBuildLoad(builder, mem, NEWVAR("min"));
+#endif
+
+        if (expr->type->tag == LKIT_INT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand, cond;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 21);
+                    break;
+                }
+
+                cond = LLVMBuildICmp(builder,
+                                     LLVMIntSLT,
+                                     v,
+                                     rand,
+                                     NEWVAR("cond"));
+
+                v = LLVMBuildSelect(builder, cond, v, rand, NEWVAR("min"));
+            }
+
+        } else if (expr->type->tag == LKIT_FLOAT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand, cond;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 22);
+                    break;
+                }
+
+                cond = LLVMBuildFCmp(builder,
+                                     LLVMRealULT,
+                                     v,
+                                     rand,
+                                     NEWVAR("cond"));
+
+                v = LLVMBuildSelect(builder, cond, v, rand, NEWVAR("min"));
+            }
+
+        } else {
+            TR(COMPILE_FUNCTION + 23);
+            return v;
+        }
+
+    } else if (strcmp(name , "max") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 24);
+            return v;
+        }
+
+        if (expr->type->tag == LKIT_INT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand, cond;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 25);
+                    break;
+                }
+
+                cond = LLVMBuildICmp(builder,
+                                     LLVMIntSGT,
+                                     v,
+                                     rand,
+                                     NEWVAR("cond"));
+
+                v = LLVMBuildSelect(builder, cond, v, rand, NEWVAR("max"));
+            }
+
+        } else if (expr->type->tag == LKIT_FLOAT) {
+            for (arg = array_next(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                LLVMValueRef rand, cond;
+
+                if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                    v = NULL;
+                    TR(COMPILE_FUNCTION + 26);
+                    break;
+                }
+
+                cond = LLVMBuildFCmp(builder,
+                                     LLVMRealUGT,
+                                     v,
+                                     rand,
+                                     NEWVAR("cond"));
+
+                v = LLVMBuildSelect(builder, cond, v, rand, NEWVAR("max"));
+            }
+
+        } else {
+            TR(COMPILE_FUNCTION + 27);
+            return v;
+        }
+
+    } else if (strcmp(name , "and") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 28);
+            return v;
+        }
+
+        for (arg = array_next(&expr->subs, &it);
+             arg != NULL;
+             arg = array_next(&expr->subs, &it)) {
+
+            LLVMValueRef rand;
+
+            if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                v = NULL;
+                TR(COMPILE_FUNCTION + 29);
+                break;
+            }
+
+            v = LLVMBuildAnd(builder, v, rand, NEWVAR("and"));
+        }
+
+    } else if (strcmp(name , "or") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 30);
+            return v;
+        }
+
+        for (arg = array_next(&expr->subs, &it);
+             arg != NULL;
+             arg = array_next(&expr->subs, &it)) {
+
+            LLVMValueRef rand;
+
+            if ((rand = compile_expr(module, builder, *arg)) == NULL) {
+                v = NULL;
+                TR(COMPILE_FUNCTION + 31);
+                break;
+            }
+
+            v = LLVMBuildOr(builder, v, rand, NEWVAR("or"));
+        }
+
+    } else if (strcmp(name , "not") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 32);
+            return v;
+        }
+        v = LLVMBuildNot(builder, v, NEWVAR("not"));
+
+    } else if (strcmp(name , "==") == 0) {
+        v = compile_cmp(module, builder, expr, LLVMIntEQ, LLVMRealUEQ);
+
+    } else if (strcmp(name , "!=") == 0) {
+        v = compile_cmp(module, builder, expr, LLVMIntNE, LLVMRealUNE);
+
+    } else if (strcmp(name , "<") == 0) {
+        v = compile_cmp(module, builder, expr, LLVMIntSLT, LLVMRealULT);
+
+    } else if (strcmp(name , "<=") == 0) {
+        v = compile_cmp(module, builder, expr, LLVMIntSLE, LLVMRealULE);
+
+    } else if (strcmp(name , ">") == 0) {
+        v = compile_cmp(module, builder, expr, LLVMIntSGT, LLVMRealUGT);
+
+    } else if (strcmp(name , ">=") == 0) {
+        v = compile_cmp(module, builder, expr, LLVMIntSGE, LLVMRealUGE);
+
+    } else if (strcmp(name , "itof") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 33);
+            return v;
+        }
+        v = LLVMBuildSIToFP(builder, v, LLVMDoubleType(), NEWVAR("itof"));
+
+    } else if (strcmp(name , "ftoi") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 33);
+            return v;
+        }
+        v = LLVMBuildFPToSI(builder, v, LLVMIntType(64), NEWVAR("ftoi"));
+
+    } else if (strcmp(name , "tostr") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+
+        arg = array_first(&expr->subs, &it);
+        if ((v = compile_expr(module, builder, *arg)) == NULL) {
+            v = NULL;
+            TR(COMPILE_FUNCTION + 34);
+            return v;
+        }
+
+        if ((*arg)->type->tag == LKIT_INT) {
+        } else {
         }
 
     } else {
@@ -850,6 +1347,7 @@ compile_expr(LLVMModuleRef module,
                     TRACE("failed to find builtin %s",
                           (char *)expr->name->data);
                     TR(COMPILE_EXPR + 1);
+
                 } else {
                     lkit_expr_t **rand;
                     array_iter_t it;
@@ -892,6 +1390,7 @@ compile_expr(LLVMModuleRef module,
                 if (ref == NULL) {
                     //LLVMDumpModule(module);
                     TR(COMPILE_EXPR + 2);
+
                 } else {
                     char buf[1024];
                     LLVMValueRef fn;
@@ -1009,15 +1508,8 @@ compile_dynamic_initializer(LLVMModuleRef module,
 
     fn = LLVMAddFunction(module,
                          buf,
-                         LLVMFunctionType(LLVMIntType(64), NULL, 0, 0));
-                         //LLVMFunctionType(LLVMVoidType(), NULL, 0, 0));
+                         LLVMFunctionType(LLVMVoidType(), NULL, 0, 0));
     builder = LLVMCreateBuilder();
-
-    //bcond = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit.cond"));
-    //LLVMPositionBuilderAtEnd(builder, bcond);
-    //chk = LLVMBuildLoad(builder, chkv, NEWVAR("chk"));
-    //LLVMBuildCondBr(builder, )
-
 
     if (value->lazy_init) {
         LLVMValueRef res, cond;
@@ -1028,7 +1520,6 @@ compile_dynamic_initializer(LLVMModuleRef module,
         LLVMSetLinkage(chkv, LLVMPrivateLinkage);
         LLVMSetInitializer(chkv, LLVMConstInt(LLVMIntType(1), 0, 0));
 
-        //compile_if(module, builder, new_expr(), value, NULL, NULL);
         currblock = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
         tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
         fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
@@ -1063,8 +1554,7 @@ compile_dynamic_initializer(LLVMModuleRef module,
         LLVMBuildStore(builder, storedv, v);
     }
 
-    //LLVMBuildRetVoid(builder);
-    LLVMBuildRet(builder, LLVMConstInt(LLVMInt64Type(), 0, 0));
+    LLVMBuildRetVoid(builder);
     LLVMDisposeBuilder(builder);
     LLVMSetLinkage(v, LLVMPrivateLinkage);
 }

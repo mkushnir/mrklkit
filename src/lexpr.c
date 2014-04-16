@@ -24,16 +24,16 @@ static void
 lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
 {
     lkit_type_str(type_of_expr(expr), bs);
-    bytestream_cat(bs, 4, " <- ");
+    bytestream_cat(bs, 3, "<- ");
     lkit_type_str(expr->type, bs);
     bytestream_cat(bs, 1, "\n");
     if (expr->isref) {
         if (expr->name != NULL) {
             bytestream_nprintf(bs,
                 strlen((char *)expr->name->data) + 7,
-                "<REF>:%s\n", expr->name->data);
+                "<REF %s>\n", expr->name->data);
         } else {
-            bytestream_cat(bs, 7, "<REF>:\n");
+            bytestream_cat(bs, 13, "<REF <NULL>>\n");
         }
         lexpr_dump(bs, expr->value.ref);
     } else {
@@ -41,7 +41,7 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
             if (expr->value.literal == NULL) {
                 bytestream_nprintf(bs,
                     strlen((char *)expr->name->data) + 9,
-                    "%s: <null>\n", expr->name->data);
+                    "%s: <NULL>\n", expr->name->data);
             } else {
                 bytestream_nprintf(bs,
                     strlen((char *)expr->name->data) + 2,
@@ -50,7 +50,7 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
             }
         } else {
             if (expr->value.literal == NULL) {
-                bytestream_cat(bs, 18, "<LITERAL>: <null>\n");
+                bytestream_cat(bs, 17, "<LITERAL <null>>\n");
             } else {
                 bytestream_cat(bs, 11, "<LITERAL>:\n");
                 fparser_datum_dump_bytestream(expr->value.literal, bs);
@@ -281,7 +281,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                 array_iter_t it;
                 fparser_datum_t **node;
                 lkit_func_t *tf = NULL;
-                int isvararg = 0, narg = 0;
+                int isvararg = 0, narg;
 
                 form = (array_t *)(dat->body);
                 if (lparse_first_word_bytes(form, &it, &expr->name, 1) != 0) {
@@ -325,6 +325,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
                 tf = (lkit_func_t *)(expr->value.ref->type);
 
+                narg = 1;
                 for (node = array_next(form, &it);
                      node != NULL;
                      node = array_next(form, &it), ++narg) {
@@ -341,7 +342,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                     }
 
                     //TRACE("arg:");
-                    //lexpr_dump(NULL, *arg);
+                    //lkit_expr_dump(*arg);
 
                     paramtype = array_get(&tf->fields, narg);
 
@@ -368,6 +369,9 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
                                 argtype->tag != LKIT_UNDEF) {
 
                                 if (lkit_type_cmp(*paramtype, argtype) != 0) {
+                                    lkit_type_dump(*paramtype);
+                                    lkit_type_dump(argtype);
+                                    lkit_expr_dump(expr);
                                     TR(LKIT_EXPR_PARSE + 14);
                                     goto err;
                                 }

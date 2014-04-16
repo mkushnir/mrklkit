@@ -126,7 +126,7 @@ err:
 }
 
 
-static void
+UNUSED static void
 do_opt(void)
 {
     LLVMPassManagerBuilderRef pmb;
