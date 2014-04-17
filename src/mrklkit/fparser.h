@@ -1,6 +1,9 @@
 #ifndef FPARSER_H
 #define FPARSER_H
 
+/**
+ * Lisp-like form parser.
+ */
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
 

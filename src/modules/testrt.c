@@ -7,7 +7,7 @@
 
 static lkit_expr_t root;
 
-int
+static int
 testrt_parse(UNUSED array_t *form, UNUSED array_iter_t *it)
 {
     /* (testrt name value) */
@@ -28,12 +28,12 @@ compile(lkit_gitem_t **gitem, UNUSED void *udata)
     lkit_expr_t *expr = (*gitem)->expr;
     //LLVMModuleRef module = (LLVMModuleRef)udata;
 
-    TRACE("compilling %s", name->data);
+    TRACE("compiling %s", name->data);
     lkit_expr_dump(expr);
     return 0;
 }
 
-int
+static int
 testrt_compile(UNUSED LLVMModuleRef module)
 {
     if (array_traverse(&root.glist, (array_traverser_t)compile, module) != 0) {
@@ -42,13 +42,13 @@ testrt_compile(UNUSED LLVMModuleRef module)
     return 0;
 }
 
-void
+static void
 testrt_init(void)
 {
     lexpr_init_ctx(&root);
 }
 
-void
+static void
 testrt_fini(void)
 {
     lexpr_fini_ctx(&root);

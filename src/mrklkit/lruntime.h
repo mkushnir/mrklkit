@@ -14,6 +14,15 @@ extern "C" {
 typedef struct _tobj {
     /* weak ref */
     lkit_type_t *type;
+    /*
+     * LKIT_INT     uint64_t
+     * LKIT_BOOL    char
+     * LKIT_FLOAT   double
+     * LKIT_STR     char[]
+     * LKIT_ARRAY   array_t
+     * LKIT_STRUCT  array_t
+     * LKIT_DICT    dict_t
+     */
     char value[];
 } tobj_t;
 

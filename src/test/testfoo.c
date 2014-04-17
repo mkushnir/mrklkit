@@ -49,138 +49,6 @@ test0(void)
 UNUSED static void
 test1(void)
 {
-    if ((module = LLVMModuleCreateWithName("test")) == NULL) {
-        FAIL("LLVMModuleCreateWithName");
-    }
-
-    if ((pm = LLVMCreateFunctionPassManagerForModule(module)) == NULL) {
-        FAIL("LLVMCreateFunctionPassManagerForModule");
-    }
-
-    LLVMInitializeFunctionPassManager(pm);
-    LLVMFinalizeFunctionPassManager(pm);
-
-    LLVMDisposePassManager(pm);
-    LLVMDisposeModule(module);
-    module = NULL;
-}
-
-UNUSED static void
-test2(void)
-{
-    int res;
-    char *error_msg = NULL;
-    LLVMTypeRef ty;
-    //LLVMValueRef val, alias;
-    LLVMValueRef fn;
-    LLVMGenericValueRef rv;
-    LLVMTypeRef fty;
-    LLVMBasicBlockRef bb;
-    LLVMBuilderRef builder;
-    LLVMExecutionEngineRef ee;
-
-    if ((module = LLVMModuleCreateWithName("test")) == NULL) {
-        FAIL("LLVMModuleCreateWithName");
-    }
-
-    if ((pm = LLVMCreatePassManager()) == NULL) {
-        FAIL("LLVMCreatePassManager");
-    }
-
-    LLVMAddBasicAliasAnalysisPass(pm);
-    LLVMAddDeadStoreEliminationPass(pm);
-    LLVMAddConstantPropagationPass(pm);
-    LLVMAddInstructionCombiningPass(pm);
-    LLVMAddReassociatePass(pm);
-    LLVMAddGVNPass(pm);
-    LLVMAddCFGSimplificationPass(pm);
-    LLVMAddPromoteMemoryToRegisterPass(pm);
-    LLVMAddSimplifyLibCallsPass(pm);
-    LLVMAddTailCallEliminationPass(pm);
-
-    ty = LLVMStructType(NULL, 0, 0);
-    //val = LLVMAddGlobal(module, ty, "main");
-    //alias = LLVMAddAlias(module, ty, val, "asd");
-
-    fty = LLVMFunctionType(LLVMInt64Type(), NULL, 0, 0);
-    fn = LLVMAddFunction(module, "zxc", fty);
-    LLVMSetLinkage(fn, LLVMExternalLinkage);
-    bb = LLVMAppendBasicBlock(fn, "L1");
-
-    builder = LLVMCreateBuilder();
-    LLVMPositionBuilderAtEnd(builder, bb);
-    //LLVMBuildRetVoid(builder);
-    LLVMBuildRet(builder, LLVMConstInt(LLVMInt64Type(), 123, 0));
-    LLVMDisposeBuilder(builder);
-
-    res = LLVMRunPassManager(pm, module);
-    TRACE("res=%d", res);
-    if (res != 0) {
-        TRACE("erorr: %s", error_msg);
-    }
-
-    LLVMDumpModule(module);
-    //LLVMPrintModuleToFile(module, "qwe", &error_msg);
-
-    res = LLVMCreateExecutionEngineForModule(&ee, module, &error_msg);
-    //res = LLVMCreateJITCompilerForModule(&ee, module, 0, &error_msg);
-    TRACE("res=%d", res);
-    if (res != 0) {
-        TRACE("erorr: %s", error_msg);
-    }
-
-    LLVMRunStaticConstructors(ee);
-
-    res = LLVMFindFunction(ee, "zxc", &fn);
-    TRACE("res=%d", res);
-    rv = LLVMRunFunction(ee, fn, 0, NULL);
-    TRACE("rv=%p", rv);
-    TRACE("rv=%llu", LLVMGenericValueToInt(rv, 0));
-    LLVMDisposeGenericValue(rv);
-
-    LLVMRunStaticDestructors(ee);
-
-    LLVMDisposePassManager(pm);
-    LLVMDisposeExecutionEngine(ee);
-    //LLVMDisposeModule(module);
-    //module = NULL;
-}
-
-UNUSED static void
-test_init(void)
-{
-    LLVMPassRegistryRef pr;
-
-    if ((pr = LLVMGetGlobalPassRegistry()) == NULL) {
-        FAIL("LLVMGetGlobalRegistry");
-    }
-    LLVMInitializeCore(pr);
-    LLVMInitializeTransformUtils(pr);
-    LLVMInitializeScalarOpts(pr);
-    LLVMInitializeObjCARCOpts(pr);
-    //LLVMInitializeVectorization(pr);
-    LLVMInitializeInstCombine(pr);
-    //LLVMInitializeIPO(pr);
-    //LLVMInitializeInstrumentation(pr);
-    LLVMInitializeAnalysis(pr);
-    LLVMInitializeIPA(pr);
-    LLVMInitializeCodeGen(pr);
-    LLVMInitializeTarget(pr);
-    LLVMInitializeNativeTarget();
-
-    //LLVMLinkInJIT();
-    LLVMLinkInInterpreter();
-}
-
-UNUSED static void
-test_fini(void)
-{
-}
-
-
-UNUSED static void
-test3(void)
-{
     int fd;
     int res;
 
@@ -218,13 +86,8 @@ main(int argc, char **argv)
     if (argc > 1) {
         fname = argv[1];
     }
-    //test_init();
-    //test1();
-    //test2();
-    //test_fini();
-    //
     mrklkit_init(&modules);
-    test3();
+    test1();
     mrklkit_fini();
     array_fini(&modules);
     return 0;

@@ -158,8 +158,8 @@ err:
 }
 
 
-UNUSED static void
-do_opt(void)
+static void
+do_analysis(void)
 {
     LLVMPassManagerBuilderRef pmb;
     LLVMPassManagerRef fpm;
@@ -215,9 +215,11 @@ mrklkit_compile(int fd)
 {
     UNUSED int res = 0;
     UNUSED char *error_msg = NULL;
-    LLVMTargetRef tr;
+    UNUSED LLVMTargetRef tr;
     UNUSED LLVMTargetMachineRef tmr;
     UNUSED LLVMMemoryBufferRef mb = NULL;
+    mrklkit_module_t **mod;
+    array_iter_t it;
 
     if (mrklkit_parse(fd) != 0) {
         TRRET(MRKLKIT_COMPILE + 1);
@@ -232,16 +234,24 @@ mrklkit_compile(int fd)
         TRRET(MRKLKIT_COMPILE + 3);
     }
 
-    /* testrt */
-    if (testrt_compile(module) != 0) {
-        TRRET(MRKLKIT_COMPILE + 4);
+    for (mod = array_first(modules, &it);
+         mod != NULL;
+         mod = array_next(modules, &it)) {
+
+        if ((*mod)->compile != NULL) {
+            if ((*mod)->compile(module)) {
+                TRRET(MRKLKIT_COMPILE + 4);
+            }
+        }
     }
 
-    do_opt();
+    /* LLVM analysis */
+    do_analysis();
 
     TRACEC("-----------------------------------------------\n");
     LLVMDumpModule(module);
 
+#if 0
     TRACEC("-----------------------------------------------\n");
     tr = LLVMGetFirstTarget();
     TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",
@@ -252,7 +262,6 @@ mrklkit_compile(int fd)
           LLVMTargetHasAsmBackend(tr),
           LLVMGetTarget(module));
 
-#if 1
     TRACEC("-----------------------------------------------\n");
     tmr = LLVMCreateTargetMachine(tr,
                                   (char *)LLVMGetTarget(module),
@@ -289,11 +298,11 @@ mrklkit_run(const char *name)
     LLVMRunStaticConstructors(ee);
 
     res = LLVMFindFunction(ee, name, &fn);
-    TRACE("res=%d", res);
+    //TRACE("res=%d", res);
     if (res == 0) {
         rv = LLVMRunFunction(ee, fn, 0, NULL);
-        TRACE("rv=%p", rv);
-        TRACE("rv=%llu", LLVMGenericValueToInt(rv, 0));
+        //TRACE("rv=%p", rv);
+        //TRACE("rv=%llu", LLVMGenericValueToInt(rv, 0));
         LLVMDisposeGenericValue(rv);
     }
     LLVMRunStaticDestructors(ee);
