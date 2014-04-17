@@ -11,11 +11,13 @@
 
 #include "unittest.h"
 #include "diag.h"
-#include <mrkdata.h>
+#include <mrkcommon/array.h>
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
 #include <mrklkit/mrklkit.h>
+#include <mrklkit/module.h>
+#include <mrklkit/testrt.h>
 
 #ifndef NDEBUG
 const char *_malloc_options = "AJ";
@@ -149,7 +151,6 @@ test_init(void)
 {
     LLVMPassRegistryRef pr;
 
-    mrkdata_init();
     if ((pr = LLVMGetGlobalPassRegistry()) == NULL) {
         FAIL("LLVMGetGlobalRegistry");
     }
@@ -174,7 +175,6 @@ test_init(void)
 UNUSED static void
 test_fini(void)
 {
-    mrkdata_fini();
 }
 
 
@@ -191,9 +191,11 @@ test3(void)
     if ((res = mrklkit_compile(fd)) != 0) {
         perror("mrklkit_compile");
     } else {
+        TRACE(FGREEN("running qwe"));
         if ((res = mrklkit_run(".mrklkit.init.qwe")) != 0) {
             perror("mrklkit_run");
         }
+        TRACE(FGREEN("running asd"));
         if ((res = mrklkit_run(".mrklkit.init.asd")) != 0) {
             perror("mrklkit_run");
         }
@@ -206,6 +208,12 @@ test3(void)
 int
 main(int argc, char **argv)
 {
+    array_t modules;
+    mrklkit_module_t **m;
+
+    array_init(&modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
+    m = array_incr(&modules);
+    *m = &testrt_module;
 
     if (argc > 1) {
         fname = argv[1];
@@ -215,8 +223,9 @@ main(int argc, char **argv)
     //test2();
     //test_fini();
     //
-    mrklkit_init_module();
+    mrklkit_init(&modules);
     test3();
-    mrklkit_fini_module();
+    mrklkit_fini();
+    array_fini(&modules);
     return 0;
 }

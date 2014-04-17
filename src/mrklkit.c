@@ -22,10 +22,12 @@
 #include <mrklkit/ltype.h>
 #include <mrklkit/ltypegen.h>
 #include <mrklkit/lexpr.h>
+#include <mrklkit/module.h>
 #include <mrklkit/mrklkit.h>
 
 #include <mrklkit/dsource.h>
 #include <mrklkit/builtin.h>
+#include <mrklkit/testrt.h>
 
 #include "diag.h"
 
@@ -34,6 +36,7 @@ LLVMExecutionEngineRef ee;
 
 /* mrklkit ctx */
 static fparser_datum_t *root;
+static array_t *modules = NULL;
 
 /**
  * Generic form parser
@@ -83,6 +86,7 @@ mrklkit_parse(int fd)
             nform = (array_t *)((*fnode)->body);
 
             if (lparse_first_word(nform, &nit, &first, 1) == 0) {
+                /* statements */
                 if (strcmp((char *)first, "type") == 0) {
                     if (lkit_parse_typedef(nform, &nit) != 0) {
                         (*fnode)->error = 1;
@@ -95,6 +99,12 @@ mrklkit_parse(int fd)
                         goto err;
                     }
 
+                //} else if (strcmp((char *)first, "testrt") == 0) {
+                //    if (testrt_parse(nform, &nit) != 0) {
+                //        (*fnode)->error = 1;
+                //        goto err;
+                //    }
+
                 //} else if (strcmp((char *)first, "dsource") == 0) {
                 //    if (dsource_parse(nform, &nit) != 0) {
                 //        (*fnode)->error = 1;
@@ -102,7 +112,29 @@ mrklkit_parse(int fd)
                 //    }
 
                 } else {
-                    /* ignore */
+                    mrklkit_module_t **mod;
+                    array_iter_t it;
+
+                    for (mod = array_first(modules, &it);
+                         mod != NULL;
+                         mod = array_next(modules, &it)) {
+
+                        if ((*mod)->parsers != NULL) {
+                            mrklkit_parser_info_t *pi;
+
+                            for (pi = (*mod)->parsers;
+                                 pi->keyword != NULL;
+                                 ++pi) {
+
+                                if (strcmp((char *)first, pi->keyword) == 0) {
+                                    if (pi->parser(nform, &nit) != 0) {
+                                        (*fnode)->error = 1;
+                                        goto err;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
                 /* ignore */
@@ -134,8 +166,6 @@ do_opt(void)
     LLVMPassManagerRef pm;
     int res = 0;
     LLVMValueRef fn = NULL;
-
-    pmb = LLVMPassManagerBuilderCreate();
 
     if ((fpm = LLVMCreateFunctionPassManagerForModule(module)) == NULL) {
         FAIL("LLVMCreateFunctionPassManagerForModule");
@@ -196,11 +226,14 @@ mrklkit_compile(int fd)
                         NULL) != 0) {
         TRRET(MRKLKIT_COMPILE + 2);
     }
-    if (builtin_remove_undef() != 0) {
+
+    /* builtin */
+    if (builtin_sym_compile(module) != 0) {
         TRRET(MRKLKIT_COMPILE + 3);
     }
 
-    if (builtin_sym_compile(module) != 0) {
+    /* testrt */
+    if (testrt_compile(module) != 0) {
         TRRET(MRKLKIT_COMPILE + 4);
     }
 
@@ -353,34 +386,57 @@ llvm_fini(void)
     LLVMDisposeExecutionEngine(ee);
 }
 
-void mrklkit_init_module(void)
+void
+mrklkit_init(array_t *mod)
 {
+    array_iter_t it;
+    mrklkit_module_t **m;
+
     llvm_init();
-
     root = NULL;
-
     ltype_init();
     lexpr_init();
-
     builtin_init();
 
-    /* dsource module? */
-    dsource_init_module();
+    modules = mod;
+    if (modules != NULL) {
+        for (m = array_first(modules, &it);
+             m != NULL;
+             m = array_next(modules, &it)) {
+            if ((*m)->init != NULL) {
+                (*m)->init();
+            }
+        }
+    }
 
+    /* dsource module? */
+    //dsource_init_module();
 }
 
 
 void
-mrklkit_fini_module(void)
+mrklkit_fini(void)
 {
-    /* dsource module? */
-    dsource_fini_module();
+    array_iter_t it;
+    mrklkit_module_t **mod;
+
+    if (modules != NULL) {
+        for (mod = array_last(modules, &it);
+             mod != NULL;
+             mod = array_prev(modules, &it)) {
+            if ((*mod)->fini != NULL) {
+                (*mod)->fini();
+            }
+        }
+    }
+    ///* dsource module? */
+    //dsource_fini_module();
 
     builtin_fini();
-
     lexpr_fini();
     ltype_fini();
 
+    /* reverse to mrklkit_parse */
     if (root != NULL) {
         fparser_datum_destroy(&root);
     }

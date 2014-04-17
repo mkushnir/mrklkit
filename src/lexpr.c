@@ -434,6 +434,9 @@ err:
 }
 
 
+/*
+ * (keyword name value)
+ */
 int
 lkit_parse_exprdef(lkit_expr_t *ctx, array_t *form, array_iter_t *it)
 {

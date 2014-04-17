@@ -16,9 +16,11 @@ nobase_include_HEADERS = \
 	mrklkit/lparse.h \
 	mrklkit/ltype.h \
 	mrklkit/lruntime.h \
+	mrklkit/module.h \
 	mrklkit/mrklkit.h \
 	mrklkit/builtin.h \
 	mrklkit/util.h \
+	mrklkit/testrt.h \
 	mrklkit/dsource.h
 
 noinst_HEADERS =
@@ -33,6 +35,7 @@ libmrklkit_la_SOURCES = \
 	mrklkit.c \
 	builtin.c \
 	util.c \
+	testrt.c \
 	dsource.c
 
 nodist_libmrklkit_la_SOURCES = diag.c

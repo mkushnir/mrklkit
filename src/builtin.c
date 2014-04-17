@@ -633,16 +633,6 @@ _acb(lkit_gitem_t **gitem, void *udata)
     return cb((*gitem)->expr);
 }
 
-int
-builtin_remove_undef(void)
-{
-    int res = array_traverse(&root.glist,
-                             (array_traverser_t)_acb,
-                             remove_undef);
-    //array_traverse(&root.glist, (array_traverser_t)_acb, lkit_expr_dump);
-    return res;
-}
-
 /**
  * LLVM IR emitter.
  */
@@ -1684,7 +1674,17 @@ sym_compile(lkit_gitem_t **gitem, void *udata)
 int
 builtin_sym_compile(LLVMModuleRef module)
 {
-    return array_traverse(&root.glist, (array_traverser_t)sym_compile, module);
+    //array_traverse(&root.glist, (array_traverser_t)_acb, lkit_expr_dump);
+    if (array_traverse(&root.glist,
+                       (array_traverser_t)_acb,
+                       remove_undef) != 0) {
+        TRRET(BUILTIN_SYM_COMPILE + 1);
+    }
+
+    if (array_traverse(&root.glist, (array_traverser_t)sym_compile, module) != 0) {
+        TRRET(BUILTIN_SYM_COMPILE + 2);
+    }
+    return 0;
 }
 
 

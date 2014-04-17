@@ -22,7 +22,6 @@ extern "C" {
 #define LKIT_UTAG_BUILTIN_MUL 1
 
 int builtin_sym_parse(array_t *, array_iter_t *);
-int builtin_remove_undef(void);
 int builtin_sym_compile(LLVMModuleRef);
 
 

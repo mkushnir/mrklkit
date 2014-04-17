@@ -40,8 +40,8 @@ int mrklkit_register_parser(const char *, mrklkit_parser_t, void *);
 
 int mrklkit_compile(int);
 int mrklkit_run(const char *);
-void mrklkit_init_module(void);
-void mrklkit_fini_module(void);
+void mrklkit_init(array_t *);
+void mrklkit_fini(void);
 
 #ifdef __cplusplus
 }
