@@ -28,6 +28,8 @@ typedef enum _lkit_tag {
     LKIT_DICT,
     LKIT_STRUCT,
     LKIT_FUNC,
+
+    LKIT_QSTR,
 } lkit_tag_t;
 
 #define LKIT_TAG_STR(tag) ( \
@@ -87,7 +89,7 @@ typedef struct _lkit_str {
 typedef struct _lkit_array {
     struct _lkit_type base;
     lkit_parser_t parser;
-    /* weak ref */
+    /* weak ref, will use delim[0] */
     unsigned char *delim;
     /* lkit_type_t * */
     array_t fields;
@@ -95,9 +97,9 @@ typedef struct _lkit_array {
 
 typedef struct _lkit_dict {
     struct _lkit_type base;
-    /* weak ref */
+    /* weak ref, will use kvdelim[0] */
     unsigned char *kvdelim;
-    /* weak ref */
+    /* weak ref, will use fdelim[0] */
     unsigned char *fdelim;
     /* lkit_type_t * */
     array_t fields;
@@ -106,7 +108,7 @@ typedef struct _lkit_dict {
 typedef struct _lkit_struct {
     struct _lkit_type base;
     lkit_parser_t parser;
-    /* weak ref */
+    /* weak ref, will use delim[0] */
     unsigned char *delim;
     /* lkit_type_t * */
     array_t fields;

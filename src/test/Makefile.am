@@ -29,8 +29,8 @@ testfparser_LDFLAGS = -L$(libdir) -lmrkcommon -lmrklkit
 
 nodist_testdparser_SOURCES = ../diag.c
 testdparser_SOURCES = testdparser.c
-testdparser_CFLAGS = $(DEBUG_FLAGS) -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir)
-testdparser_LDFLAGS = -L$(libdir) -lmrkcommon -lmrklkit
+testdparser_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ $(DEBUG_FLAGS)
+testdparser_LDFLAGS = -L$(libdir) @LLVM_LDFLAGS@ -lc++ @LLVM_LIBS@ -lmrkcommon -lmrklkit
 
 ../diag.c ../diag.h: ../diag.txt
 	sh ../gen-diag
