@@ -18,7 +18,7 @@ typedef struct _tobj {
      * LKIT_INT     uint64_t
      * LKIT_BOOL    char
      * LKIT_FLOAT   double
-     * LKIT_STR     char[]
+     * LKIT_STR     bytes_t
      * LKIT_ARRAY   array_t
      * LKIT_STRUCT  array_t
      * LKIT_DICT    dict_t

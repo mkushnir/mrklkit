@@ -8,6 +8,9 @@
 #include <mrklkit/fparser.h>
 #include <mrklkit/util.h>
 
+#include "diag.h"
+
+
 uint64_t
 bytes_hash(bytes_t *bytes)
 {
@@ -35,6 +38,29 @@ bytes_cmp(bytes_t *a, bytes_t *b)
     }
     return diff;
 }
+
+bytes_t *
+bytes_new(size_t sz)
+{
+    bytes_t *res;
+
+    if ((res = malloc(sizeof(bytes_t) + sz)) == NULL) {
+        FAIL("malloc");
+    }
+    res->sz = sz;
+    res->hash = 0;
+    return res;
+}
+
+void
+bytes_destroy(bytes_t **v)
+{
+    if (*v != NULL) {
+        free(*v);
+        *v = NULL;
+    }
+}
+
 
 
 char *newvar(char *buf, size_t sz, const char *prefix)

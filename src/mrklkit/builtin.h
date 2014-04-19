@@ -14,13 +14,6 @@
 extern "C" {
 #endif
 
-#define LKIT_UTAG_BUILTIN_IF 1
-#define LKIT_UTAG_BUILTIN_PRINT 1
-#define LKIT_UTAG_BUILTIN_PLUS 1
-#define LKIT_UTAG_BUILTIN_MINUS 1
-#define LKIT_UTAG_BUILTIN_DIV 1
-#define LKIT_UTAG_BUILTIN_MUL 1
-
 int builtin_sym_parse(array_t *, array_iter_t *);
 int builtin_sym_compile(LLVMModuleRef);
 

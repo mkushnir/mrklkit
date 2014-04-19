@@ -1,10 +1,55 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
+#include <mrkcommon/util.h>
 
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
 
+#include "diag.h"
+
 static array_t objects;
+
+void
+rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
+{
+    if (key != NULL) {
+        free(key);
+    }
+}
+
+void
+rt_dict_fini_keyval(bytes_t *key, UNUSED void *val)
+{
+    if (key != NULL) {
+        free(key);
+    }
+}
+
+
+void
+mrklkit_rt_dict_init(dict_t *dict, lkit_type_t *ty)
+{
+    switch (ty->tag) {
+    case LKIT_INT:
+    case LKIT_FLOAT:
+        dict_init(dict,
+                  17,
+                  (dict_hashfn_t)bytes_hash,
+                  (dict_item_comparator_t)bytes_cmp,
+                  (dict_item_finalizer_t)rt_dict_fini_keyonly);
+        break;
+
+    case LKIT_STR:
+        dict_init(dict,
+                  17,
+                  (dict_hashfn_t)bytes_hash,
+                  (dict_item_comparator_t)bytes_cmp,
+                  (dict_item_finalizer_t)rt_dict_fini_keyval);
+    default:
+        FAIL("mrklkit_rt_dict_init");
+    }
+}
+
 
 void
 mrklkit_rt_array_dtor(void *o)
