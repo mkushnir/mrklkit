@@ -53,8 +53,8 @@ static lkit_expr_t root;
  * (sym set (func undef undef undef)) done
  * (sym del (func undef undef undef)) done
  *
- * (sym itof (func float int))
- * (sym ftoi (func int float))
+ * (sym itof (func float int)) done
+ * (sym ftoi (func int float)) done
  * (sym tostr (func str undef))
  *
  * (sym map (func undef undef undef))

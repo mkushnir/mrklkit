@@ -245,11 +245,18 @@ mrklkit_compile(int fd)
         }
     }
 
+#if 1
+    TRACEC("-----------------------------------------------\n");
+    LLVMDumpModule(module);
+#endif
+
     /* LLVM analysis */
     do_analysis();
 
+#if 0
     TRACEC("-----------------------------------------------\n");
     LLVMDumpModule(module);
+#endif
 
 #if 0
     TRACEC("-----------------------------------------------\n");

@@ -40,7 +40,17 @@ ltype_compile(lkit_type_t *ty,
         break;
 
     case LKIT_STR:
-        ty->backend = LLVMPointerType(LLVMIntType(8), 0);
+        {
+            LLVMTypeRef fields[3];
+
+            /*
+             * bytes_t *
+             */
+            fields[0] = LLVMIntType(64);
+            fields[1] = LLVMIntType(64);
+            fields[2] = LLVMArrayType(LLVMIntType(8), 0);
+            ty->backend = LLVMPointerType(LLVMStructType(fields, 3, 0), 0);
+        }
         break;
 
     case LKIT_FLOAT:

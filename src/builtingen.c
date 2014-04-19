@@ -165,8 +165,11 @@ compile_cmp(LLVMModuleRef module,
             goto end;
 
         } else {
-            args[0] = v;
-            args[1] = rand;
+            /*
+             * bytes_t *
+             */
+            args[0] = LLVMBuildStructGEP(builder, v, 2, NEWVAR("tmp"));
+            args[1] = LLVMBuildStructGEP(builder, rand, 2, NEWVAR("tmp"));
             rv = LLVMBuildCall(builder,
                               ref,
                               args,
@@ -203,6 +206,7 @@ compile_function(LLVMModuleRef module,
     if (strcmp(name, "if") == 0) {
         lkit_expr_t **cexpr, **texpr, **fexpr;
 
+        //(sym if (func undef bool undef undef))
         if (expr->subs.elnum < 3) {
             TR(COMPILE_FUNCTION + 1);
             return v;
@@ -221,6 +225,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym , (func undef undef ...))
         for (arg = array_first(&expr->subs, &it);
              arg != NULL;
              arg = array_next(&expr->subs, &it)) {
@@ -234,6 +239,7 @@ compile_function(LLVMModuleRef module,
     } else if (strcmp(name, "print") == 0) {
         LLVMValueRef fn, args[2];
 
+        // (sym print (func undef undef ...))
         if ((fn = LLVMGetNamedFunction(module, "printf")) == NULL) {
             TR(COMPILE_FUNCTION + 2);
         } else {
@@ -254,35 +260,42 @@ compile_function(LLVMModuleRef module,
                     args[0] = LLVMBuildGlobalStringPtr(builder,
                                                        "%ld ",
                                                        NEWVAR("printf.fmt"));
+                    args[1] = v;
                     break;
 
                 case LKIT_FLOAT:
                     args[0] = LLVMBuildGlobalStringPtr(builder,
                                                        "%lf ",
                                                        NEWVAR("printf.fmt"));
+                    args[1] = v;
                     break;
 
                 case LKIT_STR:
                     args[0] = LLVMBuildGlobalStringPtr(builder,
                                                        "%s ",
                                                        NEWVAR("printf.fmt"));
+                    /*
+                     * bytes_t *
+                     */
+                    args[1] = LLVMBuildStructGEP(builder, v, 2, NEWVAR((char *)(*arg)->name->data));
                     break;
 
                 case LKIT_BOOL:
                     args[0] = LLVMBuildGlobalStringPtr(builder,
                                                        "%hhd ",
                                                        NEWVAR("printf.fmt"));
+                    args[1] = v;
                     break;
 
                 default:
                     args[0] = LLVMBuildGlobalStringPtr(builder,
                                                        "%p ",
                                                        NEWVAR("printf.fmt"));
+                    args[1] = v;
                     break;
 
                 }
 
-                args[1] = v;
                 (void)LLVMBuildCall(builder, fn, args, 2, NEWVAR(name));
             }
 
@@ -290,11 +303,11 @@ compile_function(LLVMModuleRef module,
             (void)LLVMBuildCall(builder, fn, args, 1, NEWVAR("printf.nl"));
         }
 
-
     } else if (strcmp(name , "+") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym + (func undef undef ...))
         if (expr->type->tag == LKIT_INT) {
             v = LLVMConstInt(expr->type->backend, 0, 1);
             for (arg = array_first(&expr->subs, &it);
@@ -337,6 +350,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym - (func undef undef ...))
         /*
          * (- 1 2 3 4) -> (+ 1 (- 0 2 3 4)) -> -8
          *   not:
@@ -388,6 +402,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym / (func undef undef ...))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -434,6 +449,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym * (func undef undef ...))
         if (expr->type->tag == LKIT_INT) {
             v = LLVMConstInt(expr->type->backend, 0, 1);
             for (arg = array_first(&expr->subs, &it);
@@ -476,6 +492,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym % (func undef undef ...))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -522,6 +539,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym min (func undef undef ...))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -609,6 +627,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym max (func undef undef ...))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -669,6 +688,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym and (func bool bool ...))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -695,6 +715,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym or (func bool bool ...))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -721,6 +742,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym not (func bool bool))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -730,27 +752,34 @@ compile_function(LLVMModuleRef module,
         v = LLVMBuildNot(builder, v, NEWVAR("not"));
 
     } else if (strcmp(name , "==") == 0) {
+        //(sym == (func bool undef undef)) done
         v = compile_cmp(module, builder, expr, LLVMIntEQ, LLVMRealUEQ);
 
     } else if (strcmp(name , "!=") == 0) {
+        //(sym != (func bool undef undef)) done
         v = compile_cmp(module, builder, expr, LLVMIntNE, LLVMRealUNE);
 
     } else if (strcmp(name , "<") == 0) {
+        //(sym < (func bool undef undef)) done
         v = compile_cmp(module, builder, expr, LLVMIntSLT, LLVMRealULT);
 
     } else if (strcmp(name , "<=") == 0) {
+        //(sym <= (func bool undef undef)) done
         v = compile_cmp(module, builder, expr, LLVMIntSLE, LLVMRealULE);
 
     } else if (strcmp(name , ">") == 0) {
+        //(sym > (func bool undef undef)) done
         v = compile_cmp(module, builder, expr, LLVMIntSGT, LLVMRealUGT);
 
     } else if (strcmp(name , ">=") == 0) {
+        //(sym >= (func bool undef undef)) done
         v = compile_cmp(module, builder, expr, LLVMIntSGE, LLVMRealUGE);
 
     } else if (strcmp(name , "itof") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym itof (func float int))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -763,6 +792,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym ftoi (func int float))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -775,6 +805,7 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg;
         array_iter_t it;
 
+        //(sym tostr (func str undef))
         arg = array_first(&expr->subs, &it);
         if ((v = compile_expr(module, builder, *arg)) == NULL) {
             v = NULL;
@@ -787,9 +818,23 @@ compile_function(LLVMModuleRef module,
         }
 
     } else {
+        TR(COMPILE_FUNCTION + 37);
     }
 
     return v;
+}
+
+static LLVMTypeRef
+compile_bytes_t(size_t sz)
+{
+
+    LLVMTypeRef fields[3], ty;
+
+    fields[0] = LLVMIntType(64);
+    fields[1] = LLVMIntType(64);
+    fields[2] = LLVMArrayType(LLVMIntType(8), sz + 1);
+    ty = LLVMStructType(fields, 3, 0);
+    return ty;
 }
 
 static LLVMValueRef
@@ -858,7 +903,6 @@ compile_expr(LLVMModuleRef module,
         case LKIT_INT:
         case LKIT_FLOAT:
         case LKIT_BOOL:
-        case LKIT_STR:
             {
                 LLVMValueRef ref;
 
@@ -899,6 +943,45 @@ compile_expr(LLVMModuleRef module,
 
             break;
 
+        case LKIT_STR:
+            {
+                LLVMValueRef ref;
+
+                assert(builder != NULL);
+
+                ref = LLVMGetNamedGlobal(module, (char *)expr->name->data);
+                if (ref == NULL) {
+                    //LLVMDumpModule(module);
+                    TR(COMPILE_EXPR + 3);
+
+                } else {
+                    char buf[1024];
+                    LLVMValueRef fn;
+
+                    snprintf(buf,
+                             sizeof(buf),
+                             ".mrklkit.init.%s",
+                             (char *)expr->name->data);
+                    //TRACE("init: %s", buf);
+
+                    if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
+                        if (expr->value.ref->lazy_init) {
+                            if (LLVMBuildCall(builder,
+                                              fn,
+                                              NULL,
+                                              0,
+                                              NEWVAR("tmp")) == NULL) {
+                                TR(COMPILE_EXPR + 4);
+                            }
+                        }
+                    }
+
+                    v = LLVMBuildLoad(builder, ref, NEWVAR((char *)expr->name->data));
+                }
+            }
+
+            break;
+
         default:
             TR(COMPILE_EXPR + 5);
             break;
@@ -928,20 +1011,36 @@ compile_expr(LLVMModuleRef module,
 
             case LKIT_STR:
                 {
-                    LLVMValueRef tmp;
+#if 0
                     bytes_t *b;
+                    LLVMValueRef tmp;
 
                     b = (bytes_t *)expr->value.literal->body;
                     tmp = LLVMAddGlobal(module,
                                         LLVMArrayType(LLVMIntType(8),
                                                       b->sz + 1),
-                                        NEWVAR(".mrklkit.tmp"));
+                                        NEWVAR(".mrklkit.literal"));
                     LLVMSetLinkage(tmp, LLVMPrivateLinkage);
                     LLVMSetInitializer(tmp,
                                        LLVMConstString((char *)b->data,
                                                        b->sz,
                                                        0));
                     v = LLVMConstBitCast(tmp, expr->type->backend);
+#endif
+
+#if 1
+                    bytes_t *b;
+                    LLVMValueRef binit[3];
+
+                    b = (bytes_t *)expr->value.literal->body;
+                    v = LLVMAddGlobal(module,
+                                         compile_bytes_t(b->sz),
+                                         NEWVAR(".mrklkit.val"));
+                    binit[0] = LLVMConstInt(LLVMIntType(64), b->sz, 0);
+                    binit[1] = LLVMConstInt(LLVMIntType(64), bytes_hash(b), 0);
+                    binit[2] = LLVMConstString((char *)b->data, b->sz, 0);
+                    LLVMSetInitializer(v, LLVMConstStruct(binit, 3, 0));
+#endif
                 }
                 break;
 
