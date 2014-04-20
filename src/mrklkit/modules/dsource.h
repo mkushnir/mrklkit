@@ -1,7 +1,7 @@
 #ifndef DSOURCE_H_DEFINED
 #define DSOURCE_H_DEFINED
 
-#include "ltype.h"
+#include <mrklkit/ltype.h>
 
 #ifdef __cplusplus
 extern "C" {

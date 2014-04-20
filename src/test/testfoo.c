@@ -17,7 +17,7 @@
 
 #include <mrklkit/mrklkit.h>
 #include <mrklkit/module.h>
-#include <mrklkit/testrt.h>
+#include <mrklkit/modules/testrt.h>
 
 #ifndef NDEBUG
 const char *_malloc_options = "AJ";

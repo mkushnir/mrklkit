@@ -3,7 +3,7 @@
 
 #include <mrklkit/module.h>
 #include <mrklkit/lexpr.h>
-#include <mrklkit/testrt.h>
+#include <mrklkit/modules/testrt.h>
 
 static lkit_expr_t root;
 

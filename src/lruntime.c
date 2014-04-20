@@ -9,7 +9,7 @@
 
 static array_t objects;
 
-void
+static void
 rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
 {
     if (key != NULL) {
@@ -17,22 +17,25 @@ rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
     }
 }
 
-void
-rt_dict_fini_keyval(bytes_t *key, UNUSED void *val)
+static void
+rt_dict_fini_key_free_val(bytes_t *key, void *val)
 {
     if (key != NULL) {
         free(key);
+    }
+    if (val != NULL) {
+        free(val);
     }
 }
 
 
 void
-mrklkit_rt_dict_init(dict_t *dict, lkit_type_t *ty)
+mrklkit_rt_dict_init(dict_t *value, lkit_type_t *ty)
 {
     switch (ty->tag) {
     case LKIT_INT:
     case LKIT_FLOAT:
-        dict_init(dict,
+        dict_init(value,
                   17,
                   (dict_hashfn_t)bytes_hash,
                   (dict_item_comparator_t)bytes_cmp,
@@ -40,37 +43,62 @@ mrklkit_rt_dict_init(dict_t *dict, lkit_type_t *ty)
         break;
 
     case LKIT_STR:
-        dict_init(dict,
+        dict_init(value,
                   17,
                   (dict_hashfn_t)bytes_hash,
                   (dict_item_comparator_t)bytes_cmp,
-                  (dict_item_finalizer_t)rt_dict_fini_keyval);
+                  (dict_item_finalizer_t)rt_dict_fini_key_free_val);
+
     default:
         FAIL("mrklkit_rt_dict_init");
     }
 }
 
+void
+mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
+{
+    switch (ty->tag) {
+    case LKIT_INT:
+        array_init(value, sizeof(uint64_t), 0, NULL, NULL);
+
+    case LKIT_FLOAT:
+
+        array_init(value, sizeof(double), 0, NULL, NULL);
+        break;
+
+    case LKIT_STR:
+    case LKIT_QSTR:
+        array_init(value, sizeof(byterange_t), 0, NULL, NULL);
+
+    default:
+        FAIL("mrklkit_rt_array_init");
+    }
+}
+
 
 void
-mrklkit_rt_array_dtor(void *o)
+mrklkit_rt_array_fini(void *o)
 {
     array_t *v = o;
     array_fini(v);
 }
 
+/**
+ * tobj_t operations
+ */
 void
-mrklkit_rt_dict_dtor(void *o)
+mrklkit_rt_dict_fini(void *o)
 {
     dict_t *v = o;
     dict_fini(v);
 }
 
 static int
-tobj_fini(tobj_t **o)
+tobj_destroy(tobj_t **o)
 {
     if (*o != NULL) {
-        if ((*o)->type->dtor != NULL) {
-            (*o)->type->dtor((*o)->value);
+        if ((*o)->type->fini != NULL) {
+            (*o)->type->fini((*o)->value);
         }
         free(*o);
         *o = NULL;
@@ -89,7 +117,7 @@ lruntime_init(void)
 {
     array_init(&objects, sizeof(tobj_t *), 0,
                NULL,
-               (array_finalizer_t)tobj_fini);
+               (array_finalizer_t)tobj_destroy);
 }
 
 void

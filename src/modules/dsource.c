@@ -7,10 +7,10 @@
 #include <mrkcommon/util.h>
 
 #include <mrklkit/fparser.h>
-
-#include <mrklkit/dsource.h>
 #include <mrklkit/lparse.h>
 #include <mrklkit/ltype.h>
+
+#include <mrklkit/modules/dsource.h>
 
 #include "diag.h"
 

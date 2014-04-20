@@ -12,7 +12,7 @@
 #include <mrklkit/fparser.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lparse.h>
-/* dtors */
+/* finis */
 #include <mrklkit/lruntime.h>
 #include <mrklkit/util.h>
 
@@ -126,7 +126,7 @@ lkit_type_new(lkit_tag_t tag)
         ty->tag = tag;
         ty->name = "undef";
         ty->error = 0;
-        ty->dtor = NULL;
+        ty->fini = NULL;
         break;
 
     case LKIT_INT:
@@ -139,7 +139,7 @@ lkit_type_new(lkit_tag_t tag)
             ti->base.tag = tag;
             ti->base.name = "int";
             LKIT_ERROR(ti) = 0;
-            ti->base.dtor = NULL;
+            ti->base.fini = NULL;
             ty = (lkit_type_t *)ti;
         }
         break;
@@ -154,7 +154,7 @@ lkit_type_new(lkit_tag_t tag)
             tc->base.tag = tag;
             tc->base.name = "str";
             LKIT_ERROR(tc) = 0;
-            tc->base.dtor = NULL;
+            tc->base.fini = NULL;
             ty = (lkit_type_t *)tc;
         }
         break;
@@ -169,7 +169,7 @@ lkit_type_new(lkit_tag_t tag)
             tg->base.tag = tag;
             tg->base.name = "float";
             LKIT_ERROR(tg) = 0;
-            tg->base.dtor = NULL;
+            tg->base.fini = NULL;
             ty = (lkit_type_t *)tg;
         }
         break;
@@ -184,7 +184,7 @@ lkit_type_new(lkit_tag_t tag)
             tb->base.tag = tag;
             tb->base.name = "bool";
             LKIT_ERROR(tb) = 0;
-            tb->base.dtor = NULL;
+            tb->base.fini = NULL;
             ty = (lkit_type_t *)tb;
         }
         break;
@@ -199,7 +199,7 @@ lkit_type_new(lkit_tag_t tag)
             tv->base.tag = tag;
             tv->base.name = "...";
             LKIT_ERROR(tv) = 0;
-            tv->base.dtor = NULL;
+            tv->base.fini = NULL;
             ty = (lkit_type_t *)tv;
         }
         break;
@@ -217,7 +217,7 @@ lkit_type_new(lkit_tag_t tag)
             ta->parser = LKIT_PARSER_NONE;
             ta->delim = NULL;
             array_init(&ta->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
-            ta->base.dtor = mrklkit_rt_array_dtor;
+            ta->base.fini = mrklkit_rt_array_fini;
             ty = (lkit_type_t *)ta;
         }
         break;
@@ -234,7 +234,7 @@ lkit_type_new(lkit_tag_t tag)
             LKIT_ERROR(td) = 0;
             td->kvdelim = NULL;
             td->fdelim = NULL;
-            td->base.dtor = mrklkit_rt_dict_dtor;
+            td->base.fini = mrklkit_rt_dict_fini;
             array_init(&td->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             ty = (lkit_type_t *)td;
         }
@@ -252,7 +252,7 @@ lkit_type_new(lkit_tag_t tag)
             LKIT_ERROR(ts) = 0;
             ts->parser = LKIT_PARSER_NONE;
             ts->delim = NULL;
-            ts->base.dtor = mrklkit_rt_array_dtor;
+            ts->base.fini = mrklkit_rt_array_fini;
             array_init(&ts->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             array_init(&ts->names, sizeof(unsigned char *), 0, NULL, NULL);
             ty = (lkit_type_t *)ts;
@@ -268,7 +268,7 @@ lkit_type_new(lkit_tag_t tag)
             }
             tf->base.tag = tag;
             tf->base.name = "func";
-            tf->base.dtor = NULL;
+            tf->base.fini = NULL;
             LKIT_ERROR(tf) = 0;
             array_init(&tf->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             ty = (lkit_type_t *)tf;

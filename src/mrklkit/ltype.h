@@ -61,7 +61,7 @@ typedef struct _lkit_type {
     LLVMTypeRef backend;
     lkit_tag_t tag;
     int error:1;
-    void (*dtor)(void *);
+    void (*fini)(void *);
 } lkit_type_t;
 
 #define LKIT_ERROR(pty) (((lkit_type_t *)(pty))->error)

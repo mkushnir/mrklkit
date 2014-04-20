@@ -28,20 +28,24 @@ typedef struct _tobj {
 
 #define LRUNTIME_V2O(v) ((v) - sizeof(lkit_type_t *))
 
-void mrklkit_rt_array_dtor(void *);
-void mrklkit_rt_dict_dtor(void *);
-
 void mrklkit_rt_gc(void);
 
-char *mrklkit_rt_str_new(size_t);
-void mrklkit_rt_str_cat(char *, size_t, char *, size_t);
+//tobj_t *mrklkit_rt_dict_new(lkit_dict_t *);
+void mrklkit_rt_dict_init(dict_t *, lkit_type_t *);
+void mrklkit_rt_dict_fini(void *);
 
-tobj_t *mrklkit_rt_array_new(lkit_array_t *);
-tobj_t *mrklkit_rt_struct_new(lkit_struct_t *);
-tobj_t *mrklkit_rt_dict_new(lkit_dict_t *);
+//tobj_t *mrklkit_rt_array_new(lkit_array_t *);
+void mrklkit_rt_array_init(array_t *, lkit_type_t *);
+void mrklkit_rt_array_fini(void *);
+
+//tobj_t *mrklkit_rt_struct_new(lkit_struct_t *);
+
+//char *mrklkit_rt_str_new(size_t);
+//void mrklkit_rt_str_cat(char *, size_t, char *, size_t);
 
 void lruntime_init(void);
 void lruntime_fini(void);
+
 #ifdef __cplusplus
 }
 #endif

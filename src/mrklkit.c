@@ -25,9 +25,11 @@
 #include <mrklkit/module.h>
 #include <mrklkit/mrklkit.h>
 
-#include <mrklkit/dsource.h>
 #include <mrklkit/builtin.h>
-#include <mrklkit/testrt.h>
+#include <mrklkit/lruntime.h>
+
+#include <mrklkit/modules/testrt.h>
+#include <mrklkit/modules/dsource.h>
 
 #include "diag.h"
 
@@ -413,6 +415,7 @@ mrklkit_init(array_t *mod)
     ltype_init();
     lexpr_init();
     builtin_init();
+    lruntime_init();
 
     modules = mod;
     if (modules != NULL) {
@@ -448,6 +451,7 @@ mrklkit_fini(void)
     ///* dsource module? */
     //dsource_fini_module();
 
+    lruntime_fini();
     builtin_fini();
     lexpr_fini();
     ltype_fini();

@@ -83,7 +83,7 @@ reach_delim(bytestream_t *bs, char fdelim, char rdelim[2])
                         reach_value(bs, fdelim); \
                     } \
                 } \
-                return flags & DPARSE_NEXTONERROR ? 0 : DPARSE_ERRORVALUE; \
+                return DPARSE_ERRORVALUE; \
             } else { \
                 *value = (ty)fn(SDATA(bs, spos), &endptr); \
             } \
@@ -101,12 +101,10 @@ reach_delim(bytestream_t *bs, char fdelim, char rdelim[2])
         } \
         SINCR(bs); \
     } \
-    SPOS(bs) = spos; \
     return DPARSE_NEEDMORE; \
 err: \
-    if (flags & DPARSE_RESETONERROR) { \
-        SPOS(bs) = spos; \
-    } else { \
+    SPOS(bs) = spos; \
+    if (!(flags & DPARSE_RESETONERROR)) { \
         reach_delim(bs, fdelim, rdelim); \
         if (flags & DPARSE_MERGEDELIM) { \
             reach_value(bs, fdelim); \
@@ -114,7 +112,58 @@ err: \
             SINCR(bs); \
         } \
     } \
-    return flags & DPARSE_NEXTONERROR ? 0 : DPARSE_ERRORVALUE;
+    return DPARSE_ERRORVALUE;
+
+
+#define DPARSE_KV_INTFLOAT(ty, fn) \
+    int res; \
+    off_t spos = SPOS(bs); \
+    byterange_t br; \
+    bytes_t *key; \
+    union { \
+        ty v; \
+        void *p; \
+    } val; \
+    char krdelim[2] = {fdelim, rdelim[0]}; \
+    while (!SNEEDMORE(bs)) { \
+        if ((res = dparse_str_byterange(bs, \
+                                        kvdelim, \
+                                        krdelim, \
+                                        &br, \
+                                        ch, \
+                                        flags)) == DPARSE_NEEDMORE) { \
+            goto needmore; \
+        } else if (res == DPARSE_ERRORVALUE) { \
+            goto err; \
+        } \
+        key = bytes_new(br.end - br.start + 1); \
+        memcpy(key->data, SDATA(bs, br.start), br.end - br.start); \
+        key->data[br.end - br.start] = '\0'; \
+        /* \
+         * XXX we "require" here that sizeof(ty) == sizeof(void *), \
+         * sigh ... \
+         */ \
+        assert(sizeof(void *) == sizeof(ty)); \
+        if ((res = fn(bs, \
+                      fdelim, \
+                      rdelim, \
+                      &val.v, \
+                      ch, \
+                      flags)) == DPARSE_NEEDMORE) { \
+            goto needmore; \
+        } else if (res == DPARSE_ERRORVALUE) { \
+            goto err; \
+        } \
+        dict_set_item(value, key, val.p); \
+        return 0; \
+    } \
+needmore: \
+    return DPARSE_NEEDMORE; \
+err: \
+    if (flags & DPARSE_RESETONERROR) { \
+        SPOS(bs) = spos; \
+    } \
+    return DPARSE_ERRORVALUE;
 
 
 int
@@ -126,79 +175,6 @@ dparse_int(bytestream_t *bs,
            unsigned int flags)
 {
     DPARSE_INTFLOAT(uint64_t, strtoll10);
-}
-
-
-int
-dparse_kv_int(UNUSED bytestream_t *bs,
-              UNUSED char kvdelim,
-              UNUSED char fdelim,
-              UNUSED char rdelim[2],
-              UNUSED dict_t *value,
-              UNUSED char *ch,
-              UNUSED unsigned int flags)
-{
-    int res;
-    off_t spos = SPOS(bs);
-    byterange_t br;
-    bytes_t *key;
-    uint64_t val;
-    char krdelim[2] = {fdelim, rdelim[0]};
-
-    while (!SNEEDMORE(bs)) {
-        if ((res = dparse_str_byterange(bs,
-                                        kvdelim,
-                                        krdelim,
-                                        &br,
-                                        ch,
-                                        flags)) == DPARSE_NEEDMORE) {
-            goto needmore;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            goto err;
-        }
-
-        key = bytes_new(br.end - br.start + 1);
-        memcpy(key->data, SDATA(bs, br.start), br.end - br.start);
-        key->data[br.end] = '\0';
-
-        /*
-         * XXX we "require" here that sizeof(uint64_t) == sizeof(void *),
-         * sigh ...
-         */
-        assert(sizeof(void *) == sizeof(uint64_t));
-        if ((res = dparse_int(bs,
-                              fdelim,
-                              rdelim,
-                              &val,
-                              ch,
-                              flags)) == DPARSE_NEEDMORE) {
-            goto needmore;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            goto err;
-        }
-
-        dict_set_item(value, key, (void *)value);
-    }
-    return 0;
-
-needmore:
-    SPOS(bs) = spos;
-    return DPARSE_NEEDMORE;
-
-err:
-    if (flags & DPARSE_RESETONERROR) {
-        SPOS(bs) = spos;
-    } else {
-        reach_delim(bs, fdelim, rdelim);
-        if (flags & DPARSE_MERGEDELIM) {
-            reach_value(bs, fdelim);
-        } else {
-            SINCR(bs);
-        }
-    }
-    return flags & DPARSE_NEXTONERROR ? 0 : DPARSE_ERRORVALUE;
 }
 
 
@@ -215,15 +191,28 @@ dparse_float(bytestream_t *bs,
 
 
 int
-dparse_kv_float(UNUSED bytestream_t *bs,
-                UNUSED char kvdelim,
-                UNUSED char fdelim,
-                UNUSED char rdelim[2],
-                UNUSED dict_t *value,
-                UNUSED char *ch,
-                UNUSED unsigned int flags)
+dparse_kv_int(bytestream_t *bs,
+              char kvdelim,
+              char fdelim,
+              char rdelim[2],
+              dict_t *value,
+              char *ch,
+              unsigned int flags)
 {
-    return 0;
+    DPARSE_KV_INTFLOAT(uint64_t, dparse_int);
+}
+
+
+int
+dparse_kv_float(bytestream_t *bs,
+                char kvdelim,
+                char fdelim,
+                char rdelim[2],
+                dict_t *value,
+                char *ch,
+                unsigned int flags)
+{
+    DPARSE_KV_INTFLOAT(double, dparse_float);
 }
 
 
@@ -308,7 +297,6 @@ dparse_qstr(bytestream_t *bs,
         SINCR(bs);
     }
 
-    SPOS(bs) = spos;
     return DPARSE_NEEDMORE;
 
 err:
@@ -324,7 +312,7 @@ err:
             SINCR(bs);
         }
     }
-    return flags & DPARSE_NEXTONERROR ? 0 : DPARSE_ERRORVALUE;
+    return DPARSE_ERRORVALUE;
 }
 
 int
@@ -341,6 +329,11 @@ dparse_str(bytestream_t *bs,
 
     while (!SNEEDMORE(bs)) {
         if (vpos >= sz) {
+            /*
+             * would never reach here because in this case SNEEDMORE(bs)
+             * would be true.
+             */
+            assert(0);
             goto err;
         }
 
@@ -359,7 +352,6 @@ dparse_str(bytestream_t *bs,
         }
     }
 
-    SPOS(bs) = spos;
     return DPARSE_NEEDMORE;
 
 err:
@@ -373,7 +365,7 @@ err:
             SINCR(bs);
         }
     }
-    return flags & DPARSE_NEXTONERROR ? 0 : DPARSE_ERRORVALUE;
+    return DPARSE_ERRORVALUE;
 }
 
 
@@ -385,8 +377,6 @@ dparse_str_byterange(bytestream_t *bs,
                      char *ch,
                      unsigned int flags)
 {
-    off_t spos = SPOS(bs);
-
     value->start = SPOS(bs);
 
     while (!SNEEDMORE(bs)) {
@@ -404,7 +394,6 @@ dparse_str_byterange(bytestream_t *bs,
         }
     }
 
-    SPOS(bs) = spos;
     return DPARSE_NEEDMORE;
 }
 
@@ -498,7 +487,6 @@ dparse_qstr_byterange(bytestream_t *bs,
         SINCR(bs);
     }
 
-    SPOS(bs) = spos;
     return DPARSE_NEEDMORE;
 
 err:
@@ -514,7 +502,7 @@ err:
             SINCR(bs);
         }
     }
-    return flags & DPARSE_NEXTONERROR ? 0 : DPARSE_ERRORVALUE;
+    return DPARSE_ERRORVALUE;
 }
 
 
@@ -562,7 +550,7 @@ dparse_array(bytestream_t *bs,
                                   ardelim, \
                                   val, \
                                   ch, \
-                                  flags | DPARSE_NEXTONERROR)) == \
+                                  flags)) == \
                     DPARSE_NEEDMORE) { \
                 goto needmore; \
             } else if (res == DPARSE_ERRORVALUE) { \
@@ -598,21 +586,20 @@ dparse_array(bytestream_t *bs,
     return 0;
 
 needmore:
-    SPOS(bs) = spos;
     return DPARSE_NEEDMORE;
 
 err:
     if (flags & DPARSE_RESETONERROR) {
         SPOS(bs) = spos;
     } else {
-        reach_delim(bs, fdelim, rdelim);
-        if (flags & DPARSE_MERGEDELIM) {
-            reach_value(bs, fdelim);
-        } else {
-            SINCR(bs);
-        }
+        //reach_delim(bs, fdelim, rdelim);
+        //if (flags & DPARSE_MERGEDELIM) {
+        //    reach_value(bs, fdelim);
+        //} else {
+        //    SINCR(bs);
+        //}
     }
-    return flags & DPARSE_NEXTONERROR ? 0 : DPARSE_ERRORVALUE;
+    return DPARSE_ERRORVALUE;
 }
 
 
@@ -644,7 +631,7 @@ dparse_dict(bytestream_t *bs,
                           drdelim, \
                           value, \
                           ch, \
-                          flags | DPARSE_NEXTONERROR)) == \
+                          flags)) == \
                  DPARSE_NEEDMORE) { \
                 goto needmore; \
             } else if (res == DPARSE_ERRORVALUE) { \
@@ -680,21 +667,20 @@ dparse_dict(bytestream_t *bs,
     return 0;
 
 needmore:
-    SPOS(bs) = spos;
     return DPARSE_NEEDMORE;
 
 err:
     if (flags & DPARSE_RESETONERROR) {
         SPOS(bs) = spos;
     } else {
-        reach_delim(bs, fdelim, rdelim);
-        if (flags & DPARSE_MERGEDELIM) {
-            reach_value(bs, fdelim);
-        } else {
-            SINCR(bs);
-        }
+        //reach_delim(bs, fdelim, rdelim);
+        //if (flags & DPARSE_MERGEDELIM) {
+        //    reach_value(bs, fdelim);
+        //} else {
+        //    SINCR(bs);
+        //}
     }
-    return flags & DPARSE_NEXTONERROR ? 0 : DPARSE_ERRORVALUE;
+    return DPARSE_ERRORVALUE;
 }
 
 

@@ -16,7 +16,6 @@ extern "C" {
 
 #define DPARSE_MERGEDELIM 0x01
 #define DPARSE_RESETONERROR 0x02
-#define DPARSE_NEXTONERROR 0x04
 void qstr_unescape(char *, const char *, size_t);
 int dparse_int(bytestream_t *, char, char[2], uint64_t *, char *, unsigned int);
 int dparse_float(bytestream_t *, char, char[2], double *, char *, unsigned int);
@@ -25,6 +24,8 @@ int dparse_str(bytestream_t *, char, char[2], char *, size_t, char *, unsigned i
 int dparse_str_byterange(bytestream_t *, char, char[2], byterange_t *, char *, unsigned int);
 int dparse_qstr_byterange(bytestream_t *, char, char[2], byterange_t *, char *, unsigned int);
 int dparse_array(bytestream_t *, char, char[2], lkit_array_t *, array_t *, char *, unsigned int);
+int
+dparse_dict(bytestream_t *, char, char[2], lkit_dict_t *, dict_t *, char *, unsigned int);
 
 #ifdef __cplusplus
 }
