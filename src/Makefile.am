@@ -50,9 +50,9 @@ else
 DEBUG_FLAGS = -DNDEBUG -O3
 endif
 
-libmrklkit_la_CFLAGS = -Wall -Wextra -Werror -std=c99 -I$(includedir) @LLVM_CFLAGS@ $(DEBUG_FLAGS)
+libmrklkit_la_CFLAGS = -Wall -Wextra -Werror -std=c99 -I$(includedir) @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
 
-libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) @LLVM_LDFLAGS@ -lc++ @LLVM_LIBS@ -lmrkcommon
+libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lmrkcommon @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 SUBDIRS = . test
 

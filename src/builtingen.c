@@ -1087,7 +1087,7 @@ compile_dynamic_initializer(LLVMModuleRef module,
     builder = LLVMCreateBuilder();
 
     if (value->lazy_init) {
-        LLVMValueRef res, cond;
+        LLVMValueRef UNUSED res, cond;
         LLVMBasicBlockRef currblock, endblock, tblock, fblock;
 
         snprintf(buf, sizeof(buf), ".mrklkit.init.done.%s", (char *)name->data);

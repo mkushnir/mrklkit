@@ -3,6 +3,7 @@ CLEANFILES = *.core
 #CLEANFILES += *.in
 
 noinst_PROGRAMS=testfoo testfparser testdparser
+#noinst_PROGRAMS=testllvm
 
 distdir = ../../$(PACKAGE)-$(VERSION)/src/test
 dist_HEADERS = unittest.h
@@ -17,20 +18,25 @@ else
 DEBUG_FLAGS = -DNDEBUG -O3
 endif
 
+nodist_testllvm_SOURCES = ../diag.c
+testllvm_SOURCES = testllvm.c
+testllvm_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
+testllvm_LDFLAGS = @LLVM_LIBS@ @LLVM_LDFLAGS@
+
 nodist_testfoo_SOURCES = ../diag.c
 testfoo_SOURCES = testfoo.c
-testfoo_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ $(DEBUG_FLAGS)
-testfoo_LDFLAGS = -L$(libdir) @LLVM_LDFLAGS@ -lc++ @LLVM_LIBS@ -lmrkcommon -lmrklkit
+testfoo_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
+testfoo_LDFLAGS = -L$(libdir) -lmrkcommon -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 nodist_testfparser_SOURCES = ../diag.c
 testfparser_SOURCES = testfparser.c
-testfparser_CFLAGS = $(DEBUG_FLAGS) -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir)
-testfparser_LDFLAGS = -L$(libdir) -lmrkcommon -lmrklkit
+testfparser_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
+testfparser_LDFLAGS = -L$(libdir) -lmrkcommon -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 nodist_testdparser_SOURCES = ../diag.c
 testdparser_SOURCES = testdparser.c
-testdparser_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ $(DEBUG_FLAGS)
-testdparser_LDFLAGS = -L$(libdir) @LLVM_LDFLAGS@ -lc++ @LLVM_LIBS@ -lmrkcommon -lmrklkit
+testdparser_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
+testdparser_LDFLAGS =  -L$(libdir) -lmrkcommon -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 ../diag.c ../diag.h: ../diag.txt
 	sh ../gen-diag

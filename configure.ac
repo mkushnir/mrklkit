@@ -40,6 +40,14 @@ else
     fi
 fi
 
+cxxlib='-lc++'
+uname_s=`uname -s`
+if test "$uname_s" = "Linux"
+then
+    AC_SUBST(_GNU_SOURCE_MACRO, ['-D_GNU_SOURCE'])
+    cxxlib='-lstdc++'
+fi
+
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_LANG(C)
@@ -76,10 +84,18 @@ AC_TYPE_SSIZE_T
 AC_TYPE_UINT64_T
 
 # LLVM_CFALGS modulo -On
-AC_SUBST(LLVM_CFLAGS, ["`llvm-config33 --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
-AC_SUBST(LLVM_LDFLAGS, ["`llvm-config33 --ldflags`"])
-AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs`"])
-#AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets ipo`"])
+if which llvm-config >/dev/null
+then
+    AC_SUBST(LLVM_CFLAGS, ["`llvm-config --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
+    AC_SUBST(LLVM_LIBS, ["`llvm-config --libs`"])
+    AC_SUBST(LLVM_LDFLAGS, ["`llvm-config --ldflags` $cxxlib"])
+    #AC_SUBST(LLVM_LIBS, ["`llvm-config --libs engine interpreter all-targets ipo`"])
+else
+    AC_SUBST(LLVM_CFLAGS, ["`llvm-config33 --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
+    AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs`"])
+    AC_SUBST(LLVM_LDFLAGS, ["`llvm-config33 --ldflags` $cxxlib"])
+    #AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets ipo`"])
+fi
 
 AC_PRESERVE_HELP_ORDER
 

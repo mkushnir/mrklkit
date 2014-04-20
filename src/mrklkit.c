@@ -166,7 +166,7 @@ do_analysis(void)
     LLVMPassManagerBuilderRef pmb;
     LLVMPassManagerRef fpm;
     LLVMPassManagerRef pm;
-    int res = 0;
+    UNUSED int res = 0;
     LLVMValueRef fn = NULL;
 
     if ((fpm = LLVMCreateFunctionPassManagerForModule(module)) == NULL) {
