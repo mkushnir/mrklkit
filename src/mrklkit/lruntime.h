@@ -15,7 +15,7 @@ typedef struct _tobj {
     /* weak ref */
     lkit_type_t *type;
     /*
-     * LKIT_INT     uint64_t
+     * LKIT_INT     int64_t
      * LKIT_BOOL    char
      * LKIT_FLOAT   double
      * LKIT_STR     bytes_t
@@ -32,15 +32,15 @@ void mrklkit_rt_gc(void);
 
 //tobj_t *mrklkit_rt_dict_new(lkit_dict_t *);
 void mrklkit_rt_dict_init(dict_t *, lkit_type_t *);
-void mrklkit_rt_dict_fini(void *);
+void mrklkit_rt_dict_dtor(dict_t **);
 
 //tobj_t *mrklkit_rt_array_new(lkit_array_t *);
 void mrklkit_rt_array_init(array_t *, lkit_type_t *);
-void mrklkit_rt_array_fini(void *);
+void mrklkit_rt_array_dtor(array_t **);
 
 //tobj_t *mrklkit_rt_struct_new(lkit_struct_t *);
 void mrklkit_rt_struct_init(array_t *);
-void mrklkit_rt_struct_fini(void *);
+void mrklkit_rt_struct_dtor(array_t **);
 
 //char *mrklkit_rt_str_new(size_t);
 //void mrklkit_rt_str_cat(char *, size_t, char *, size_t);

@@ -995,7 +995,7 @@ compile_expr(LLVMModuleRef module,
             switch (expr->type->tag) {
             case LKIT_INT:
                 v = LLVMConstInt(expr->type->backend,
-                                 *(uint64_t *)expr->value.literal->body, 1);
+                                 *(int64_t *)expr->value.literal->body, 1);
                 break;
 
             case LKIT_FLOAT:

@@ -54,7 +54,7 @@ typedef enum _lkit_parser {
 
 struct _lkit_type;
 
-typedef void (*lkit_type_finalizer_t)(void *);
+typedef void (*lkit_type_dtor_t)(void **);
 typedef struct _lkit_type {
     /* weak ref */
     char *name;
@@ -62,7 +62,7 @@ typedef struct _lkit_type {
     LLVMTypeRef backend;
     lkit_tag_t tag;
     int error:1;
-    lkit_type_finalizer_t fini;
+    lkit_type_dtor_t dtor;
 } lkit_type_t;
 
 #define LKIT_ERROR(pty) (((lkit_type_t *)(pty))->error)

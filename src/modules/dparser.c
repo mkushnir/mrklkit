@@ -12,6 +12,7 @@
 #include <mrkcommon/util.h>
 
 #include <mrklkit/ltype.h>
+#include <mrklkit/lruntime.h>
 #include <mrklkit/modules/dparser.h>
 
 #include "diag.h"
@@ -35,6 +36,7 @@ qstr_unescape(char *dst, const char *src, size_t sz)
             *dst++ = *(src + i);
         }
     }
+    *dst = '\0';
 }
 
 
@@ -118,27 +120,23 @@ err: \
 #define DPARSE_KV_INTFLOAT(ty, fn) \
     int res; \
     off_t spos = SPOS(bs); \
-    byterange_t br; \
-    bytes_t *key; \
+    bytes_t *key = NULL; \
     union { \
         ty v; \
         void *p; \
     } val; \
     char krdelim[2] = {fdelim, rdelim[0]}; \
     while (!SNEEDMORE(bs)) { \
-        if ((res = dparse_str_byterange(bs, \
-                                        kvdelim, \
-                                        krdelim, \
-                                        &br, \
-                                        ch, \
-                                        flags)) == DPARSE_NEEDMORE) { \
+        if ((res = dparse_str(bs, \
+                              kvdelim, \
+                              krdelim, \
+                              &key, \
+                              ch, \
+                              flags)) == DPARSE_NEEDMORE) { \
             goto needmore; \
         } else if (res == DPARSE_ERRORVALUE) { \
             goto err; \
         } \
-        key = bytes_new(br.end - br.start + 1); \
-        memcpy(key->data, SDATA(bs, br.start), br.end - br.start); \
-        key->data[br.end - br.start] = '\0'; \
         /* \
          * XXX we "require" here that sizeof(ty) == sizeof(void *), \
          * sigh ... \
@@ -160,6 +158,7 @@ err: \
 needmore: \
     return DPARSE_NEEDMORE; \
 err: \
+    bytes_destroy(&key); \
     if (flags & DPARSE_RESETONERROR) { \
         SPOS(bs) = spos; \
     } \
@@ -170,11 +169,11 @@ int
 dparse_int(bytestream_t *bs,
            char fdelim,
            char rdelim[2],
-           uint64_t *value,
+           int64_t *value,
            char *ch,
            unsigned int flags)
 {
-    DPARSE_INTFLOAT(uint64_t, strtoll10);
+    DPARSE_INTFLOAT(int64_t, strtoll10);
 }
 
 
@@ -194,25 +193,22 @@ int
 dparse_qstr(bytestream_t *bs,
             char fdelim,
             char rdelim[2],
-            char *value,
-            size_t sz,
+            bytes_t **value,
             char *ch,
             unsigned int flags)
 {
-    off_t spos = SPOS(bs);
-    size_t vpos = 0;
+    byterange_t br;
 #   define QSTR_ST_START   (0)
 #   define QSTR_ST_QUOTE   (1)
 #   define QSTR_ST_IN      (2)
 #   define QSTR_ST_OUT     (3)
     int state = QSTR_ST_START;
 
-    while (!SNEEDMORE(bs)) {
-        *ch = SPCHR(bs);
+    br.start = SPOS(bs);
 
-        if (vpos >= sz) {
-            goto err;
-        }
+    while (!SNEEDMORE(bs)) {
+        br.end = SPOS(bs);
+        *ch = SPCHR(bs);
 
         switch (state) {
         case QSTR_ST_START:
@@ -227,19 +223,22 @@ dparse_qstr(bytestream_t *bs,
         case QSTR_ST_IN:
             if (*ch == '"') {
                 state = QSTR_ST_QUOTE;
-            } else {
-                *(value + vpos++) = *ch;
             }
             break;
 
         case QSTR_ST_QUOTE:
             if (*ch == '"') {
                 state = QSTR_ST_IN;
-                *(value + vpos++) = *ch;
             } else {
                 /* one beyond the closing " */
                 state = QSTR_ST_OUT;
-                *(value + vpos++) = '\0';
+
+                *value = bytes_new(br.end - br.start + 1);
+                /* unescape starting from next by initial " */
+                qstr_unescape((char *)(*value)->data,
+                              SDATA(bs, br.start + 1),
+                              /* minus "" */
+                              br.end - br.start - 2);
 
                 if (DPARSE_TEST_DELIM(*ch)) {
                     if (flags & DPARSE_MERGEDELIM) {
@@ -275,7 +274,7 @@ dparse_qstr(bytestream_t *bs,
 
 err:
     if (flags & DPARSE_RESETONERROR) {
-        SPOS(bs) = spos;
+        SPOS(bs) = br.start;
     } else {
         if (!DPARSE_TEST_DELIM(SPCHR(bs))) {
             reach_delim(bs, fdelim, rdelim);
@@ -293,92 +292,9 @@ int
 dparse_str(bytestream_t *bs,
            char fdelim,
            char rdelim[2],
-           char *value,
-           size_t sz,
+           bytes_t **value,
            char *ch,
            unsigned int flags)
-{
-    off_t spos = SPOS(bs);
-    size_t vpos = 0;
-
-    while (!SNEEDMORE(bs)) {
-        if (vpos >= sz) {
-            /*
-             * would never reach here because in this case SNEEDMORE(bs)
-             * would be true.
-             */
-            assert(0);
-            goto err;
-        }
-
-        *ch = SPCHR(bs);
-        if (DPARSE_TEST_DELIM(*ch)) {
-            if (flags & DPARSE_MERGEDELIM) {
-                reach_value(bs, fdelim);
-            } else {
-                SINCR(bs);
-            }
-            *(value + vpos) = '\0';
-            return 0;
-        } else {
-            *(value + vpos++) = SPCHR(bs);
-            SINCR(bs);
-        }
-    }
-
-    return DPARSE_NEEDMORE;
-
-err:
-    if (flags & DPARSE_RESETONERROR) {
-        SPOS(bs) = spos;
-    } else {
-        reach_delim(bs, fdelim, rdelim);
-        if (flags & DPARSE_MERGEDELIM) {
-            reach_value(bs, fdelim);
-        } else {
-            SINCR(bs);
-        }
-    }
-    return DPARSE_ERRORVALUE;
-}
-
-
-int
-dparse_str_byterange(bytestream_t *bs,
-                     char fdelim,
-                     char rdelim[2],
-                     byterange_t *value,
-                     char *ch,
-                     unsigned int flags)
-{
-    value->start = SPOS(bs);
-
-    while (!SNEEDMORE(bs)) {
-        *ch = SPCHR(bs);
-        if (DPARSE_TEST_DELIM(*ch)) {
-            value->end = SPOS(bs);
-            if (flags & DPARSE_MERGEDELIM) {
-                reach_value(bs, fdelim);
-            } else {
-                SINCR(bs);
-            }
-            return 0;
-        } else {
-            SINCR(bs);
-        }
-    }
-
-    return DPARSE_NEEDMORE;
-}
-
-
-int
-dparse_str_bytes(bytestream_t *bs,
-                 char fdelim,
-                 char rdelim[2],
-                 bytes_t **value,
-                 char *ch,
-                 unsigned int flags)
 {
     byterange_t br;
 
@@ -406,7 +322,7 @@ dparse_str_bytes(bytestream_t *bs,
 }
 
 
-int
+static int
 dparse_kv_int(bytestream_t *bs,
               char kvdelim,
               char fdelim,
@@ -415,11 +331,11 @@ dparse_kv_int(bytestream_t *bs,
               char *ch,
               unsigned int flags)
 {
-    DPARSE_KV_INTFLOAT(uint64_t, dparse_int);
+    DPARSE_KV_INTFLOAT(int64_t, dparse_int);
 }
 
 
-int
+static int
 dparse_kv_float(bytestream_t *bs,
                 char kvdelim,
                 char fdelim,
@@ -432,7 +348,7 @@ dparse_kv_float(bytestream_t *bs,
 }
 
 
-int
+static int
 dparse_kv_str_bytes(UNUSED bytestream_t *bs,
                         UNUSED char kvdelim,
                         UNUSED char fdelim,
@@ -443,38 +359,30 @@ dparse_kv_str_bytes(UNUSED bytestream_t *bs,
 {
     int res;
     off_t spos = SPOS(bs);
-    byterange_t br;
-    bytes_t *key;
-    bytes_t *val;
+    bytes_t *key = NULL;
+    bytes_t *val = NULL;
     char krdelim[2] = {fdelim, rdelim[0]};
     while (!SNEEDMORE(bs)) {
-        if ((res = dparse_str_byterange(bs,
-                                        kvdelim,
-                                        krdelim,
-                                        &br,
-                                        ch,
-                                        flags)) == DPARSE_NEEDMORE) {
+        if ((res = dparse_str(bs,
+                              kvdelim,
+                              krdelim,
+                              &key,
+                              ch,
+                              flags)) == DPARSE_NEEDMORE) {
             goto needmore;
         } else if (res == DPARSE_ERRORVALUE) {
             goto err;
         }
-        key = bytes_new(br.end - br.start + 1);
-        memcpy(key->data, SDATA(bs, br.start), br.end - br.start);
-        key->data[br.end - br.start] = '\0';
-
-        if ((res = dparse_str_byterange(bs,
-                                        fdelim,
-                                        rdelim,
-                                        &br,
-                                        ch,
-                                        flags)) == DPARSE_NEEDMORE) {
+        if ((res = dparse_str(bs,
+                              fdelim,
+                              rdelim,
+                              &val,
+                              ch,
+                              flags)) == DPARSE_NEEDMORE) {
             goto needmore;
         } else if (res == DPARSE_ERRORVALUE) {
             goto err;
         }
-        val = bytes_new(br.end - br.start + 1);
-        memcpy(val->data, SDATA(bs, br.start), br.end - br.start);
-        val->data[br.end - br.start] = '\0';
         dict_set_item(value, key, val);
         return 0;
     }
@@ -482,119 +390,12 @@ dparse_kv_str_bytes(UNUSED bytestream_t *bs,
 needmore:
     return DPARSE_NEEDMORE;
 err:
+    bytes_destroy(&key);
+    bytes_destroy(&val);
     if (flags & DPARSE_RESETONERROR) {
         SPOS(bs) = spos;
     }
     return DPARSE_ERRORVALUE;
-}
-
-
-UNUSED int
-dparse_qstr_byterange(bytestream_t *bs,
-                      char fdelim,
-                      char rdelim[2],
-                      byterange_t *value,
-                      char *ch,
-                      unsigned int flags)
-{
-    off_t spos = SPOS(bs);
-#   define QSTR_ST_START   (0)
-#   define QSTR_ST_QUOTE   (1)
-#   define QSTR_ST_IN      (2)
-#   define QSTR_ST_OUT     (3)
-    int state = QSTR_ST_START;
-
-    value->start = SPOS(bs);
-
-    while (!SNEEDMORE(bs)) {
-        *ch = SPCHR(bs);
-
-        switch (state) {
-        case QSTR_ST_START:
-            if (*ch == '"') {
-                state = QSTR_ST_IN;
-            } else {
-                /* garbage before the opening " */
-                value->end = SPOS(bs);
-                goto err;
-            }
-            break;
-
-        case QSTR_ST_IN:
-            if (*ch == '"') {
-                state = QSTR_ST_QUOTE;
-            }
-            break;
-
-        case QSTR_ST_QUOTE:
-            if (*ch == '"') {
-                state = QSTR_ST_IN;
-            } else {
-                /* one beyond the closing " */
-                state = QSTR_ST_OUT;
-                value->end = SPOS(bs);
-
-                if (DPARSE_TEST_DELIM(*ch)) {
-                    if (flags & DPARSE_MERGEDELIM) {
-                        reach_value(bs, fdelim);
-                    } else {
-                        SINCR(bs);
-                    }
-                    return 0;
-
-                } else {
-                    /* garbage beyond closing " */
-                    goto err;
-                }
-            }
-
-            break;
-
-
-        default:
-            assert(0);
-        }
-
-        //TRACE("ch='%c' st=%s", *ch,
-        //      (state == QSTR_ST_START) ? "START" :
-        //      (state == QSTR_ST_QUOTE) ? "QUOTE" :
-        //      (state == QSTR_ST_IN) ? "IN" :
-        //      (state == QSTR_ST_OUT) ? "OUT" :
-        //      "...");
-
-        SINCR(bs);
-    }
-
-    return DPARSE_NEEDMORE;
-
-err:
-    if (flags & DPARSE_RESETONERROR) {
-        SPOS(bs) = spos;
-    } else {
-        if (!DPARSE_TEST_DELIM(SPCHR(bs))) {
-            reach_delim(bs, fdelim, rdelim);
-        }
-        if (flags & DPARSE_MERGEDELIM) {
-            reach_value(bs, fdelim);
-        } else {
-            SINCR(bs);
-        }
-    }
-    return DPARSE_ERRORVALUE;
-}
-
-
-int
-dparse_kv_qstr_byterange(UNUSED bytestream_t *bs,
-                         UNUSED char kvdelim,
-                         UNUSED char fdelim,
-                         UNUSED char rdelim[2],
-                         UNUSED dict_t *value,
-                         UNUSED char *ch,
-                         UNUSED unsigned int flags)
-{
-    FAIL("not implemented");
-    return 0;
 }
 
 
@@ -641,14 +442,13 @@ dparse_array(bytestream_t *bs,
         }
 
     if (afty->tag == LKIT_INT) {
-        DPARSE_AR_CASE(uint64_t, dparse_int);
+        DPARSE_AR_CASE(int64_t, dparse_int);
 
     } else if (afty->tag == LKIT_FLOAT) {
         DPARSE_AR_CASE(double, dparse_float);
 
     } else if (afty->tag == LKIT_STR) {
-        //DPARSE_AR_CASE(byterange_t, dparse_str_byterange);
-        DPARSE_AR_CASE(bytes_t *, dparse_str_bytes);
+        DPARSE_AR_CASE(bytes_t *, dparse_str);
 
     } else {
         /* cannot be recursively nested */
@@ -668,13 +468,6 @@ needmore:
 err:
     if (flags & DPARSE_RESETONERROR) {
         SPOS(bs) = spos;
-    } else {
-        //reach_delim(bs, fdelim, rdelim);
-        //if (flags & DPARSE_MERGEDELIM) {
-        //    reach_value(bs, fdelim);
-        //} else {
-        //    SINCR(bs);
-        //}
     }
     return DPARSE_ERRORVALUE;
 }
@@ -746,33 +539,79 @@ needmore:
 err:
     if (flags & DPARSE_RESETONERROR) {
         SPOS(bs) = spos;
-    } else {
-        //reach_delim(bs, fdelim, rdelim);
-        //if (flags & DPARSE_MERGEDELIM) {
-        //    reach_value(bs, fdelim);
-        //} else {
-        //    SINCR(bs);
-        //}
     }
     return DPARSE_ERRORVALUE;
 }
 
 
 int
-dparse_struct(UNUSED bytestream_t *bs,
-              UNUSED char fdelim,
-              UNUSED char rdelim[2],
-              UNUSED lkit_struct_t *stty,
-              UNUSED array_t *value,
-              UNUSED char *ch,
-              UNUSED unsigned int flags)
+dparse_struct(bytestream_t *bs,
+              char fdelim,
+              char rdelim[2],
+              lkit_struct_t *stty,
+              array_t *value,
+              char *ch,
+              unsigned int flags)
 {
+    off_t spos = SPOS(bs);
+    array_iter_t it;
+    lkit_type_t **fty;
+    tobj_t *val;
+
+    for (fty = array_first(&stty->fields, &it);
+         fty != NULL;
+         fty = array_next(&stty->fields, &it)) {
+
+        if ((val = array_incr(value)) == NULL) {
+            FAIL("array_incr");
+        }
+
+        val->type = *fty;
+
+        switch ((*fty)->tag) {
+        case LKIT_INT:
+            if (dparse_int(bs, fdelim, rdelim, (int64_t *)&val->value, ch, flags) != 0) {
+                goto err;
+            }
+            break;
+
+        case LKIT_FLOAT:
+            {
+                union {
+                    double d;
+                    void *p;
+                } v;
+                assert(sizeof(double) == sizeof(void *));
+                if (dparse_float(bs, fdelim, rdelim, &v.d, ch, flags) != 0) {
+                    goto err;
+                }
+                val->value = v.p;
+            }
+            break;
+
+        case LKIT_STR:
+            if (dparse_str(bs, fdelim, rdelim, (bytes_t **)&val->value, ch, flags) != 0) {
+                goto err;
+            }
+            break;
+
+        default:
+            FAIL("dparse_struct");
+        }
+    }
+
     if (flags & DPARSE_MERGEDELIM) {
         if (DPARSE_TEST_DELIM(SPCHR(bs))) {
             reach_value(bs, fdelim);
         }
     }
     return 0;
+
+err:
+    if (flags & DPARSE_RESETONERROR) {
+        SPOS(bs) = spos;
+    }
+    return DPARSE_ERRORVALUE;
 }
 
 

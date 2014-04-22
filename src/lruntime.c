@@ -1,13 +1,14 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/util.h>
+#include <mrkcommon/dumpm.h>
 
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
 
 #include "diag.h"
 
-static array_t objects;
+UNUSED static array_t objects;
 
 static void
 rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
@@ -57,13 +58,12 @@ mrklkit_rt_dict_init(dict_t *value, lkit_type_t *ty)
 
 
 void
-mrklkit_rt_dict_fini(void *o)
+mrklkit_rt_dict_dtor(dict_t **value)
 {
-    dict_t **v = o;
-    if (*v != NULL) {
-        dict_fini(*v);
-        free(*v);
-        *v = NULL;
+    if (*value != NULL) {
+        dict_fini(*value);
+        free(*value);
+        *value = NULL;
     }
 }
 
@@ -73,7 +73,7 @@ mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
 {
     switch (ty->tag) {
     case LKIT_INT:
-        array_init(value, sizeof(uint64_t), 0, NULL, NULL);
+        array_init(value, sizeof(int64_t), 0, NULL, NULL);
 
     case LKIT_FLOAT:
 
@@ -82,7 +82,9 @@ mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
 
     case LKIT_STR:
     case LKIT_QSTR:
-        array_init(value, sizeof(byterange_t), 0, NULL, NULL);
+        array_init(value, sizeof(byterange_t), 0,
+                   NULL,
+                   (array_finalizer_t)bytes_destroy);
 
     default:
         FAIL("mrklkit_rt_array_init");
@@ -91,18 +93,26 @@ mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
 
 
 void
-mrklkit_rt_array_fini(void *o)
+mrklkit_rt_array_dtor(array_t **value)
 {
-    array_t **v = o;
-    if (*v != NULL) {
-        array_fini(*v);
-        free(*v);
-        *v = NULL;
+    if (*value != NULL) {
+        array_fini(*value);
+        free(*value);
+        *value = NULL;
     }
 }
 
 
-static int tobj_fini(tobj_t *);
+static int
+tobj_fini(tobj_t *o)
+{
+    if (o->type->dtor != NULL) {
+        o->type->dtor(&o->value);
+    }
+    return 0;
+}
+
+
 
 void
 mrklkit_rt_struct_init(array_t *value)
@@ -113,12 +123,12 @@ mrklkit_rt_struct_init(array_t *value)
 
 
 void
-mrklkit_rt_struct_fini(void *o)
+mrklkit_rt_struct_dtor(array_t **value)
 {
-    array_t **v = o;
-    if (*v != NULL) {
-        array_fini(*v);
-        *v = NULL;
+    if (*value != NULL) {
+        array_fini(*value);
+        free(*value);
+        *value = NULL;
     }
 }
 
@@ -126,34 +136,24 @@ mrklkit_rt_struct_fini(void *o)
 /**
  * tobj_t operations
  */
-static int
-tobj_fini(tobj_t *o)
-{
-    if (o->type->fini != NULL) {
-        o->type->fini(&o->value);
-    }
-    return 0;
-}
-
-
 void
 mrklkit_rt_gc(void)
 {
-    array_fini(&objects);
+    //array_fini(&objects);
 }
 
 
 void
 lruntime_init(void)
 {
-    array_init(&objects, sizeof(tobj_t), 0,
-               NULL,
-               (array_finalizer_t)tobj_fini);
+    //array_init(&objects, sizeof(tobj_t), 0,
+    //           NULL,
+    //           (array_finalizer_t)tobj_fini);
 }
 
 
 void
 lruntime_fini(void)
 {
-    array_fini(&objects);
+    //array_fini(&objects);
 }

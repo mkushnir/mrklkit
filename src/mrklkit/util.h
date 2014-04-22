@@ -17,7 +17,7 @@ typedef struct _bytes {
 
 
 bytes_t *bytes_new(size_t);
-void bytes_fini(void *);
+void bytes_destroy(bytes_t **);
 uint64_t bytes_hash(bytes_t *);
 int bytes_cmp(bytes_t *, bytes_t *);
 char *newvar(char *, size_t, const char *);

@@ -53,12 +53,11 @@ bytes_new(size_t sz)
 }
 
 void
-bytes_fini(void *o)
+bytes_destroy(bytes_t **value)
 {
-    bytes_t **v = o;
-    if (*v != NULL) {
-        free(*v);
-        *v = NULL;
+    if (*value != NULL) {
+        free(*value);
+        *value = NULL;
     }
 }
 
