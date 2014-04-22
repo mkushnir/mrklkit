@@ -3,7 +3,6 @@ CLEANFILES = *.core
 #CLEANFILES += *.in
 
 noinst_PROGRAMS=testfoo testfparser testdparser
-#noinst_PROGRAMS=testllvm
 
 distdir = ../../$(PACKAGE)-$(VERSION)/src/test
 dist_HEADERS = unittest.h
@@ -17,11 +16,6 @@ DEBUG_FLAGS = -g -O0 @CLANG_DEBUG@
 else
 DEBUG_FLAGS = -DNDEBUG -O3
 endif
-
-nodist_testllvm_SOURCES = ../diag.c
-testllvm_SOURCES = testllvm.c
-testllvm_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
-testllvm_LDFLAGS = @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 nodist_testfoo_SOURCES = ../diag.c
 testfoo_SOURCES = testfoo.c

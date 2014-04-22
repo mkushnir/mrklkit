@@ -18,7 +18,7 @@ rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
 }
 
 static void
-rt_dict_fini_key_free_val(bytes_t *key, void *val)
+rt_dict_fini_keyval(bytes_t *key, void *val)
 {
     if (key != NULL) {
         free(key);
@@ -47,12 +47,26 @@ mrklkit_rt_dict_init(dict_t *value, lkit_type_t *ty)
                   17,
                   (dict_hashfn_t)bytes_hash,
                   (dict_item_comparator_t)bytes_cmp,
-                  (dict_item_finalizer_t)rt_dict_fini_key_free_val);
+                  (dict_item_finalizer_t)rt_dict_fini_keyval);
+        break;
 
     default:
         FAIL("mrklkit_rt_dict_init");
     }
 }
+
+
+void
+mrklkit_rt_dict_fini(void *o)
+{
+    dict_t **v = o;
+    if (*v != NULL) {
+        dict_fini(*v);
+        free(*v);
+        *v = NULL;
+    }
+}
+
 
 void
 mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
@@ -79,32 +93,48 @@ mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
 void
 mrklkit_rt_array_fini(void *o)
 {
-    array_t *v = o;
-    array_fini(v);
+    array_t **v = o;
+    if (*v != NULL) {
+        array_fini(*v);
+        free(*v);
+        *v = NULL;
+    }
 }
+
+
+static int tobj_fini(tobj_t *);
+
+void
+mrklkit_rt_struct_init(array_t *value)
+{
+    array_init(value, sizeof(tobj_t), 0, NULL,
+               (array_finalizer_t)tobj_fini);
+}
+
+
+void
+mrklkit_rt_struct_fini(void *o)
+{
+    array_t **v = o;
+    if (*v != NULL) {
+        array_fini(*v);
+        *v = NULL;
+    }
+}
+
 
 /**
  * tobj_t operations
  */
-void
-mrklkit_rt_dict_fini(void *o)
-{
-    dict_t *v = o;
-    dict_fini(v);
-}
-
 static int
-tobj_destroy(tobj_t **o)
+tobj_fini(tobj_t *o)
 {
-    if (*o != NULL) {
-        if ((*o)->type->fini != NULL) {
-            (*o)->type->fini((*o)->value);
-        }
-        free(*o);
-        *o = NULL;
+    if (o->type->fini != NULL) {
+        o->type->fini(&o->value);
     }
     return 0;
 }
+
 
 void
 mrklkit_rt_gc(void)
@@ -112,13 +142,15 @@ mrklkit_rt_gc(void)
     array_fini(&objects);
 }
 
+
 void
 lruntime_init(void)
 {
-    array_init(&objects, sizeof(tobj_t *), 0,
+    array_init(&objects, sizeof(tobj_t), 0,
                NULL,
-               (array_finalizer_t)tobj_destroy);
+               (array_finalizer_t)tobj_fini);
 }
+
 
 void
 lruntime_fini(void)

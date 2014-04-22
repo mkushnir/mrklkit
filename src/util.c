@@ -53,14 +53,14 @@ bytes_new(size_t sz)
 }
 
 void
-bytes_destroy(bytes_t **v)
+bytes_fini(void *o)
 {
+    bytes_t **v = o;
     if (*v != NULL) {
         free(*v);
         *v = NULL;
     }
 }
-
 
 
 char *newvar(char *buf, size_t sz, const char *prefix)

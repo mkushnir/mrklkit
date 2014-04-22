@@ -225,7 +225,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
         switch (FPARSER_DATUM_TAG(dat)) {
         case FPARSER_INT:
             expr->value.literal = dat;
-            type = lkit_type_new(LKIT_INT);
+            type = lkit_type_get(LKIT_INT);
             if ((expr->type = lkit_type_find(type)) == NULL) {
                 TR(LKIT_EXPR_PARSE + 1);
                 goto err;
@@ -234,7 +234,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
         case FPARSER_STR:
             expr->value.literal = dat;
-            type = lkit_type_new(LKIT_STR);
+            type = lkit_type_get(LKIT_STR);
             if ((expr->type = lkit_type_find(type)) == NULL) {
                 TR(LKIT_EXPR_PARSE + 2);
                 goto err;
@@ -243,7 +243,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
         case FPARSER_FLOAT:
             expr->value.literal = dat;
-            type = lkit_type_new(LKIT_FLOAT);
+            type = lkit_type_get(LKIT_FLOAT);
             if ((expr->type = lkit_type_find(type)) == NULL) {
                 TR(LKIT_EXPR_PARSE + 3);
                 goto err;
@@ -252,7 +252,7 @@ lkit_expr_parse(lkit_expr_t *ctx, fparser_datum_t *dat, int seterror)
 
         case FPARSER_BOOL:
             expr->value.literal = dat;
-            type = lkit_type_new(LKIT_BOOL);
+            type = lkit_type_get(LKIT_BOOL);
             if ((expr->type = lkit_type_find(type)) == NULL) {
                 TR(LKIT_EXPR_PARSE + 4);
                 goto err;

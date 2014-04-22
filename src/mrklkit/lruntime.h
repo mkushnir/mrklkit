@@ -20,10 +20,10 @@ typedef struct _tobj {
      * LKIT_FLOAT   double
      * LKIT_STR     bytes_t
      * LKIT_ARRAY   array_t
-     * LKIT_STRUCT  array_t
+     * LKIT_STRUCT  array_t of tobj_t
      * LKIT_DICT    dict_t
      */
-    char value[];
+    void *value;
 } tobj_t;
 
 #define LRUNTIME_V2O(v) ((v) - sizeof(lkit_type_t *))
@@ -39,9 +39,13 @@ void mrklkit_rt_array_init(array_t *, lkit_type_t *);
 void mrklkit_rt_array_fini(void *);
 
 //tobj_t *mrklkit_rt_struct_new(lkit_struct_t *);
+void mrklkit_rt_struct_init(array_t *);
+void mrklkit_rt_struct_fini(void *);
 
 //char *mrklkit_rt_str_new(size_t);
 //void mrklkit_rt_str_cat(char *, size_t, char *, size_t);
+void mrklkit_rt_str_init(array_t *);
+void mrklkit_rt_str_fini(void *);
 
 void lruntime_init(void);
 void lruntime_fini(void);

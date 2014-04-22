@@ -8,6 +8,7 @@
 #include <mrkcommon/util.h>
 #include <mrkcommon/bytestream.h>
 
+#include <mrklkit/mrklkit.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
 #include <mrklkit/modules/dparser.h>
@@ -88,6 +89,7 @@ test_int(void)
             TRACE("EOL");
         }
     }
+    bytestream_fini(&bs);
 
     close(fd);
 }
@@ -136,6 +138,7 @@ test_float(void)
             TRACE("EOL");
         }
     }
+    bytestream_fini(&bs);
 
     close(fd);
 }
@@ -184,6 +187,7 @@ test_qstr(void)
             TRACE("EOL");
         }
     }
+    bytestream_fini(&bs);
 
     close(fd);
 }
@@ -233,6 +237,7 @@ test_str(void)
             TRACE("EOL");
         }
     }
+    bytestream_fini(&bs);
 
     close(fd);
 }
@@ -247,17 +252,29 @@ dump_int_array(uint64_t *v, UNUSED void *udata)
 
 
 static int
-dump_int_dict(bytes_t *k, uint64_t v, UNUSED void *udata)
+dump_float_array(double *v, UNUSED void *udata)
 {
-    TRACE("%s:%ld", k->data, v);
+    TRACE("v=%lf", *v);
     return 0;
 }
 
 
 static int
-dump_float_array(double *v, UNUSED void *udata)
+dump_byterange_array(byterange_t *v, bytestream_t *bs)
 {
-    TRACE("v=%lf", *v);
+    char buf[1024];
+    //D8(SDATA(bs, v->start), v->end - v->start);
+    memset(buf, '\0', sizeof(buf));
+    qstr_unescape(buf, SDATA(bs, v->start), v->end - v->start);
+    TRACE("buf=%s", buf);
+    return 0;
+}
+
+
+static int
+dump_int_dict(bytes_t *k, uint64_t v, UNUSED void *udata)
+{
+    TRACE("%s:%ld", k->data, v);
     return 0;
 }
 
@@ -276,25 +293,103 @@ dump_float_dict(bytes_t *k, void *v, UNUSED void *udata)
 
 
 static int
-dump_byterange_array(byterange_t *v, bytestream_t *bs)
+dump_bytes_dict(bytes_t *k, bytes_t *v, UNUSED void *udata)
 {
-    char buf[1024];
-    //D8(SDATA(bs, v->start), v->end - v->start);
-    memset(buf, '\0', sizeof(buf));
-    qstr_unescape(buf, SDATA(bs, v->start), v->end - v->start);
-    TRACE("buf=%s", buf);
+    TRACE("%s:%s", k->data, v->data);
     return 0;
 }
 
 
-UNUSED static int
-dump_byterange_dict(bytes_t **k, byterange_t *v, bytestream_t *bs)
+static int
+dump_tobj(tobj_t *o, void *udata)
 {
-    char buf[1024];
-    //D8(SDATA(bs, v->start), v->end - v->start);
-    memset(buf, '\0', sizeof(buf));
-    qstr_unescape(buf, SDATA(bs, v->start), v->end - v->start);
-    TRACE("%s:%s", (*k)->data, buf);
+    switch (o->type->tag) {
+    case LKIT_INT:
+        TRACE(" %ld", (uint64_t)o->value);
+        break;
+
+    case LKIT_FLOAT:
+        {
+            union {
+                void *p;
+                double d;
+            } v;
+
+            assert(sizeof(double) == sizeof(void *));
+            v.p = o->value;
+            TRACE(" %lf", v.d);
+        }
+        break;
+
+    case LKIT_STR:
+        TRACE(" %s", ((bytes_t *)o->value)->data);
+        break;
+
+    case LKIT_ARRAY:
+        {
+            lkit_array_t *ta;
+            lkit_type_t *fty;
+
+            ta = (lkit_array_t *)o->type;
+            fty = lkit_array_get_element_type(ta);
+            switch (fty->tag) {
+            case LKIT_INT:
+                array_traverse((array_t *)o->value,
+                               (array_traverser_t)dump_int_array, NULL);
+                break;
+
+            case LKIT_FLOAT:
+                array_traverse((array_t *)o->value,
+                               (array_traverser_t)dump_float_array, NULL);
+                break;
+
+            case LKIT_STR:
+                array_traverse((array_t *)o->value,
+                               (array_traverser_t)dump_byterange_array, udata);
+                break;
+
+            default:
+                assert(0);
+            }
+
+        }
+
+    case LKIT_DICT:
+        {
+            lkit_dict_t *td;
+            lkit_type_t *fty;
+
+            td = (lkit_dict_t *)o->type;
+            fty = lkit_dict_get_element_type(td);
+            switch (fty->tag) {
+            case LKIT_INT:
+                dict_traverse((dict_t *)o->value,
+                               (dict_traverser_t)dump_int_dict, NULL);
+                break;
+
+            case LKIT_FLOAT:
+                dict_traverse((dict_t *)o->value,
+                               (dict_traverser_t)dump_float_dict, NULL);
+                break;
+
+            case LKIT_STR:
+                dict_traverse((dict_t *)o->value,
+                               (dict_traverser_t)dump_bytes_dict, NULL);
+                break;
+
+            default:
+                assert(0);
+            }
+        }
+        break;
+
+    case LKIT_STRUCT:
+        dump_tobj(o->value, udata);
+        break;
+
+    default:
+        assert(0);
+    }
     return 0;
 }
 
@@ -312,11 +407,11 @@ test_array_int(void)
         FAIL("open");
     }
 
-    arty = (lkit_array_t *)lkit_type_new(LKIT_ARRAY);
+    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
     //arty->parser = PLIT_PARSER_DELIM;
     arty->delim = (unsigned char *)",";
     fty = array_incr(&arty->fields);
-    *fty = lkit_type_new(LKIT_INT);
+    *fty = lkit_type_get(LKIT_INT);
 
     bytestream_init(&bs);
     nread = 0xffffffff;
@@ -359,6 +454,8 @@ test_array_int(void)
 
         mrklkit_rt_array_fini(&value);
     }
+    bytestream_fini(&bs);
+    lkit_type_destroy((lkit_type_t **)&arty);
 
     close(fd);
 }
@@ -377,11 +474,11 @@ test_array_float(void)
         FAIL("open");
     }
 
-    arty = (lkit_array_t *)lkit_type_new(LKIT_ARRAY);
+    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
     //arty->parser = PLIT_PARSER_DELIM;
     arty->delim = (unsigned char *)",";
     fty = array_incr(&arty->fields);
-    *fty = lkit_type_new(LKIT_FLOAT);
+    *fty = lkit_type_get(LKIT_FLOAT);
 
     bytestream_init(&bs);
     nread = 0xffffffff;
@@ -424,6 +521,8 @@ test_array_float(void)
 
         mrklkit_rt_array_fini(&value);
     }
+    bytestream_fini(&bs);
+    lkit_type_destroy((lkit_type_t **)&arty);
 
     close(fd);
 }
@@ -442,11 +541,11 @@ test_array_str(void)
         FAIL("open");
     }
 
-    arty = (lkit_array_t *)lkit_type_new(LKIT_ARRAY);
+    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
     //arty->parser = PLIT_PARSER_DELIM;
     arty->delim = (unsigned char *)",";
     fty = array_incr(&arty->fields);
-    *fty = lkit_type_new(LKIT_STR);
+    *fty = lkit_type_get(LKIT_STR);
 
     bytestream_init(&bs);
     nread = 0xffffffff;
@@ -489,6 +588,8 @@ test_array_str(void)
 
         mrklkit_rt_array_fini(&value);
     }
+    bytestream_fini(&bs);
+    lkit_type_destroy((lkit_type_t **)&arty);
 
     close(fd);
 }
@@ -507,12 +608,11 @@ test_array_qstr(void)
         FAIL("open");
     }
 
-    arty = (lkit_array_t *)lkit_type_new(LKIT_ARRAY);
+    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
     //arty->parser = PLIT_PARSER_DELIM;
     arty->delim = (unsigned char *)",";
     fty = array_incr(&arty->fields);
-    *fty = lkit_type_new(LKIT_STR);
-    (*fty)->tag = LKIT_QSTR;
+    *fty = lkit_type_get(LKIT_STR);
 
     bytestream_init(&bs);
     nread = 0xffffffff;
@@ -555,6 +655,8 @@ test_array_qstr(void)
 
         mrklkit_rt_array_fini(&value);
     }
+    bytestream_fini(&bs);
+    lkit_type_destroy((lkit_type_t **)&arty);
 
     close(fd);
 }
@@ -573,11 +675,11 @@ test_dict_int(void)
         FAIL("open");
     }
 
-    dcty = (lkit_dict_t *)lkit_type_new(LKIT_DICT);
+    dcty = (lkit_dict_t *)lkit_type_get(LKIT_DICT);
     dcty->kvdelim = (unsigned char *)":";
     dcty->fdelim = (unsigned char *)",";
     fty = array_incr(&dcty->fields);
-    *fty = lkit_type_new(LKIT_INT);
+    *fty = lkit_type_get(LKIT_INT);
 
     bytestream_init(&bs);
     nread = 0xffffffff;
@@ -620,6 +722,8 @@ test_dict_int(void)
 
         mrklkit_rt_dict_fini(&value);
     }
+    bytestream_fini(&bs);
+    lkit_type_destroy((lkit_type_t **)&dcty);
 
     close(fd);
 }
@@ -638,11 +742,11 @@ test_dict_float(void)
         FAIL("open");
     }
 
-    dcty = (lkit_dict_t *)lkit_type_new(LKIT_DICT);
+    dcty = (lkit_dict_t *)lkit_type_get(LKIT_DICT);
     dcty->kvdelim = (unsigned char *)":";
     dcty->fdelim = (unsigned char *)",";
     fty = array_incr(&dcty->fields);
-    *fty = lkit_type_new(LKIT_FLOAT);
+    *fty = lkit_type_get(LKIT_FLOAT);
 
     bytestream_init(&bs);
     nread = 0xffffffff;
@@ -685,13 +789,167 @@ test_dict_float(void)
 
         mrklkit_rt_dict_fini(&value);
     }
+    bytestream_fini(&bs);
+    lkit_type_destroy((lkit_type_t **)&dcty);
 
     close(fd);
 }
 
+
+static void
+test_dict_str(void)
+{
+    int fd;
+    bytestream_t bs;
+    ssize_t nread;
+    lkit_dict_t *dcty;
+    lkit_type_t **fty;
+
+    if ((fd = open(fname, O_RDONLY)) == -1) {
+        FAIL("open");
+    }
+
+    dcty = (lkit_dict_t *)lkit_type_get(LKIT_DICT);
+    dcty->kvdelim = (unsigned char *)":";
+    dcty->fdelim = (unsigned char *)",";
+    fty = array_incr(&dcty->fields);
+    *fty = lkit_type_get(LKIT_STR);
+
+    bytestream_init(&bs);
+    nread = 0xffffffff;
+    while (nread > 0) {
+        int res;
+        dict_t value;
+        char delim = 0;
+        char rdelim[2] = {'\n', '\0'};
+
+        if (SNEEDMORE(&bs)) {
+            nread = bytestream_read_more(&bs, fd, 1024);
+            //TRACE("nread=%ld", nread);
+            continue;
+        }
+
+        mrklkit_rt_dict_init(&value, *fty);
+
+        if ((res = dparse_dict(&bs,
+                               FDELIM,
+                               rdelim,
+                               dcty,
+                               &value,
+                               &delim,
+                               DPFLAGS)) == DPARSE_NEEDMORE) {
+            mrklkit_rt_dict_fini(&value);
+            continue;
+
+        } else if (res == DPARSE_ERRORVALUE) {
+            TRACE("error, delim='%c'", delim);
+            dict_traverse(&value, (dict_traverser_t)dump_bytes_dict, NULL);
+
+        } else {
+            TRACE("ok, delim='%c':", delim);
+            dict_traverse(&value, (dict_traverser_t)dump_bytes_dict, NULL);
+        }
+
+        if (delim == '\n') {
+            TRACE("EOL");
+        }
+
+        mrklkit_rt_dict_fini(&value);
+    }
+    bytestream_fini(&bs);
+    lkit_type_destroy((lkit_type_t **)&dcty);
+
+    close(fd);
+}
+
+
+static void
+test_struct_00(void)
+{
+    int fd;
+    bytestream_t bs;
+    ssize_t nread;
+    lkit_struct_t *stty;
+    char **fnam;
+    lkit_type_t **fty;
+
+    if ((fd = open(fname, O_RDONLY)) == -1) {
+        FAIL("open");
+    }
+
+    /*
+     * (type foo (struct (fstr str) (fint int) (ffloat float)))
+     */
+    stty = (lkit_struct_t *)lkit_type_get(LKIT_STRUCT);
+    stty->delim = (unsigned char *)" ";
+
+    fnam = array_incr(&stty->names);
+    *fnam = "fstr";
+    fty = array_incr(&stty->fields);
+    *fty = lkit_type_get(LKIT_STR);
+
+    fnam = array_incr(&stty->names);
+    *fnam = "fint";
+    fty = array_incr(&stty->fields);
+    *fty = lkit_type_get(LKIT_INT);
+
+    fnam = array_incr(&stty->names);
+    *fnam = "ffloat";
+    fty = array_incr(&stty->fields);
+    *fty = lkit_type_get(LKIT_FLOAT);
+
+    bytestream_init(&bs);
+    nread = 0xffffffff;
+    while (nread > 0) {
+        int res;
+        array_t value;
+        char delim = 0;
+        char rdelim[2] = {'\n', '\0'};
+
+        if (SNEEDMORE(&bs)) {
+            nread = bytestream_read_more(&bs, fd, 1024);
+            //TRACE("nread=%ld", nread);
+            continue;
+        }
+
+        mrklkit_rt_struct_init(&value);
+
+        if ((res = dparse_struct(&bs,
+                                 FDELIM,
+                                 rdelim,
+                                 stty,
+                                 &value,
+                                 &delim,
+                                 DPFLAGS)) == DPARSE_NEEDMORE) {
+            mrklkit_rt_struct_fini(&value);
+            continue;
+
+        } else if (res == DPARSE_ERRORVALUE) {
+            TRACE("error, delim='%c'", delim);
+            array_traverse(&value, (array_traverser_t)dump_tobj, NULL);
+
+        } else {
+            TRACE("ok, delim='%c':", delim);
+            array_traverse(&value, (array_traverser_t)dump_tobj, NULL);
+        }
+
+        if (delim == '\n') {
+            TRACE("EOL");
+        }
+
+        mrklkit_rt_struct_fini(&value);
+    }
+    bytestream_fini(&bs);
+    lkit_type_destroy((lkit_type_t **)&stty);
+
+    close(fd);
+}
+
+
 int
 main(int argc, char *argv[])
 {
+    mrklkit_init(NULL);
     test0();
     if (argc > 2) {
         dtype = argv[1];
@@ -716,11 +974,16 @@ main(int argc, char *argv[])
             test_dict_int();
         } else if (strcmp(dtype, "dict_float") == 0) {
             test_dict_float();
+        } else if (strcmp(dtype, "dict_str") == 0) {
+            test_dict_str();
+        } else if (strcmp(dtype, "struct_00") == 0) {
+            test_struct_00();
         } else {
             assert(0);
         }
     } else {
         assert(0);
     }
+    mrklkit_fini();
     return 0;
 }

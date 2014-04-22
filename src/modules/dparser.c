@@ -191,32 +191,6 @@ dparse_float(bytestream_t *bs,
 
 
 int
-dparse_kv_int(bytestream_t *bs,
-              char kvdelim,
-              char fdelim,
-              char rdelim[2],
-              dict_t *value,
-              char *ch,
-              unsigned int flags)
-{
-    DPARSE_KV_INTFLOAT(uint64_t, dparse_int);
-}
-
-
-int
-dparse_kv_float(bytestream_t *bs,
-                char kvdelim,
-                char fdelim,
-                char rdelim[2],
-                dict_t *value,
-                char *ch,
-                unsigned int flags)
-{
-    DPARSE_KV_INTFLOAT(double, dparse_float);
-}
-
-
-int
 dparse_qstr(bytestream_t *bs,
             char fdelim,
             char rdelim[2],
@@ -399,7 +373,67 @@ dparse_str_byterange(bytestream_t *bs,
 
 
 int
-dparse_kv_str_byterange(UNUSED bytestream_t *bs,
+dparse_str_bytes(bytestream_t *bs,
+                 char fdelim,
+                 char rdelim[2],
+                 bytes_t **value,
+                 char *ch,
+                 unsigned int flags)
+{
+    byterange_t br;
+
+    br.start = SPOS(bs);
+
+    while (!SNEEDMORE(bs)) {
+        *ch = SPCHR(bs);
+        if (DPARSE_TEST_DELIM(*ch)) {
+            br.end = SPOS(bs);
+            *value = bytes_new(br.end - br.start + 1);
+            memcpy((*value)->data, SDATA(bs, br.start), br.end - br.start); \
+            (*value)->data[br.end - br.start] = '\0'; \
+            if (flags & DPARSE_MERGEDELIM) {
+                reach_value(bs, fdelim);
+            } else {
+                SINCR(bs);
+            }
+            return 0;
+        } else {
+            SINCR(bs);
+        }
+    }
+
+    return DPARSE_NEEDMORE;
+}
+
+
+int
+dparse_kv_int(bytestream_t *bs,
+              char kvdelim,
+              char fdelim,
+              char rdelim[2],
+              dict_t *value,
+              char *ch,
+              unsigned int flags)
+{
+    DPARSE_KV_INTFLOAT(uint64_t, dparse_int);
+}
+
+
+int
+dparse_kv_float(bytestream_t *bs,
+                char kvdelim,
+                char fdelim,
+                char rdelim[2],
+                dict_t *value,
+                char *ch,
+                unsigned int flags)
+{
+    DPARSE_KV_INTFLOAT(double, dparse_float);
+}
+
+
+int
+dparse_kv_str_bytes(UNUSED bytestream_t *bs,
                         UNUSED char kvdelim,
                         UNUSED char fdelim,
                         UNUSED char rdelim[2],
@@ -407,11 +441,55 @@ dparse_kv_str_byterange(UNUSED bytestream_t *bs,
                         UNUSED char *ch,
                         UNUSED unsigned int flags)
 {
-    return 0;
+    int res;
+    off_t spos = SPOS(bs);
+    byterange_t br;
+    bytes_t *key;
+    bytes_t *val;
+    char krdelim[2] = {fdelim, rdelim[0]};
+    while (!SNEEDMORE(bs)) {
+        if ((res = dparse_str_byterange(bs,
+                                        kvdelim,
+                                        krdelim,
+                                        &br,
+                                        ch,
+                                        flags)) == DPARSE_NEEDMORE) {
+            goto needmore;
+        } else if (res == DPARSE_ERRORVALUE) {
+            goto err;
+        }
+        key = bytes_new(br.end - br.start + 1);
+        memcpy(key->data, SDATA(bs, br.start), br.end - br.start);
+        key->data[br.end - br.start] = '\0';
+
+        if ((res = dparse_str_byterange(bs,
+                                        fdelim,
+                                        rdelim,
+                                        &br,
+                                        ch,
+                                        flags)) == DPARSE_NEEDMORE) {
+            goto needmore;
+        } else if (res == DPARSE_ERRORVALUE) {
+            goto err;
+        }
+        val = bytes_new(br.end - br.start + 1);
+        memcpy(val->data, SDATA(bs, br.start), br.end - br.start);
+        val->data[br.end - br.start] = '\0';
+        dict_set_item(value, key, val);
+        return 0;
+    }
+
+needmore:
+    return DPARSE_NEEDMORE;
+err:
+    if (flags & DPARSE_RESETONERROR) {
+        SPOS(bs) = spos;
+    }
+    return DPARSE_ERRORVALUE;
 }
 
 
-int
+UNUSED int
 dparse_qstr_byterange(bytestream_t *bs,
                       char fdelim,
                       char rdelim[2],
@@ -515,6 +593,7 @@ dparse_kv_qstr_byterange(UNUSED bytestream_t *bs,
                          UNUSED char *ch,
                          UNUSED unsigned int flags)
 {
+    FAIL("not implemented");
     return 0;
 }
 
@@ -531,11 +610,11 @@ dparse_array(bytestream_t *bs,
     off_t spos = SPOS(bs);
     char afdelim;
     char ardelim[2] = {fdelim, rdelim[0]};
-    lkit_type_t **afty;
+    lkit_type_t *afty;
 
     afdelim = arty->delim[0];
-    if ((afty = array_get(&arty->fields, 0)) == NULL) {
-        FAIL("array_get");
+    if ((afty = lkit_array_get_element_type(arty)) == NULL) {
+        FAIL("lkit_array_get_element_type");
     }
 
 #define DPARSE_AR_CASE(ty, fn) \
@@ -546,11 +625,11 @@ dparse_array(bytestream_t *bs,
                 FAIL("array_incr"); \
             } \
             if ((res = fn(bs, \
-                                  afdelim, \
-                                  ardelim, \
-                                  val, \
-                                  ch, \
-                                  flags)) == \
+                          afdelim, \
+                          ardelim, \
+                          val, \
+                          ch, \
+                          flags)) == \
                     DPARSE_NEEDMORE) { \
                 goto needmore; \
             } else if (res == DPARSE_ERRORVALUE) { \
@@ -561,17 +640,15 @@ dparse_array(bytestream_t *bs,
             } \
         }
 
-    if ((*afty)->tag == LKIT_INT) {
+    if (afty->tag == LKIT_INT) {
         DPARSE_AR_CASE(uint64_t, dparse_int);
 
-    } else if ((*afty)->tag == LKIT_FLOAT) {
+    } else if (afty->tag == LKIT_FLOAT) {
         DPARSE_AR_CASE(double, dparse_float);
 
-    } else if ((*afty)->tag == LKIT_STR) {
-        DPARSE_AR_CASE(byterange_t, dparse_str_byterange);
-
-    } else if ((*afty)->tag == LKIT_QSTR) {
-        DPARSE_AR_CASE(byterange_t, dparse_qstr_byterange);
+    } else if (afty->tag == LKIT_STR) {
+        //DPARSE_AR_CASE(byterange_t, dparse_str_byterange);
+        DPARSE_AR_CASE(bytes_t *, dparse_str_bytes);
 
     } else {
         /* cannot be recursively nested */
@@ -615,11 +692,11 @@ dparse_dict(bytestream_t *bs,
     off_t spos = SPOS(bs);
     char dfdelim;
     char drdelim[2] = {fdelim, rdelim[0]};
-    lkit_type_t **dfty;
+    lkit_type_t *dfty;
 
     dfdelim = dcty->fdelim[0];
-    if ((dfty = array_get(&dcty->fields, 0)) == NULL) {
-        FAIL("array_get");
+    if ((dfty = lkit_dict_get_element_type(dcty)) == NULL) {
+        FAIL("lkit_dict_get_element_type");
     }
 
 #define DPARSE_KV_CASE(fn) \
@@ -642,17 +719,14 @@ dparse_dict(bytestream_t *bs,
             } \
         }
 
-    if ((*dfty)->tag == LKIT_INT) {
+    if (dfty->tag == LKIT_INT) {
         DPARSE_KV_CASE(dparse_kv_int);
 
-    } else if ((*dfty)->tag == LKIT_FLOAT) {
+    } else if (dfty->tag == LKIT_FLOAT) {
         DPARSE_KV_CASE(dparse_kv_float);
 
-    } else if ((*dfty)->tag == LKIT_STR) {
-        DPARSE_KV_CASE(dparse_kv_str_byterange);
-
-    } else if ((*dfty)->tag == LKIT_QSTR) {
-        DPARSE_KV_CASE(dparse_kv_qstr_byterange);
+    } else if (dfty->tag == LKIT_STR) {
+        DPARSE_KV_CASE(dparse_kv_str_bytes);
 
     } else {
         /* cannot be recursively nested */
@@ -681,6 +755,24 @@ err:
         //}
     }
     return DPARSE_ERRORVALUE;
+}
+
+
+int
+dparse_struct(UNUSED bytestream_t *bs,
+              UNUSED char fdelim,
+              UNUSED char rdelim[2],
+              UNUSED lkit_struct_t *stty,
+              UNUSED array_t *value,
+              UNUSED char *ch,
+              UNUSED unsigned int flags)
+{
+    if (flags & DPARSE_MERGEDELIM) {
+        if (DPARSE_TEST_DELIM(SPCHR(bs))) {
+            reach_value(bs, fdelim);
+        }
+    }
+    return 0;
 }
 
 

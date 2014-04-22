@@ -113,7 +113,7 @@ lkit_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
     return 0;
 }
 
-lkit_type_t *
+static lkit_type_t *
 lkit_type_new(lkit_tag_t tag)
 {
     lkit_type_t *ty = NULL;
@@ -154,7 +154,7 @@ lkit_type_new(lkit_tag_t tag)
             tc->base.tag = tag;
             tc->base.name = "str";
             LKIT_ERROR(tc) = 0;
-            tc->base.fini = NULL;
+            tc->base.fini = (lkit_type_finalizer_t)bytes_fini;
             ty = (lkit_type_t *)tc;
         }
         break;
@@ -252,7 +252,7 @@ lkit_type_new(lkit_tag_t tag)
             LKIT_ERROR(ts) = 0;
             ts->parser = LKIT_PARSER_NONE;
             ts->delim = NULL;
-            ts->base.fini = mrklkit_rt_array_fini;
+            ts->base.fini = mrklkit_rt_struct_fini;
             array_init(&ts->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             array_init(&ts->names, sizeof(unsigned char *), 0, NULL, NULL);
             ty = (lkit_type_t *)ts;
@@ -285,6 +285,31 @@ lkit_type_new(lkit_tag_t tag)
 
     return ty;
 }
+
+lkit_type_t *
+lkit_type_get(lkit_tag_t tag)
+{
+    lkit_type_t *ty;
+
+    if (tag < _LKIT_END_OF_BUILTIN_TYPES) {
+        lkit_type_t *sample;
+
+        sample = lkit_type_new(tag);
+        ty = dict_get_item(&types, sample);
+        lkit_type_destroy(&sample);
+        if (ty == NULL) {
+            FAIL("lkit_type_get");
+        }
+
+    } else {
+        ty = lkit_type_new(tag);
+    }
+
+    return ty;
+}
+
+
+
 
 lkit_type_t *
 lkit_array_get_element_type(lkit_array_t *ta)
@@ -561,6 +586,11 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
     }
 }
 
+/*
+ * Parser.
+ *
+ */
+
 int
 ltype_next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int seterror)
 {
@@ -581,11 +611,6 @@ ltype_next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int se
     (*node)->error = seterror;
     TRRET(LTYPE_NEXT_STRUCT + 2);
 }
-
-/*
- * Parser.
- *
- */
 
 static int
 type_cmp(lkit_type_t **pa, lkit_type_t **pb)
@@ -612,11 +637,14 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                     aa = (lkit_array_t *)a;
                     ab = (lkit_array_t *)b;
 
-                    return array_cmp(&aa->fields,
-                                     &ab->fields,
-                                     (array_compar_t)type_cmp,
-                                     0);
+                    diff = aa->delim[0] - ab->delim[0];
 
+                    if (diff == 0) {
+                        return array_cmp(&aa->fields,
+                                         &ab->fields,
+                                         (array_compar_t)type_cmp,
+                                         0);
+                    }
                 }
                 break;
 
@@ -626,10 +654,16 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                     da = (lkit_dict_t *)a;
                     db = (lkit_dict_t *)b;
 
-                    return array_cmp(&da->fields,
-                                     &db->fields,
-                                     (array_compar_t)type_cmp,
-                                     0);
+                    diff = da->kvdelim[0] - db->kvdelim[0];
+                    if (diff == 0) {
+                        diff = da->fdelim[0] - db->fdelim[0];
+                    }
+                    if (diff == 0) {
+                        return array_cmp(&da->fields,
+                                         &db->fields,
+                                         (array_compar_t)type_cmp,
+                                         0);
+                    }
 
                 }
                 break;
@@ -640,10 +674,14 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                     sa = (lkit_struct_t *)a;
                     sb = (lkit_struct_t *)b;
 
-                    return array_cmp(&sa->fields,
-                                     &sb->fields,
-                                     (array_compar_t)type_cmp,
-                                     0);
+                    diff = sa->delim[0] - sb->delim[0];
+
+                    if (diff == 0) {
+                        return array_cmp(&sa->fields,
+                                         &sb->fields,
+                                         (array_compar_t)type_cmp,
+                                         0);
+                    }
 
                 }
                 break;
@@ -861,17 +899,17 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
 
         /* simple types */
         if (strcmp(typename, "undef") == 0) {
-            ty = lkit_type_new(LKIT_UNDEF);
+            ty = lkit_type_get(LKIT_UNDEF);
         } else if (strcmp(typename, "int") == 0) {
-            ty = lkit_type_new(LKIT_INT);
+            ty = lkit_type_get(LKIT_INT);
         } else if (strcmp(typename, "str") == 0) {
-            ty = lkit_type_new(LKIT_STR);
+            ty = lkit_type_get(LKIT_STR);
         } else if (strcmp(typename, "float") == 0) {
-            ty = lkit_type_new(LKIT_FLOAT);
+            ty = lkit_type_get(LKIT_FLOAT);
         } else if (strcmp(typename, "bool") == 0) {
-            ty = lkit_type_new(LKIT_BOOL);
+            ty = lkit_type_get(LKIT_BOOL);
         } else if (strcmp(typename, "...") == 0) {
-            ty = lkit_type_new(LKIT_VARARG);
+            ty = lkit_type_get(LKIT_VARARG);
         } else {
             /*
              * XXX handle typedefs here, or unknown type ...
@@ -899,7 +937,7 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 fparser_datum_t **node;
                 lkit_type_t **elemtype;
 
-                ty = lkit_type_new(LKIT_ARRAY);
+                ty = lkit_type_get(LKIT_ARRAY);
                 ta = (lkit_array_t *)ty;
 
                 /* quals */
@@ -926,7 +964,7 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 fparser_datum_t **node;
                 lkit_type_t **elemtype;
 
-                ty = lkit_type_new(LKIT_DICT);
+                ty = lkit_type_get(LKIT_DICT);
                 td = (lkit_dict_t *)ty;
 
                 if (lparse_next_str(form, &it, &td->kvdelim, 1) != 0) {
@@ -953,7 +991,7 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 lkit_struct_t *ts;
                 fparser_datum_t **node;
 
-                ty = lkit_type_new(LKIT_STRUCT);
+                ty = lkit_type_get(LKIT_STRUCT);
                 ts = (lkit_struct_t *)ty;
 
                 /* quals */
@@ -985,7 +1023,7 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 lkit_type_t **paramtype;
 
 
-                ty = lkit_type_new(LKIT_FUNC);
+                ty = lkit_type_get(LKIT_FUNC);
                 tf = (lkit_func_t *)ty;
 
                 /* retval and optional params are stroed in tf->fields */
