@@ -151,7 +151,7 @@ mrklkit_parse(int fd)
     }
 
 end:
-    fparser_datum_dump_formatted(root);
+    //fparser_datum_dump_formatted(root);
     return res;
 
 err:
@@ -255,12 +255,12 @@ mrklkit_compile(int fd)
     /* LLVM analysis */
     do_analysis();
 
-#if 0
+#if 1
     TRACEC("-----------------------------------------------\n");
     LLVMDumpModule(module);
 #endif
 
-#if 0
+#if 1
     TRACEC("-----------------------------------------------\n");
     tr = LLVMGetFirstTarget();
     TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",

@@ -300,92 +300,94 @@ dump_bytes_dict(bytes_t *k, bytes_t *v, UNUSED void *udata)
 static int
 dump_tobj(tobj_t *o, void *udata)
 {
-    switch (o->type->tag) {
-    case LKIT_INT:
-        TRACE(" %ld", (int64_t)o->value);
-        break;
+    if (o->type != NULL) {
+        switch (o->type->tag) {
+        case LKIT_INT:
+            TRACE(" %ld", (int64_t)o->value);
+            break;
 
-    case LKIT_FLOAT:
-        {
-            union {
-                void *p;
-                double d;
-            } v;
+        case LKIT_FLOAT:
+            {
+                union {
+                    void *p;
+                    double d;
+                } v;
 
-            assert(sizeof(double) == sizeof(void *));
-            v.p = o->value;
-            TRACE(" %lf", v.d);
-        }
-        break;
+                assert(sizeof(double) == sizeof(void *));
+                v.p = o->value;
+                TRACE(" %lf", v.d);
+            }
+            break;
 
-    case LKIT_STR:
-        TRACE(" %s", ((bytes_t *)o->value)->data);
-        break;
+        case LKIT_STR:
+            TRACE(" %s", ((bytes_t *)o->value)->data);
+            break;
 
-    case LKIT_ARRAY:
-        {
-            lkit_array_t *ta;
-            lkit_type_t *fty;
+        case LKIT_ARRAY:
+            {
+                lkit_array_t *ta;
+                lkit_type_t *fty;
 
-            ta = (lkit_array_t *)o->type;
-            fty = lkit_array_get_element_type(ta);
-            switch (fty->tag) {
-            case LKIT_INT:
-                array_traverse((array_t *)o->value,
-                               (array_traverser_t)dump_int_array, NULL);
-                break;
+                ta = (lkit_array_t *)o->type;
+                fty = lkit_array_get_element_type(ta);
+                switch (fty->tag) {
+                case LKIT_INT:
+                    array_traverse((array_t *)o->value,
+                                   (array_traverser_t)dump_int_array, NULL);
+                    break;
 
-            case LKIT_FLOAT:
-                array_traverse((array_t *)o->value,
-                               (array_traverser_t)dump_float_array, NULL);
-                break;
+                case LKIT_FLOAT:
+                    array_traverse((array_t *)o->value,
+                                   (array_traverser_t)dump_float_array, NULL);
+                    break;
 
-            case LKIT_STR:
-                array_traverse((array_t *)o->value,
-                               (array_traverser_t)dump_bytes_array, NULL);
-                break;
+                case LKIT_STR:
+                    array_traverse((array_t *)o->value,
+                                   (array_traverser_t)dump_bytes_array, NULL);
+                    break;
 
-            default:
-                assert(0);
+                default:
+                    assert(0);
+                }
+
             }
 
-        }
+        case LKIT_DICT:
+            {
+                lkit_dict_t *td;
+                lkit_type_t *fty;
 
-    case LKIT_DICT:
-        {
-            lkit_dict_t *td;
-            lkit_type_t *fty;
+                td = (lkit_dict_t *)o->type;
+                fty = lkit_dict_get_element_type(td);
+                switch (fty->tag) {
+                case LKIT_INT:
+                    dict_traverse((dict_t *)o->value,
+                                   (dict_traverser_t)dump_int_dict, NULL);
+                    break;
 
-            td = (lkit_dict_t *)o->type;
-            fty = lkit_dict_get_element_type(td);
-            switch (fty->tag) {
-            case LKIT_INT:
-                dict_traverse((dict_t *)o->value,
-                               (dict_traverser_t)dump_int_dict, NULL);
-                break;
+                case LKIT_FLOAT:
+                    dict_traverse((dict_t *)o->value,
+                                   (dict_traverser_t)dump_float_dict, NULL);
+                    break;
 
-            case LKIT_FLOAT:
-                dict_traverse((dict_t *)o->value,
-                               (dict_traverser_t)dump_float_dict, NULL);
-                break;
+                case LKIT_STR:
+                    dict_traverse((dict_t *)o->value,
+                                   (dict_traverser_t)dump_bytes_dict, NULL);
+                    break;
 
-            case LKIT_STR:
-                dict_traverse((dict_t *)o->value,
-                               (dict_traverser_t)dump_bytes_dict, NULL);
-                break;
-
-            default:
-                assert(0);
+                default:
+                    assert(0);
+                }
             }
+            break;
+
+        case LKIT_STRUCT:
+            dump_tobj(o->value, udata);
+            break;
+
+        default:
+            assert(0);
         }
-        break;
-
-    case LKIT_STRUCT:
-        dump_tobj(o->value, udata);
-        break;
-
-    default:
-        assert(0);
     }
     return 0;
 }
@@ -899,7 +901,7 @@ test_struct_00(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        array_t value;
+        rt_struct_t value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -909,7 +911,7 @@ test_struct_00(void)
             continue;
         }
 
-        mrklkit_rt_struct_init(&value);
+        mrklkit_rt_struct_init(&value, stty);
 
         if ((res = dparse_struct(&bs,
                                  FDELIM,
@@ -918,23 +920,23 @@ test_struct_00(void)
                                  &value,
                                  &delim,
                                  DPFLAGS)) == DPARSE_NEEDMORE) {
-            array_fini(&value);
+            mrklkit_rt_struct_fini(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            array_traverse(&value, (array_traverser_t)dump_tobj, NULL);
+            array_traverse(&value.fields, (array_traverser_t)dump_tobj, NULL);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            array_traverse(&value, (array_traverser_t)dump_tobj, NULL);
+            array_traverse(&value.fields, (array_traverser_t)dump_tobj, NULL);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        array_fini(&value);
+        mrklkit_rt_struct_fini(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&stty);

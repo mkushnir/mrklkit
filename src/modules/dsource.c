@@ -31,7 +31,7 @@ dsource_init(dsource_t *dsource)
     dsource->error = 0;
     /* weak ref */
     dsource->logtype = NULL;
-    dsource->fields = NULL;
+    dsource->_struct = NULL;
 }
 
 static void
@@ -45,7 +45,7 @@ dsource_fini(dsource_t *dsource)
     /* weak ref */
     dsource->logtype = NULL;
     /* weak ref */
-    dsource->fields = NULL;
+    dsource->_struct = NULL;
 }
 
 static dsource_t *
@@ -71,34 +71,8 @@ dsource_destroy(dsource_t **dsource)
 }
 
 
-UNUSED static void
-dsource_dump(dsource_t *dsource)
-{
-    if (dsource->error) {
-        TRACEC("-->(dsource ");
-    } else {
-        TRACEC("(dsource ");
-    }
-    if (dsource->timestamp_index != -1) {
-        TRACEC(":timestamp-index %d ", dsource->timestamp_index);
-    }
-    if (dsource->date_index != -1) {
-        TRACEC(":date-index %d ", dsource->date_index);
-    }
-    if (dsource->time_index != -1) {
-        TRACEC(":time-index %d ", dsource->time_index);
-    }
-    lkit_type_dump((lkit_type_t *)(dsource->fields));
-    if (dsource->error) {
-        TRACEC(")<--");
-    } else {
-        TRACEC(")");
-    }
-}
-
-
 /**
- * dsource ::= (dsource quals? logtype fields?)
+ * dsource ::= (dsource quals? logtype _struct?)
  *
  */
 static int
@@ -130,11 +104,9 @@ parse_dsource_quals(array_t *form,
 }
 
 int
-dsource_parse(array_t *form,
-              array_iter_t *it)
+dsource_parse(array_t *form, array_iter_t *it)
 {
     dsource_t **dsource;
-    bytestream_t bs;
 
 
     if ((dsource = array_incr(&dsources)) == NULL) {
@@ -150,18 +122,31 @@ dsource_parse(array_t *form,
     /* quals */
     lparse_quals(form, it, (quals_parser_t)parse_dsource_quals, *dsource);
 
-    if (ltype_next_struct(form, it, &(*dsource)->fields, 1) != 0) {
+    if (ltype_next_struct(form, it, &(*dsource)->_struct, 1) != 0) {
         (*dsource)->error = 1;
         return 1;
     }
 
-    bytestream_init(&bs);
-    lkit_type_str((lkit_type_t *)((*dsource)->fields), &bs);
-    bytestream_cat(&bs, 2, "\n\0");
-    bytestream_write(&bs, 2, bs.eod);
-    bytestream_fini(&bs);
-
     return 0;
+}
+
+
+dsource_t *
+dsource_get(const char *name)
+{
+    dsource_t **v;
+    array_iter_t it;
+
+    for (v = array_first(&dsources, &it);
+         v != NULL;
+         v = array_next(&dsources, &it)) {
+
+        if (strcmp(name, (const char *)(*v)->logtype) == 0) {
+            return *v;
+        }
+    }
+
+    return NULL;
 }
 
 

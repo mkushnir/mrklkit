@@ -15,10 +15,14 @@ typedef struct _dsource {
     int error:1;
     /* weak ref*/
     unsigned char *logtype;
-    lkit_struct_t *fields;
+    lkit_struct_t *_struct;
+    char rdelim[2];
+    char fdelim;
+    uint64_t parse_flags;
 } dsource_t;
 
 int dsource_parse(array_t *, array_iter_t *);
+dsource_t *dsource_get(const char *);
 
 void dsource_init_module(void);
 void dsource_fini_module(void);

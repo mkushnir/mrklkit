@@ -25,7 +25,7 @@ int dparse_array(bytestream_t *, char, char[2], lkit_array_t *, array_t *, char 
 int
 dparse_dict(bytestream_t *, char, char[2], lkit_dict_t *, dict_t *, char *, unsigned int);
 int
-dparse_struct(bytestream_t *, char, char[2], lkit_struct_t *, array_t *, char *, unsigned int);
+dparse_struct(bytestream_t *, char, char[2], lkit_struct_t *, rt_struct_t *, char *, unsigned int);
 
 #ifdef __cplusplus
 }

@@ -66,13 +66,15 @@ builtin_sym_parse(array_t *form, array_iter_t *it)
 {
     return lkit_parse_exprdef(&root, form, it);
 }
+
+
 static int
-remove_undef(lkit_expr_t *value)
+remove_undef(lkit_expr_t *expr)
 {
-    char *name = (value->name != NULL) ? (char *)value->name->data : ")(";
+    char *name = (expr->name != NULL) ? (char *)expr->name->data : ")(";
 
     //TRACEN("%s: ", name);
-    if (value->type->tag == LKIT_UNDEF) {
+    if (expr->type->tag == LKIT_UNDEF) {
 
         //TRACEC("undef\n");
 
@@ -80,12 +82,12 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **cond, **texp, **fexp;
             lkit_type_t *tty, *fty;
 
-            //value->isbuiltin = 1;
+            //expr->isbuiltin = 1;
 
             /*
              * (sym if (func undef bool undef undef))
              */
-            cond = array_get(&value->subs, 0);
+            cond = array_get(&expr->subs, 0);
             assert(cond != NULL);
 
             if (remove_undef(*cond) != 0) {
@@ -98,14 +100,14 @@ remove_undef(lkit_expr_t *value)
                 TRRET(REMOVE_UNDEF + 2);
             }
 
-            texp = array_get(&value->subs, 1);
+            texp = array_get(&expr->subs, 1);
             assert(texp != NULL);
 
             if (remove_undef(*texp) != 0) {
                 TRRET(REMOVE_UNDEF + 3);
             }
 
-            fexp = array_get(&value->subs, 2);
+            fexp = array_get(&expr->subs, 2);
             assert(fexp != NULL);
 
             if (remove_undef(*fexp) != 0) {
@@ -116,7 +118,7 @@ remove_undef(lkit_expr_t *value)
             fty = (*fexp)->type;
 
             if (lkit_type_cmp(tty, fty) == 0) {
-                value->type = tty;
+                expr->type = tty;
             } else {
                 (*texp)->error = 1;
                 (*fexp)->error = 1;
@@ -129,41 +131,41 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **arg;
             array_iter_t it;
 
-            for (arg = array_first(&value->subs, &it);
+            for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
-                 arg = array_next(&value->subs, &it)) {
+                 arg = array_next(&expr->subs, &it)) {
 
                 if (remove_undef(*arg) != 0) {
                     TRRET(REMOVE_UNDEF + 6);
                 }
             }
-            if ((arg = array_last(&value->subs, &it)) == NULL) {
+            if ((arg = array_last(&expr->subs, &it)) == NULL) {
                 TRRET(REMOVE_UNDEF + 7);
             }
 
-            value->type = (*arg)->type;
+            expr->type = (*arg)->type;
 
         } else if (strcmp(name, "print") == 0) {
             lkit_expr_t **arg;
             array_iter_t it;
 
-            //value->isbuiltin = 1;
+            //expr->isbuiltin = 1;
 
             /*
              * (sym print (func undef ...))
              */
 
-            for (arg = array_first(&value->subs, &it);
+            for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
-                 arg = array_next(&value->subs, &it)) {
+                 arg = array_next(&expr->subs, &it)) {
                 if (remove_undef(*arg) != 0) {
                     TRRET(REMOVE_UNDEF + 8);
                 }
             }
 
-            arg = array_last(&value->subs, &it);
+            arg = array_last(&expr->subs, &it);
             assert(arg != NULL);
-            value->type = (*arg)->type;
+            expr->type = (*arg)->type;
 
         } else if (strcmp(name, "+") == 0 ||
                    strcmp(name, "*") == 0 ||
@@ -176,21 +178,21 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **aarg, **barg;
             array_iter_t it;
 
-            //value->isbuiltin = 1;
+            //expr->isbuiltin = 1;
 
             /*
              * (sym +|*|%|-|/ (func undef undef ...))
              */
-            aarg = array_first(&value->subs, &it);
+            aarg = array_first(&expr->subs, &it);
             assert(aarg != NULL);
 
             if (remove_undef(*aarg) != 0) {
                 TRRET(REMOVE_UNDEF + 9);
             }
 
-            for (barg = array_next(&value->subs, &it);
+            for (barg = array_next(&expr->subs, &it);
                  barg != NULL;
-                 barg = array_next(&value->subs, &it)) {
+                 barg = array_next(&expr->subs, &it)) {
 
                 if (remove_undef(*barg) != 0) {
                     TRRET(REMOVE_UNDEF + 10);
@@ -203,7 +205,7 @@ remove_undef(lkit_expr_t *value)
                     TRRET(REMOVE_UNDEF + 11);
                 }
             }
-            value->type = (*aarg)->type;
+            expr->type = (*aarg)->type;
 
         } else if (strcmp(name, "get") == 0) {
             /*
@@ -214,9 +216,9 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **cont, **dflt;
             lkit_type_t *ty;
 
-            //value->isbuiltin = 1;
+            //expr->isbuiltin = 1;
 
-            cont = array_get(&value->subs, 0);
+            cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
             if (remove_undef(*cont) != 0) {
@@ -228,12 +230,12 @@ remove_undef(lkit_expr_t *value)
             switch (ty->tag) {
             case LKIT_STRUCT:
                 {
-                    lkit_struct_t *ts = (lkit_struct_t *)*cont;
+                    lkit_struct_t *ts = (lkit_struct_t *)ty;
                     lkit_expr_t **name;
                     bytes_t *bname;
                     lkit_type_t *elty;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant str */
@@ -245,23 +247,24 @@ remove_undef(lkit_expr_t *value)
                     }
 
                     bname = (bytes_t *)(*name)->value.literal->body;
+                    //TRACE("bname=%s ts=%p", bname->data, ts);
                     if ((elty =
                             lkit_struct_get_field_type(ts, bname)) == NULL) {
                         (*cont)->error = 1;
                         TRRET(REMOVE_UNDEF + 14);
                     }
 
-                    value->type = elty;
+                    expr->type = elty;
                 }
                 break;
 
             case LKIT_DICT:
                 {
-                    lkit_dict_t *td = (lkit_dict_t *)*cont;
+                    lkit_dict_t *td = (lkit_dict_t *)ty;
                     lkit_type_t *elty;
                     lkit_expr_t **name;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant str */
@@ -277,17 +280,17 @@ remove_undef(lkit_expr_t *value)
                         TRRET(REMOVE_UNDEF + 16);
                     }
 
-                    value->type = elty;
+                    expr->type = elty;
                 }
                 break;
 
             case LKIT_ARRAY:
                 {
-                    lkit_array_t *ta = (lkit_array_t *)*cont;
+                    lkit_array_t *ta = (lkit_array_t *)ty;
                     lkit_type_t *elty;
                     lkit_expr_t **name;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant int */
@@ -303,7 +306,7 @@ remove_undef(lkit_expr_t *value)
                         TRRET(REMOVE_UNDEF + 18);
                     }
 
-                    value->type = elty;
+                    expr->type = elty;
                 }
                 break;
 
@@ -312,14 +315,14 @@ remove_undef(lkit_expr_t *value)
                 TRRET(REMOVE_UNDEF + 19);
             }
 
-            dflt = array_get(&value->subs, 2);
+            dflt = array_get(&expr->subs, 2);
             assert(dflt != NULL);
 
             if (remove_undef(*dflt) != 0) {
                 TRRET(REMOVE_UNDEF + 20);
             }
 
-            if (lkit_type_cmp(value->type, (*dflt)->type) != 0) {
+            if (lkit_type_cmp(expr->type, (*dflt)->type) != 0) {
                 (*dflt)->error = 1;
                 TRRET(REMOVE_UNDEF + 21);
             }
@@ -334,9 +337,9 @@ remove_undef(lkit_expr_t *value)
             lkit_type_t *ty;
             lkit_type_t *elty;
 
-            //value->isbuiltin = 1;
+            //expr->isbuiltin = 1;
 
-            cont = array_get(&value->subs, 0);
+            cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
             if (remove_undef(*cont) != 0) {
@@ -348,11 +351,11 @@ remove_undef(lkit_expr_t *value)
             switch (ty->tag) {
             case LKIT_STRUCT:
                 {
-                    lkit_struct_t *ts = (lkit_struct_t *)*cont;
+                    lkit_struct_t *ts = (lkit_struct_t *)ty;
                     lkit_expr_t **name;
                     bytes_t *bname;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant str */
@@ -375,10 +378,10 @@ remove_undef(lkit_expr_t *value)
 
             case LKIT_DICT:
                 {
-                    lkit_dict_t *td = (lkit_dict_t *)*cont;
+                    lkit_dict_t *td = (lkit_dict_t *)ty;
                     lkit_expr_t **name;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant str */
@@ -399,10 +402,10 @@ remove_undef(lkit_expr_t *value)
 
             case LKIT_ARRAY:
                 {
-                    lkit_array_t *ta = (lkit_array_t *)*cont;
+                    lkit_array_t *ta = (lkit_array_t *)ty;
                     lkit_expr_t **name;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant str */
@@ -427,9 +430,9 @@ remove_undef(lkit_expr_t *value)
 
             }
 
-            value->type = ty;
+            expr->type = ty;
 
-            setv = array_get(&value->subs, 2);
+            setv = array_get(&expr->subs, 2);
             assert(setv != NULL);
 
             if (remove_undef(*setv) != 0) {
@@ -450,9 +453,9 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **cont;
             lkit_type_t *ty;
 
-            //value->isbuiltin = 1;
+            //expr->isbuiltin = 1;
 
-            cont = array_get(&value->subs, 0);
+            cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
             if (remove_undef(*cont) != 0) {
@@ -466,7 +469,7 @@ remove_undef(lkit_expr_t *value)
                 {
                     lkit_expr_t **name;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant str */
@@ -483,7 +486,7 @@ remove_undef(lkit_expr_t *value)
                 {
                     lkit_expr_t **name;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant str */
@@ -500,7 +503,7 @@ remove_undef(lkit_expr_t *value)
                 {
                     lkit_expr_t **name;
 
-                    name = array_get(&value->subs, 1);
+                    name = array_get(&expr->subs, 1);
                     assert(name != NULL);
 
                     /* constant str */
@@ -519,16 +522,16 @@ remove_undef(lkit_expr_t *value)
 
             }
 
-            value->type = ty;
+            expr->type = ty;
 
         } else {
             lkit_expr_t *ref;
 
             /* not builtin */
-            if ((ref = dict_get_item(&root.ctx, value->name)) == NULL) {
+            if ((ref = dict_get_item(&root.ctx, expr->name)) == NULL) {
                 TRRET(REMOVE_UNDEF + 37);
             }
-            value->type = ref->type;
+            expr->type = ref->type;
         }
 
     } else {
@@ -542,11 +545,11 @@ remove_undef(lkit_expr_t *value)
             lkit_expr_t **arg;
             array_iter_t it;
 
-            //value->isbuiltin = 1;
+            //expr->isbuiltin = 1;
 
-            for (arg = array_first(&value->subs, &it);
+            for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
-                 arg = array_next(&value->subs, &it)) {
+                 arg = array_next(&expr->subs, &it)) {
 
                 if (remove_undef(*arg) != 0) {
                     TRRET(REMOVE_UNDEF + 38);
@@ -559,9 +562,9 @@ remove_undef(lkit_expr_t *value)
              */
             lkit_expr_t **arg;
 
-            //value->isbuiltin = 1;
+            //expr->isbuiltin = 1;
 
-            arg = array_get(&value->subs, 0);
+            arg = array_get(&expr->subs, 0);
             assert(arg != NULL);
 
             if (remove_undef(*arg) != 0) {
@@ -570,15 +573,15 @@ remove_undef(lkit_expr_t *value)
 
         } else {
             //TRACEC("\n");
-            //lkit_expr_dump(value);
+            //lkit_expr_dump(expr);
             //TRACE("........");
         }
 
     }
-    if (value->type->tag == LKIT_UNDEF) {
+    if (expr->type->tag == LKIT_UNDEF) {
         /* should not be reached */
-        lkit_type_dump(value->type);
-        lkit_expr_dump(value);
+        //lkit_type_dump(expr->type);
+        lkit_expr_dump(expr);
         assert(0);
     }
     return 0;
@@ -612,15 +615,21 @@ builtin_sym_compile(LLVMModuleRef module)
 }
 
 
+lkit_expr_t *
+builtin_get_root_ctx(void)
+{
+    return &root;
+}
+
 void
 builtin_init(void)
 {
-    lexpr_init_ctx(&root);
+    lkit_expr_init(&root, NULL);
 }
 
 void
 builtin_fini(void)
 {
-    lexpr_fini_ctx(&root);
+    lkit_expr_fini(&root);
 }
 

@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS = foreign
 CLEANFILES = *.core
 #CLEANFILES += *.in
 
-noinst_PROGRAMS=testfoo testfparser testdparser
+noinst_PROGRAMS=testfoo testfparser testdparser testlk
 
 distdir = ../../$(PACKAGE)-$(VERSION)/src/test
 dist_HEADERS = unittest.h
@@ -31,6 +31,11 @@ nodist_testdparser_SOURCES = ../diag.c
 testdparser_SOURCES = testdparser.c
 testdparser_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
 testdparser_LDFLAGS =  -L$(libdir) -lmrkcommon -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
+
+nodist_testlk_SOURCES = ../diag.c
+testlk_SOURCES = testlk.c
+testlk_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
+testlk_LDFLAGS =  -L$(libdir) -lmrkcommon -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 ../diag.c ../diag.h: ../diag.txt
 	sh ../gen-diag

@@ -36,7 +36,7 @@ ltype_compile(lkit_type_t *ty,
 
     switch (ty->tag) {
     case LKIT_INT:
-        ty->backend = LLVMIntType(64);
+        ty->backend = LLVMInt64Type();
         break;
 
     case LKIT_STR:
@@ -46,9 +46,9 @@ ltype_compile(lkit_type_t *ty,
             /*
              * bytes_t *
              */
-            fields[0] = LLVMIntType(64);
-            fields[1] = LLVMIntType(64);
-            fields[2] = LLVMArrayType(LLVMIntType(8), 0);
+            fields[0] = LLVMInt64Type();
+            fields[1] = LLVMInt64Type();
+            fields[2] = LLVMArrayType(LLVMInt8Type(), 0);
             ty->backend = LLVMPointerType(LLVMStructType(fields, 3, 0), 0);
         }
         break;
@@ -58,11 +58,12 @@ ltype_compile(lkit_type_t *ty,
         break;
 
     case LKIT_BOOL:
-        ty->backend = LLVMIntType(1);
+        ty->backend = LLVMInt1Type();
         break;
 
     case LKIT_UNDEF:
-        ty->backend = LLVMPointerType(LLVMIntType(8), 0);
+        //ty->backend = LLVMPointerType(LLVMInt8Type(), 0);
+        ty->backend = LLVMPointerType(LLVMVoidType(), 0);
         break;
 
     case LKIT_ARRAY:

@@ -81,7 +81,6 @@ mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
         break;
 
     case LKIT_STR:
-    case LKIT_QSTR:
         array_init(value, sizeof(byterange_t), 0,
                    NULL,
                    (array_finalizer_t)bytes_destroy);
@@ -89,6 +88,42 @@ mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
     default:
         FAIL("mrklkit_rt_array_init");
     }
+}
+
+
+void *
+mrklkit_rt_get_array_item(array_t *value, int64_t idx, void *dflt)
+{
+    void **res;
+
+    if ((res = array_get(value, idx)) == NULL) {
+        *res = dflt;
+    }
+    return *res;
+}
+
+
+void *
+mrklkit_rt_get_dict_item(dict_t *value, bytes_t *key, void *dflt)
+{
+    void *res;
+
+    if ((res = dict_get_item(value, key)) == NULL) {
+        res = dflt;
+    }
+    return res;
+}
+
+
+void *
+mrklkit_rt_get_struct_item(rt_struct_t *value, int64_t idx, void *dflt)
+{
+    void **res;
+
+    if ((res = array_get(&value->fields, idx)) == NULL) {
+        *res = dflt;
+    }
+    return *res;
 }
 
 
@@ -104,29 +139,62 @@ mrklkit_rt_array_dtor(array_t **value)
 
 
 static int
+tobj_init(tobj_t *o)
+{
+    o->type = NULL;
+    o->value = NULL;
+    return 0;
+}
+
+
+static int
 tobj_fini(tobj_t *o)
 {
-    if (o->type->dtor != NULL) {
-        o->type->dtor(&o->value);
+    if (o->type != NULL) {
+        if (o->type->dtor != NULL) {
+            o->type->dtor(&o->value);
+        }
     }
     return 0;
 }
 
 
-
 void
-mrklkit_rt_struct_init(array_t *value)
+mrklkit_rt_struct_init(rt_struct_t *value, lkit_struct_t *stty)
 {
-    array_init(value, sizeof(tobj_t), 0, NULL,
+    value->current = 0;
+    array_init(&value->fields, sizeof(tobj_t), stty->fields.elnum,
+               (array_initializer_t)tobj_init,
                (array_finalizer_t)tobj_fini);
+}
+
+int
+mrklkit_rt_struct_fini(rt_struct_t *value)
+{
+    array_fini(&value->fields);
+    value->current = 0;
+    return 0;
+}
+
+rt_struct_t *
+mrklkit_rt_struct_new(lkit_struct_t *stty)
+{
+    rt_struct_t *v;
+
+    if ((v = malloc(sizeof(rt_struct_t))) == NULL) {
+        FAIL("malloc");
+    }
+    mrklkit_rt_struct_init(v, stty);
+
+    return v;
 }
 
 
 void
-mrklkit_rt_struct_dtor(array_t **value)
+mrklkit_rt_struct_dtor(rt_struct_t **value)
 {
     if (*value != NULL) {
-        array_fini(*value);
+        (void)mrklkit_rt_struct_fini(*value);
         free(*value);
         *value = NULL;
     }

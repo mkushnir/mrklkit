@@ -2,6 +2,7 @@
 #define LPARSE_H_DEFINED
 
 #include <mrkcommon/array.h>
+#include <mrklkit/util.h>
 
 #ifdef __cplusplus
 extern "C" {

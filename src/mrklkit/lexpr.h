@@ -21,8 +21,8 @@ typedef struct _lkit_expr {
     lkit_type_t *type;
     bytes_t *name;
     union {
-        fparser_datum_t *literal;
-        struct _lkit_expr *ref;
+        fparser_datum_t *literal;   /* !isref */
+        struct _lkit_expr *ref;     /*  isref */
     } value;
     /* lkit_expr_t * */
     array_t subs;
@@ -32,7 +32,6 @@ typedef struct _lkit_expr {
     /* lkit_gitem_t */
     array_t glist;
     struct _lkit_expr *parent;
-    lkit_user_class_t *uclass;
 
     int isref:1;
     int error:1;
@@ -40,6 +39,7 @@ typedef struct _lkit_expr {
 
 } lkit_expr_t;
 
+#define LKIT_EXPR_NAME(expr) ((expr)->name != NULL ? (expr)->name->data : NULL)
 #define LKIT_EXPR_CONSTANT(expr) ((!(expr)->isref) && ((expr)->value.literal != NULL))
 
 typedef struct _lkit_gitem {
@@ -56,6 +56,10 @@ int lkit_parse_exprdef(lkit_expr_t *, array_t *, array_iter_t *);
 
 void lexpr_init_ctx(lkit_expr_t *);
 void lexpr_fini_ctx(lkit_expr_t *);
+
+lkit_expr_t *lkit_expr_new(lkit_expr_t *);
+void lkit_expr_init(lkit_expr_t *, lkit_expr_t *);
+void lkit_expr_fini(lkit_expr_t *);
 
 void lexpr_init(void);
 void lexpr_fini(void);

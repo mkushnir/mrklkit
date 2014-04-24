@@ -28,8 +28,6 @@ typedef enum _lkit_tag {
     LKIT_DICT,
     LKIT_STRUCT,
     LKIT_FUNC,
-
-    LKIT_QSTR,
 } lkit_tag_t;
 
 #define LKIT_TAG_STR(tag) ( \
@@ -56,11 +54,11 @@ struct _lkit_type;
 
 typedef void (*lkit_type_dtor_t)(void **);
 typedef struct _lkit_type {
+    lkit_tag_t tag;
     /* weak ref */
     char *name;
     uint64_t hash;
     LLVMTypeRef backend;
-    lkit_tag_t tag;
     int error:1;
     lkit_type_dtor_t dtor;
 } lkit_type_t;
@@ -140,7 +138,6 @@ int lkit_type_destroy(lkit_type_t **);
 int lkit_type_fini_dict(lkit_type_t *, lkit_type_t *);
 lkit_type_t *lkit_type_get(lkit_tag_t);
 lkit_type_t *lkit_type_parse(fparser_datum_t *, int);
-lkit_type_t *lkit_type_find(lkit_type_t *);
 int lkit_parse_typedef(array_t *, array_iter_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);

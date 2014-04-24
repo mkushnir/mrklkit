@@ -523,11 +523,11 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
             bytestream_cat(di->bs, 1, "\n");
             if (rdat->error) {
                 bytestream_nprintf(di->bs,
-                                   di->level * DUMPM_INDENT_SIZE + 10 + 4,
+                                   di->level * DUMPM_INDENT_SIZE + 10 + 5,
                                    "%*c-->(", di->level * DUMPM_INDENT_SIZE, ' ');
             } else {
                 bytestream_nprintf(di->bs,
-                                   di->level * DUMPM_INDENT_SIZE + 10 + 1,
+                                   di->level * DUMPM_INDENT_SIZE + 10 + 2,
                                    "%*c(", di->level * DUMPM_INDENT_SIZE, ' ');
             }
         } else {
@@ -548,11 +548,11 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
             if (di->level > 0) {
                 if (rdat->error) {
                     bytestream_nprintf(di->bs,
-                                       di->level * DUMPM_INDENT_SIZE + 10 + 4,
+                                       di->level * DUMPM_INDENT_SIZE + 10 + 5,
                                        "%*c)<--", di->level * DUMPM_INDENT_SIZE, ' ');
                 } else {
                     bytestream_nprintf(di->bs,
-                                       di->level * DUMPM_INDENT_SIZE + 10 + 1,
+                                       di->level * DUMPM_INDENT_SIZE + 10 + 2,
                                        "%*c)", di->level * DUMPM_INDENT_SIZE, ' ');
                 }
             } else {
@@ -582,9 +582,9 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
         memset(dst, '\0', sz * 2 + 1);
         fparser_escape(dst, sz * 2, v->data, sz);
         if (rdat->error) {
-            bytestream_nprintf(di->bs, sz * 2 + 10 + 8, "-->\"%s\"<--", dst);
+            bytestream_nprintf(di->bs, sz * 2 + 10 + 9, "-->\"%s\"<--", dst);
         } else {
-            bytestream_nprintf(di->bs, sz * 2 + 10 + 2, "\"%s\"", dst);
+            bytestream_nprintf(di->bs, sz * 2 + 10 + 3, "\"%s\"", dst);
         }
         free(dst);
 
@@ -592,35 +592,35 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
         bytes_t *v;
         v = (bytes_t *)(rdat->body);
         if (rdat->error) {
-            bytestream_nprintf(di->bs, v->sz + 10 + 6, "-->%s<--", v->data);
+            bytestream_nprintf(di->bs, v->sz + 10 + 7, "-->%s<--", v->data);
         } else {
-            bytestream_nprintf(di->bs, v->sz + 10 + 0, "%s", v->data);
+            bytestream_nprintf(di->bs, v->sz + 10 + 1, "%s", v->data);
         }
 
     } else if (rdat->tag == FPARSER_INT) {
         if (rdat->error) {
-            bytestream_nprintf(di->bs, 20 + 10 + 6, "-->%ld<--",
+            bytestream_nprintf(di->bs, 20 + 10 + 7, "-->%ld<--",
                                *((int64_t *)(rdat->body)));
         } else {
-            bytestream_nprintf(di->bs, 20 + 10 + 0, "%ld",
+            bytestream_nprintf(di->bs, 20 + 10 + 1, "%ld",
                                *((int64_t *)(rdat->body)));
         }
 
     } else if (rdat->tag == FPARSER_FLOAT) {
         if (rdat->error) {
-            bytestream_nprintf(di->bs, 13 * 2 + 10 + 6, "-->%f<--",
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 7, "-->%f<--",
                                *((double *)(rdat->body)));
         } else {
-            bytestream_nprintf(di->bs, 13 * 2 + 10 + 0, "%f",
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 1, "%f",
                                *((double *)(rdat->body)));
         }
 
     } else if (rdat->tag == FPARSER_BOOL) {
         if (rdat->error) {
-            bytestream_nprintf(di->bs, 13 * 2 + 10 + 6, "-->#%c<--",
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 7, "-->#%c<--",
                                *((char *)(rdat->body)) ? 't' : 'f');
         } else {
-            bytestream_nprintf(di->bs, 13 * 2 + 10 + 0, "#%c",
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 1, "#%c",
                                *((char *)(rdat->body)) ? 't' : 'f');
         }
     }
@@ -637,7 +637,7 @@ fparser_datum_dump_bytestream(fparser_datum_t *dat, bytestream_t *bs)
     di.ar = NULL;
     di.bs = bs;
     datum_dump_bytestream(&dat, &di);
-    bytestream_cat(bs, 2, "\n\0");
+    //bytestream_cat(bs, 1, "\n");
 }
 
 void

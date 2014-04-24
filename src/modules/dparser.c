@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <time.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
@@ -549,21 +548,22 @@ dparse_struct(bytestream_t *bs,
               char fdelim,
               char rdelim[2],
               lkit_struct_t *stty,
-              array_t *value,
+              rt_struct_t *value,
               char *ch,
               unsigned int flags)
 {
     off_t spos = SPOS(bs);
-    array_iter_t it;
     lkit_type_t **fty;
     tobj_t *val;
+    ssize_t idx;
 
-    for (fty = array_first(&stty->fields, &it);
+    idx = value->current;
+    for (fty = array_get(&stty->fields, idx);
          fty != NULL;
-         fty = array_next(&stty->fields, &it)) {
+         fty = array_get(&stty->fields, ++idx)) {
 
-        if ((val = array_incr(value)) == NULL) {
-            FAIL("array_incr");
+        if ((val = array_get(&value->fields, idx)) == NULL) {
+            FAIL("array_get");
         }
 
         val->type = *fty;
@@ -605,6 +605,8 @@ dparse_struct(bytestream_t *bs,
             reach_value(bs, fdelim);
         }
     }
+
+    value->current = idx;
     return 0;
 
 err:
@@ -613,6 +615,4 @@ err:
     }
     return DPARSE_ERRORVALUE;
 }
-
-
 

@@ -17,6 +17,7 @@ extern "C" {
 int builtin_sym_parse(array_t *, array_iter_t *);
 int builtin_sym_compile(LLVMModuleRef);
 
+lkit_expr_t *builtin_get_root_ctx(void);
 
 void builtin_init(void);
 void builtin_fini(void);
