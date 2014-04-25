@@ -8,7 +8,9 @@
 #include "diag.h"
 
 #include <mrklkit/mrklkit.h>
+#include <mrklkit/lruntime.h>
 #include <mrklkit/modules/dsource.h>
+#include <mrklkit/modules/dparser.h>
 #include <mrklkit/modules/testrt.h>
 
 #ifndef NDEBUG
@@ -43,22 +45,76 @@ test1(void)
 {
     int fd;
     int res;
+    dsource_t *ds;
+    bytestream_t bs;
+    ssize_t nread;
 
     if ((fd = open(prog, O_RDONLY)) == -1) {
         FAIL("open");
     }
 
     if ((res = mrklkit_compile(fd)) != 0) {
-        perror("mrklkit_compile");
-    } else {
-        dsource_t *ds;
-
-        if ((ds = dsource_get("qwe")) == NULL) {
-            FAIL("dsource_get");
-        }
+        FAIL("mrklkit_compile");
     }
 
     close(fd);
+
+    if ((ds = dsource_get("qwe")) == NULL) {
+        FAIL("dsource_get");
+    }
+
+    ds->rdelim[0] = '\n';
+    ds->rdelim[1] = '\0';
+    ds->fdelim = ds->_struct->delim[0];
+
+    if ((fd = open(input, O_RDONLY)) == -1) {
+        FAIL("open");
+    }
+
+    bytestream_init(&bs);
+    nread = 0xffffffff;
+    while (nread > 0) {
+        int res;
+        rt_struct_t value;
+        char delim = 0;
+
+        if (SNEEDMORE(&bs)) {
+            nread = bytestream_read_more(&bs, fd, 1024);
+            //TRACE("nread=%ld", nread);
+            continue;
+        }
+
+        mrklkit_rt_struct_init(&value, ds->_struct);
+
+        if ((res = dparse_struct(&bs,
+                                 ds->fdelim,
+                                 ds->rdelim,
+                                 ds->_struct,
+                                 &value,
+                                 &delim,
+                                 ds->parse_flags)) == DPARSE_NEEDMORE) {
+            mrklkit_rt_struct_fini(&value);
+            continue;
+
+        } else if (res == DPARSE_ERRORVALUE) {
+            TRACE("error, delim='%c'", delim);
+            array_traverse(&value.fields, (array_traverser_t)tobj_dump, NULL);
+
+        } else {
+            TRACE("ok, delim='%c':", delim);
+            array_traverse(&value.fields, (array_traverser_t)tobj_dump, NULL);
+        }
+
+        if (delim == '\n') {
+            TRACE("EOL");
+        }
+
+        mrklkit_rt_struct_fini(&value);
+    }
+    bytestream_fini(&bs);
+    close(fd);
+
+
 }
 
 static void

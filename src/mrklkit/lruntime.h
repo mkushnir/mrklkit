@@ -58,6 +58,8 @@ void *mrklkit_rt_get_array_item(array_t *, int64_t, void *);
 void *mrklkit_rt_get_dict_item(dict_t *, bytes_t *, void *);
 void *mrklkit_rt_get_struct_item(rt_struct_t *, int64_t, void *);
 
+int tobj_dump(tobj_t *, void *);
+
 void lruntime_init(void);
 void lruntime_fini(void);
 
