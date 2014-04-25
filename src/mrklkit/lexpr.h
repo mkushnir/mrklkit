@@ -24,11 +24,19 @@ typedef struct _lkit_expr {
         fparser_datum_t *literal;   /* !isref */
         struct _lkit_expr *ref;     /*  isref */
     } value;
-    /* lkit_expr_t * */
+
+    /*
+     * lkit_expr_t *
+     * owned by
+     */
     array_t subs;
 
-    /* bytes_t *, lkit_expr_t * */
+    /*
+     * bytes_t *, lkit_expr_t *
+     * values owned by ???
+     */
     dict_t ctx;
+
     /* lkit_gitem_t */
     array_t glist;
     struct _lkit_expr *parent;
@@ -58,8 +66,10 @@ void lexpr_init_ctx(lkit_expr_t *);
 void lexpr_fini_ctx(lkit_expr_t *);
 
 lkit_expr_t *lkit_expr_new(lkit_expr_t *);
+lkit_type_t *lkit_expr_type_of(lkit_expr_t *);
 void lkit_expr_init(lkit_expr_t *, lkit_expr_t *);
 void lkit_expr_fini(lkit_expr_t *);
+int lkit_expr_destroy(lkit_expr_t **);
 
 void lexpr_init(void);
 void lexpr_fini(void);

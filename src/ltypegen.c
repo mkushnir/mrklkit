@@ -35,6 +35,10 @@ ltype_compile(lkit_type_t *ty,
     }
 
     switch (ty->tag) {
+    case LKIT_VOID:
+        ty->backend = LLVMVoidType();
+        break;
+
     case LKIT_INT:
         ty->backend = LLVMInt64Type();
         break;

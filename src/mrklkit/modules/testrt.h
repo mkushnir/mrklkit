@@ -1,8 +1,11 @@
 #ifndef TESTRT_H_DEFINED
 #define TESTRT_H_DEFINED
 
+#include <mrkcommon/array.h>
+
 #include <mrklkit/module.h>
 #include <mrklkit/lexpr.h>
+#include <mrklkit/lruntime.h>
 #include <mrklkit/modules/dsource.h>
 
 #ifdef __cplusplus
@@ -10,12 +13,15 @@ extern "C" {
 #endif
 
 typedef struct _testrt {
-    lkit_expr_t *expr;
     bytes_t *dsource;
     bytes_t *id;
+    lkit_expr_t *doexpr;
+    lkit_expr_t *takeexpr;
+    lkit_expr_t *seeexpr;
 } testrt_t;
 
 extern mrklkit_module_t testrt_module;
+extern rt_struct_t *testrt_source;
 
 #ifdef __cplusplus
 }

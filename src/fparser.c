@@ -92,7 +92,7 @@ compile_value(struct tokenizer_ctx *ctx,
         fparser_datum_init(dat, FPARSER_STR);
         value = (bytes_t *)(dat->body);
         value->hash = 0;
-        value->sz = (size_t)sz;
+        value->sz = (size_t)sz + 1;
 
         escaped = unesc(value->data, ctx->tokstart, sz);
         value->sz -= escaped;
@@ -194,7 +194,7 @@ compile_value(struct tokenizer_ctx *ctx,
             fparser_datum_init(dat, FPARSER_WORD);
             value = (bytes_t *)(dat->body);
             value->hash = 0;
-            value->sz = (size_t)sz;
+            value->sz = (size_t)sz + 1;
 
             memcpy(value->data, ctx->tokstart, sz);
             *(value->data + sz) = '\0';

@@ -134,6 +134,21 @@ lkit_type_new(lkit_tag_t tag)
         ty->dtor = NULL;
         break;
 
+    case LKIT_VOID:
+        {
+            lkit_void_t *tv;
+            tv = (lkit_void_t *)ty;
+            if ((tv = malloc(sizeof(lkit_void_t))) == NULL) {
+                FAIL("malloc");
+            }
+            tv->base.tag = tag;
+            tv->base.name = "void";
+            LKIT_ERROR(tv) = 0;
+            tv->base.dtor = NULL;
+            ty = (lkit_type_t *)tv;
+        }
+        break;
+
     case LKIT_INT:
         {
             lkit_int_t *ti;
@@ -906,6 +921,8 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
         /* simple types */
         if (strcmp(typename, "undef") == 0) {
             ty = lkit_type_get(LKIT_UNDEF);
+        } else if (strcmp(typename, "void") == 0) {
+            ty = lkit_type_get(LKIT_VOID);
         } else if (strcmp(typename, "int") == 0) {
             ty = lkit_type_get(LKIT_INT);
         } else if (strcmp(typename, "str") == 0) {
@@ -1249,6 +1266,13 @@ ltype_init(void)
     ty = lkit_type_new(LKIT_UNDEF);
     dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_UNDEF)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = ty;
+
+    ty = lkit_type_new(LKIT_VOID);
+    dict_set_item(&types, ty, ty);
+    if ((pty = array_get(&builtin_types, LKIT_VOID)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;

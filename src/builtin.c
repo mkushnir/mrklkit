@@ -68,8 +68,8 @@ builtin_sym_parse(array_t *form, array_iter_t *it)
 }
 
 
-static int
-remove_undef(lkit_expr_t *expr)
+int
+builtin_remove_undef(lkit_expr_t *expr)
 {
     char *name = (expr->name != NULL) ? (char *)expr->name->data : ")(";
 
@@ -90,7 +90,7 @@ remove_undef(lkit_expr_t *expr)
             cond = array_get(&expr->subs, 0);
             assert(cond != NULL);
 
-            if (remove_undef(*cond) != 0) {
+            if (builtin_remove_undef(*cond) != 0) {
                 TRRET(REMOVE_UNDEF + 1);
             }
 
@@ -103,14 +103,14 @@ remove_undef(lkit_expr_t *expr)
             texp = array_get(&expr->subs, 1);
             assert(texp != NULL);
 
-            if (remove_undef(*texp) != 0) {
+            if (builtin_remove_undef(*texp) != 0) {
                 TRRET(REMOVE_UNDEF + 3);
             }
 
             fexp = array_get(&expr->subs, 2);
             assert(fexp != NULL);
 
-            if (remove_undef(*fexp) != 0) {
+            if (builtin_remove_undef(*fexp) != 0) {
                 TRRET(REMOVE_UNDEF + 4);
             }
 
@@ -135,7 +135,7 @@ remove_undef(lkit_expr_t *expr)
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                if (remove_undef(*arg) != 0) {
+                if (builtin_remove_undef(*arg) != 0) {
                     TRRET(REMOVE_UNDEF + 6);
                 }
             }
@@ -158,7 +158,7 @@ remove_undef(lkit_expr_t *expr)
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
-                if (remove_undef(*arg) != 0) {
+                if (builtin_remove_undef(*arg) != 0) {
                     TRRET(REMOVE_UNDEF + 8);
                 }
             }
@@ -186,7 +186,7 @@ remove_undef(lkit_expr_t *expr)
             aarg = array_first(&expr->subs, &it);
             assert(aarg != NULL);
 
-            if (remove_undef(*aarg) != 0) {
+            if (builtin_remove_undef(*aarg) != 0) {
                 TRRET(REMOVE_UNDEF + 9);
             }
 
@@ -194,7 +194,7 @@ remove_undef(lkit_expr_t *expr)
                  barg != NULL;
                  barg = array_next(&expr->subs, &it)) {
 
-                if (remove_undef(*barg) != 0) {
+                if (builtin_remove_undef(*barg) != 0) {
                     TRRET(REMOVE_UNDEF + 10);
                 }
 
@@ -221,7 +221,7 @@ remove_undef(lkit_expr_t *expr)
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (remove_undef(*cont) != 0) {
+            if (builtin_remove_undef(*cont) != 0) {
                 TRRET(REMOVE_UNDEF + 12);
             }
 
@@ -318,7 +318,7 @@ remove_undef(lkit_expr_t *expr)
             dflt = array_get(&expr->subs, 2);
             assert(dflt != NULL);
 
-            if (remove_undef(*dflt) != 0) {
+            if (builtin_remove_undef(*dflt) != 0) {
                 TRRET(REMOVE_UNDEF + 20);
             }
 
@@ -342,7 +342,7 @@ remove_undef(lkit_expr_t *expr)
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (remove_undef(*cont) != 0) {
+            if (builtin_remove_undef(*cont) != 0) {
                 TRRET(REMOVE_UNDEF + 22);
             }
 
@@ -435,7 +435,7 @@ remove_undef(lkit_expr_t *expr)
             setv = array_get(&expr->subs, 2);
             assert(setv != NULL);
 
-            if (remove_undef(*setv) != 0) {
+            if (builtin_remove_undef(*setv) != 0) {
                 TRRET(REMOVE_UNDEF + 30);
             }
 
@@ -458,7 +458,7 @@ remove_undef(lkit_expr_t *expr)
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (remove_undef(*cont) != 0) {
+            if (builtin_remove_undef(*cont) != 0) {
                 TRRET(REMOVE_UNDEF + 32);
             }
 
@@ -551,7 +551,7 @@ remove_undef(lkit_expr_t *expr)
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                if (remove_undef(*arg) != 0) {
+                if (builtin_remove_undef(*arg) != 0) {
                     TRRET(REMOVE_UNDEF + 38);
                 }
             }
@@ -567,7 +567,7 @@ remove_undef(lkit_expr_t *expr)
             arg = array_get(&expr->subs, 0);
             assert(arg != NULL);
 
-            if (remove_undef(*arg) != 0) {
+            if (builtin_remove_undef(*arg) != 0) {
                 TRRET(REMOVE_UNDEF + 39);
             }
 
@@ -602,7 +602,7 @@ builtin_sym_compile(LLVMModuleRef module)
     //array_traverse(&root.glist, (array_traverser_t)_acb, lkit_expr_dump);
     if (array_traverse(&root.glist,
                        (array_traverser_t)_acb,
-                       remove_undef) != 0) {
+                       builtin_remove_undef) != 0) {
         TRRET(BUILTIN_SYM_COMPILE + 1);
     }
 
