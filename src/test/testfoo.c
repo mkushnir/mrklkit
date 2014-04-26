@@ -60,12 +60,12 @@ test1(void)
         perror("mrklkit_compile");
     } else {
         TRACE(FGREEN("running qwe"));
-        if ((res = mrklkit_run(".mrklkit.init.qwe")) != 0) {
-            perror("mrklkit_run");
+        if ((res = mrklkit_call_void(".mrklkit.init.qwe")) != 0) {
+            perror("mrklkit_call_void");
         }
         TRACE(FGREEN("running asd"));
-        if ((res = mrklkit_run(".mrklkit.init.asd")) != 0) {
-            perror("mrklkit_run");
+        if ((res = mrklkit_call_void(".mrklkit.init.asd")) != 0) {
+            perror("mrklkit_call_void");
         }
     }
 

@@ -27,18 +27,23 @@ typedef struct _lkit_expr {
 
     /*
      * lkit_expr_t *
-     * owned by
+     * owned by subs
      */
     array_t subs;
 
     /*
      * bytes_t *, lkit_expr_t *
-     * values owned by ???
+     * values owned by ctx (think more about it ...)
+     * ctx and subs should never intersect
      */
     dict_t ctx;
 
-    /* lkit_gitem_t */
+    /*
+     * lkit_gitem_t
+     */
     array_t glist;
+
+    /* weekref */
     struct _lkit_expr *parent;
 
     int isref:1;

@@ -11,7 +11,6 @@
 
 #include "diag.h"
 
-static LLVMValueRef compile_expr(LLVMModuleRef, LLVMBuilderRef, lkit_expr_t *);
 
 static char *fnames[] = {
     ",",
@@ -918,13 +917,14 @@ compile_bytes_t(size_t sz)
     return ty;
 }
 
-static LLVMValueRef
+LLVMValueRef
 compile_expr(LLVMModuleRef module,
                     LLVMBuilderRef builder,
                     lkit_expr_t *expr)
 {
     LLVMValueRef v = NULL;
 
+    //lkit_expr_dump(expr);
     if (expr->isref) {
         switch (expr->value.ref->type->tag) {
         case LKIT_FUNC:
@@ -1245,4 +1245,42 @@ builtingen_sym_compile(lkit_gitem_t **gitem, void *udata)
 
     return 0;
 }
+
+int
+builtingen_call_eager_initializer(lkit_gitem_t **gitem, void *udata)
+{
+    bytes_t *name = (*gitem)->name;
+    lkit_expr_t *expr = (*gitem)->expr;
+    struct {
+        LLVMModuleRef module;
+        LLVMBuilderRef builder;
+    } *params = udata;
+    char buf[1024];
+    LLVMValueRef fn;
+
+    snprintf(buf, sizeof(buf), ".mrklkit.init.%s", (char *)name->data);
+
+    //TRACE("eager: %s %s lazy=%s",
+    //      buf,
+    //      expr->name ? expr->name->data : NULL,
+    //      expr->lazy_init ? "Y" : "N");
+
+    if ((fn = LLVMGetNamedFunction(params->module, buf)) != NULL) {
+        if (!expr->lazy_init) {
+            if (LLVMBuildCall(params->builder,
+                              fn,
+                              NULL,
+                              0,
+                              NEWVAR("tmp")) == NULL) {
+                TR(COMPILE_EXPR + 4);
+            }
+        } else {
+            //TRACE("not calling");
+        }
+    } else {
+        //TRACE("not found");
+    }
+    return 0;
+}
+
 

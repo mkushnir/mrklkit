@@ -74,47 +74,23 @@ test1(void)
     bytestream_init(&bs);
     nread = 0xffffffff;
     while (nread > 0) {
-        int res;
-        rt_struct_t value;
-        char delim = 0;
-
         if (SNEEDMORE(&bs)) {
             nread = bytestream_read_more(&bs, fd, 1024);
             //TRACE("nread=%ld", nread);
             continue;
         }
 
-        mrklkit_rt_struct_init(&value, ds->_struct);
-
-        if ((res = dparse_struct(&bs,
-                                 ds->fdelim,
-                                 ds->rdelim,
-                                 ds->_struct,
-                                 &value,
-                                 &delim,
-                                 ds->parse_flags)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_struct_fini(&value);
+        if (testrt_run(&bs, ds) == DPARSE_NEEDMORE) {
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
-            array_traverse(&value.fields, (array_traverser_t)tobj_dump, NULL);
-
+            break;
         } else {
-            TRACE("ok, delim='%c':", delim);
-            array_traverse(&value.fields, (array_traverser_t)tobj_dump, NULL);
+            ;
         }
-
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
-
-        mrklkit_rt_struct_fini(&value);
     }
     bytestream_fini(&bs);
     close(fd);
-
-
 }
 
 static void

@@ -5,6 +5,7 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/fasthash.h>
 #include <mrkcommon/util.h>
@@ -30,6 +31,7 @@ static array_t builtin_types;
  * bytes_t *, lkit_type_t *
  */
 static dict_t typedefs;
+
 
 int
 lkit_type_destroy(lkit_type_t **ty)
@@ -111,12 +113,14 @@ lkit_type_destroy(lkit_type_t **ty)
     return 0;
 }
 
+
 int
 lkit_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
 {
     lkit_type_destroy(&key);
     return 0;
 }
+
 
 static lkit_type_t *
 lkit_type_new(lkit_tag_t tag)
@@ -206,6 +210,21 @@ lkit_type_new(lkit_tag_t tag)
             LKIT_ERROR(tb) = 0;
             tb->base.dtor = NULL;
             ty = (lkit_type_t *)tb;
+        }
+        break;
+
+    case LKIT_ANY:
+        {
+            lkit_any_t *tn;
+            tn = (lkit_any_t *)ty;
+            if ((tn = malloc(sizeof(lkit_any_t))) == NULL) {
+                FAIL("malloc");
+            }
+            tn->base.tag = tag;
+            tn->base.name = "any";
+            LKIT_ERROR(tn) = 0;
+            tn->base.dtor = NULL;
+            ty = (lkit_type_t *)tn;
         }
         break;
 
@@ -306,6 +325,7 @@ lkit_type_new(lkit_tag_t tag)
     return ty;
 }
 
+
 lkit_type_t *
 lkit_type_get(lkit_tag_t tag)
 {
@@ -328,6 +348,29 @@ lkit_type_get(lkit_tag_t tag)
 }
 
 
+lkit_type_t *
+lkit_type_finalize(lkit_type_t *ty)
+{
+    lkit_type_t *probe;
+
+    if ((probe = dict_get_item(&types, ty)) == NULL) {
+        /* this is new one */
+        dict_set_item(&types, ty, ty);
+    } else {
+        if (probe != ty) {
+            /* make ty singleton */
+            if (ty->tag >= _LKIT_END_OF_BUILTIN_TYPES) {
+                lkit_type_destroy(&ty);
+            } else {
+                TRACE("a new instance of builtin type???");
+                lkit_type_dump(ty);
+                FAIL("dict_get_item");
+            }
+            ty = probe;
+        }
+    }
+    return ty;
+}
 
 
 lkit_type_t *
@@ -342,6 +385,7 @@ lkit_array_get_element_type(lkit_array_t *ta)
     return *ty;
 }
 
+
 lkit_type_t *
 lkit_dict_get_element_type(lkit_dict_t *td)
 {
@@ -353,6 +397,7 @@ lkit_dict_get_element_type(lkit_dict_t *td)
     }
     return *ty;
 }
+
 
 lkit_type_t *
 lkit_struct_get_field_type(lkit_struct_t *ts, bytes_t *name)
@@ -375,8 +420,9 @@ lkit_struct_get_field_type(lkit_struct_t *ts, bytes_t *name)
         }
     }
 
-    return *ty;
+    return NULL;
 }
+
 
 int
 lkit_struct_get_field_index(lkit_struct_t *ts, bytes_t *name)
@@ -526,12 +572,14 @@ _lkit_type_dump(lkit_type_t *ty, int level)
     }
 }
 
+
 void
 lkit_type_dump(lkit_type_t *ty)
 {
     _lkit_type_dump(ty, 0);
     TRACEC("\n");
 }
+
 
 void
 lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
@@ -632,6 +680,7 @@ ltype_next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int se
     TRRET(LTYPE_NEXT_STRUCT + 2);
 }
 
+
 static int
 type_cmp(lkit_type_t **pa, lkit_type_t **pb)
 {
@@ -640,7 +689,7 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
     int diff;
 
     if (a == b) {
-        TRRET(0);
+        return 0;
     }
 
     diff = a->tag - b->tag;
@@ -726,8 +775,9 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
         }
     }
 
-    TRRET(diff);
+    return diff;
 }
+
 
 uint64_t
 lkit_type_hash(lkit_type_t *ty)
@@ -746,6 +796,7 @@ lkit_type_hash(lkit_type_t *ty)
     return ty->hash;
 }
 
+
 int
 lkit_type_cmp(lkit_type_t *a, lkit_type_t *b)
 {
@@ -762,6 +813,7 @@ lkit_type_cmp(lkit_type_t *a, lkit_type_t *b)
     }
     return diff;
 }
+
 
 static int
 parse_array_quals(array_t *form,
@@ -803,6 +855,7 @@ parse_array_quals(array_t *form,
     }
     TRRET(0);
 }
+
 
 static int
 parse_struct_quals(array_t *form,
@@ -906,7 +959,6 @@ lkit_type_t *
 lkit_type_parse(fparser_datum_t *dat, int seterror)
 {
     lkit_type_t *ty = NULL;
-    lkit_type_t *probe = NULL;
     fparser_tag_t tag;
 
     tag = FPARSER_DATUM_TAG(dat);
@@ -931,9 +983,13 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
             ty = lkit_type_get(LKIT_FLOAT);
         } else if (strcmp(typename, "bool") == 0) {
             ty = lkit_type_get(LKIT_BOOL);
+        } else if (strcmp(typename, "any") == 0) {
+            ty = lkit_type_get(LKIT_ANY);
         } else if (strcmp(typename, "...") == 0) {
             ty = lkit_type_get(LKIT_VARARG);
         } else {
+            lkit_type_t *probe = NULL;
+
             /*
              * XXX handle typedefs here, or unknown type ...
              */
@@ -1083,22 +1139,7 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
         goto end;
     }
 
-    if ((probe = dict_get_item(&types, ty)) == NULL) {
-        /* this is new one */
-        dict_set_item(&types, ty, ty);
-    } else {
-        if (probe != ty) {
-            /* make ty singleton */
-            if (ty->tag >= _LKIT_END_OF_BUILTIN_TYPES) {
-                lkit_type_destroy(&ty);
-            } else {
-                TRACE("a new instance of builtin type???");
-                lkit_type_dump(ty);
-                FAIL("dict_get_item");
-            }
-            ty = probe;
-        }
-    }
+    ty = lkit_type_finalize(ty);
 
 end:
     return ty;
@@ -1115,6 +1156,7 @@ err:
     }
     goto end;
 }
+
 
 int
 lkit_parse_typedef(array_t *form, array_iter_t *it)
@@ -1155,6 +1197,7 @@ err:
     res = 1;
     goto end;
 }
+
 
 int
 lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
@@ -1301,6 +1344,13 @@ ltype_init(void)
     ty = lkit_type_new(LKIT_BOOL);
     dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_BOOL)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = ty;
+
+    ty = lkit_type_new(LKIT_ANY);
+    dict_set_item(&types, ty, ty);
+    if ((pty = array_get(&builtin_types, LKIT_ANY)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;

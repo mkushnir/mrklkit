@@ -22,6 +22,7 @@ typedef enum _lkit_tag {
     LKIT_STR,
     LKIT_FLOAT,
     LKIT_BOOL,
+    LKIT_ANY,
     LKIT_VARARG,
     _LKIT_END_OF_BUILTIN_TYPES,
     /* custom types */
@@ -37,6 +38,7 @@ typedef enum _lkit_tag {
     (tag) == LKIT_STR ? "STR" : \
     (tag) == LKIT_FLOAT ? "FLOAT" : \
     (tag) == LKIT_BOOL ? "BOOL" : \
+    (tag) == LKIT_ANY ? "ANY" : \
     (tag) == LKIT_VARARG ? "VARARG" : \
     (tag) == LKIT_ARRAY ? "ARRAY" : \
     (tag) == LKIT_DICT ? "DICT" : \
@@ -82,6 +84,10 @@ typedef struct _lkit_float {
 typedef struct _lkit_bool {
     struct _lkit_type base;
 } lkit_bool_t;
+
+typedef struct _lkit_any {
+    struct _lkit_type base;
+} lkit_any_t;
 
 typedef struct _lkit_vararg {
     struct _lkit_type base;
@@ -144,6 +150,7 @@ int lkit_type_destroy(lkit_type_t **);
 int lkit_type_fini_dict(lkit_type_t *, lkit_type_t *);
 lkit_type_t *lkit_type_get(lkit_tag_t);
 lkit_type_t *lkit_type_parse(fparser_datum_t *, int);
+lkit_type_t *lkit_type_finalize(lkit_type_t *);
 int lkit_parse_typedef(array_t *, array_iter_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);

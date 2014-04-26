@@ -13,7 +13,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -151,10 +151,10 @@ mrklkit_parse(int fd)
     }
 
 end:
-    //fparser_datum_dump_formatted(root);
     return res;
 
 err:
+    fparser_datum_dump_formatted(root);
     res = 1;
     goto end;
 }
@@ -216,25 +216,44 @@ int
 mrklkit_compile(int fd)
 {
     UNUSED int res = 0;
-    UNUSED char *error_msg = NULL;
     UNUSED LLVMTargetRef tr;
     UNUSED LLVMTargetMachineRef tmr;
     UNUSED LLVMMemoryBufferRef mb = NULL;
     mrklkit_module_t **mod;
     array_iter_t it;
 
+    /* parse */
     if (mrklkit_parse(fd) != 0) {
         TRRET(MRKLKIT_COMPILE + 1);
     }
+
+    /* precompile */
+
+    for (mod = array_first(modules, &it);
+         mod != NULL;
+         mod = array_next(modules, &it)) {
+
+        if ((*mod)->precompile != NULL) {
+            if ((*mod)->precompile()) {
+                TRRET(MRKLKIT_COMPILE + 4);
+            }
+        }
+    }
+
+
     if (ltype_transform((dict_traverser_t)ltype_compile,
                         NULL) != 0) {
         TRRET(MRKLKIT_COMPILE + 2);
     }
 
+    /* compile */
+
     /* builtin */
     if (builtin_sym_compile(module) != 0) {
         TRRET(MRKLKIT_COMPILE + 3);
     }
+
+    /* modules */
 
     for (mod = array_first(modules, &it);
          mod != NULL;
@@ -255,12 +274,12 @@ mrklkit_compile(int fd)
     /* LLVM analysis */
     do_analysis();
 
-#if 1
+#if 0
     TRACEC("-----------------------------------------------\n");
     LLVMDumpModule(module);
 #endif
 
-#if 1
+#if 0
     TRACEC("-----------------------------------------------\n");
     tr = LLVMGetFirstTarget();
     TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",
@@ -298,7 +317,7 @@ mrklkit_compile(int fd)
 }
 
 int
-mrklkit_run(const char *name)
+mrklkit_call_void(const char *name)
 {
     int res;
     LLVMValueRef fn;

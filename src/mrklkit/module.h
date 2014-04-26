@@ -19,6 +19,7 @@ typedef struct _mrklkit_module {
     void (*init)(void);
     void (*fini)(void);
     mrklkit_parser_info_t *parsers;
+    int (*precompile)(void);
     int (*compile)(LLVMModuleRef);
 } mrklkit_module_t;
 

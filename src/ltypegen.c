@@ -65,6 +65,10 @@ ltype_compile(lkit_type_t *ty,
         ty->backend = LLVMInt1Type();
         break;
 
+    case LKIT_ANY:
+        ty->backend = LLVMPointerType(LLVMVoidType(), 0);
+        break;
+
     case LKIT_UNDEF:
         //ty->backend = LLVMPointerType(LLVMInt8Type(), 0);
         ty->backend = LLVMPointerType(LLVMVoidType(), 0);
