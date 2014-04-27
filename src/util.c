@@ -47,6 +47,7 @@ bytes_new(size_t sz)
     if ((res = malloc(sizeof(bytes_t) + sz)) == NULL) {
         FAIL("malloc");
     }
+    res->nref = 1;
     res->sz = sz;
     res->hash = 0;
     return res;
@@ -55,10 +56,7 @@ bytes_new(size_t sz)
 void
 bytes_destroy(bytes_t **value)
 {
-    if (*value != NULL) {
-        free(*value);
-        *value = NULL;
-    }
+    BYTES_DECREF(value);
 }
 
 

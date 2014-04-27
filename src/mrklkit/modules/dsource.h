@@ -1,7 +1,12 @@
 #ifndef DSOURCE_H_DEFINED
 #define DSOURCE_H_DEFINED
 
+#include <llvm-c/Core.h>
+
+#include <mrkcommon/array.h>
+
 #include <mrklkit/ltype.h>
+#include <mrklkit/util.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,7 +19,7 @@ typedef struct _dsource {
     int duration_index;
     int error:1;
     /* weak ref*/
-    unsigned char *logtype;
+    bytes_t *kind;
     lkit_struct_t *_struct;
     char rdelim[2];
     char fdelim;
@@ -23,6 +28,7 @@ typedef struct _dsource {
 
 int dsource_parse(array_t *, array_iter_t *);
 dsource_t *dsource_get(const char *);
+int dsource_compile(LLVMModuleRef);
 
 void dsource_init_module(void);
 void dsource_fini_module(void);

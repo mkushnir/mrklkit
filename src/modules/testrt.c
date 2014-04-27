@@ -2,6 +2,8 @@
 
 #include <llvm-c/Core.h>
 
+#include <mrkcommon/array.h>
+#include <mrkcommon/dict.h>
 #include <mrkcommon/bytestream.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
@@ -20,7 +22,6 @@
 #include <mrklkit/modules/dparser.h>
 #include <mrklkit/modules/dsource.h>
 
-#include "builtin_private.h"
 #include "diag.h"
 
 
@@ -42,12 +43,171 @@ static array_t testrts;
 
 
 rt_struct_t *testrt_source = NULL;
-rt_struct_t *testrt_target = NULL;
+UNUSED static rt_struct_t *testrt_target = NULL;
+static dict_t targets;
+
+static void
+testrt_target_init(testrt_target_t *tg, uint64_t id, lkit_struct_t *kty, lkit_struct_t *vty)
+{
+    tg->id = id;
+    tg->kty = kty;
+    tg->vty = vty;
+    tg->hash = 0;
+}
+
+
+UNUSED static testrt_target_t *
+testrt_target_new(uint64_t id, lkit_struct_t *kty, lkit_struct_t *vty)
+{
+    testrt_target_t *tg;
+
+    if ((tg = malloc(sizeof(testrt_target_t) +
+                     kty->base.rtsz +
+                     (vty != NULL ? vty->base.rtsz : 0))) == NULL) {
+        FAIL("malloc");
+    }
+    testrt_target_init(tg, id, kty, vty);
+    /* the data follow */
+    tg->value = (void **)tg->data;
+    return tg;
+}
+
+
+static uint64_t
+testrt_target_hash(testrt_target_t *tg)
+{
+    if (tg->hash == 0) {
+        lkit_type_t **ty;
+        array_iter_t it;
+
+        lkit_type_dump((lkit_type_t *)tg->kty);
+
+        for (ty = array_first(&tg->kty->fields, &it);
+             ty != NULL;
+             ty = array_next(&tg->kty->fields, &it)) {
+
+            TRACE("tag=%s rtsz=%ld iter=%u", LKIT_TAG_STR((*ty)->tag), (*ty)->rtsz, it.iter);
+
+            switch ((*ty)->tag) {
+            case LKIT_INT:
+            case LKIT_FLOAT:
+            case LKIT_BOOL:
+                {
+                    unsigned char *v;
+
+                    v = (unsigned char *)(tg->value + it.iter);
+                    TRACE("%p/%p", tg->value, tg->value + it.iter);
+                    D8(v, (*ty)->rtsz);
+                    tg->hash = fasthash(tg->hash, v, (*ty)->rtsz);
+                }
+                break;
+
+            case LKIT_STR:
+                {
+                    bytes_t *bytes;
+
+                    bytes = (bytes_t *)(tg->value + it.iter);
+                    TRACE("%p/%p", tg->value, tg->value + it.iter);
+                    D8(bytes, sizeof(*bytes));
+                    tg->hash = fasthash(tg->hash, bytes->data, bytes->sz);
+                }
+                break;
+
+            default:
+                FAIL("testrt_target_hash");
+            }
+        }
+    }
+
+    return tg->hash;
+}
+
+
+static int
+testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
+{
+    uint64_t diff;
+
+    if (a == b) {
+        return 0;
+    }
+
+    diff = a->id - b->id;
+    if (diff != 0) {
+        return diff;
+    }
+
+    diff = testrt_target_hash(a) - testrt_target_hash(b);
+
+    if (diff == 0) {
+        lkit_type_t **ty;
+        array_iter_t it;
+
+        for (ty = array_first(&a->kty->fields, &it);
+             ty != NULL;
+             ty = array_next(&a->kty->fields, &it)) {
+
+            switch ((*ty)->tag) {
+            case LKIT_INT:
+            case LKIT_FLOAT:
+            case LKIT_BOOL:
+                {
+                    int64_t ai, bi;
+
+                    ai = (int64_t)(a->value + it.iter);
+                    bi = (int64_t)(b->value + it.iter);
+                    diff = ai - bi;
+                }
+                break;
+
+            case LKIT_STR:
+                {
+                    bytes_t *ab, *bb;
+
+                    ab = (bytes_t *)*(a->value + it.iter);
+                    bb = (bytes_t *)*(b->value + it.iter);
+                    diff = bytes_hash(ab) - bytes_hash(bb);
+                }
+                break;
+
+            default:
+                FAIL("testrt_target_hash");
+            }
+
+            if (diff != 0) {
+                break;
+            }
+        }
+    }
+
+    return diff;
+}
+
+
+static void
+testrt_target_fini(testrt_target_t *k, UNUSED testrt_target_t *v)
+{
+    if (k != NULL) {
+        free(k);
+    }
+}
+
 
 void *
-testrt_get_target(void)
+testrt_get_target(testrt_t *trt, void *key)
 {
-    return testrt_target;
+    testrt_target_t tg, *probe;
+
+    testrt_target_init(&tg, trt->id, (lkit_struct_t *)trt->takeexpr->type, NULL);
+    tg.value = key;
+    TRACE("key=%p", key);
+    if ((probe = dict_get_item(&targets, &tg)) == NULL) {
+        probe = testrt_target_new(trt->id,
+                                  (lkit_struct_t *)trt->takeexpr->type,
+                                  (lkit_struct_t *)trt->doexpr->type);
+    }
+    return probe;
+    //return testrt_target->fields->data;
 }
 
 
@@ -57,7 +217,8 @@ testrt_run(bytestream_t *bs, dsource_t *ds)
     int res = 0;
     char enddelim = '\0';
 
-    testrt_source = mrklkit_rt_struct_new(ds->_struct);
+    // XXX init, fini!
+    testrt_source = mrklkit_rt_struct_new(ds->_struct, NULL, NULL);
 
     if ((res = dparse_struct(bs,
                              ds->fdelim,
@@ -97,7 +258,7 @@ testrt_run(bytestream_t *bs, dsource_t *ds)
     }
 
 end:
-    mrklkit_rt_struct_dtor(&testrt_source);
+    mrklkit_rt_struct_destroy(&testrt_source);
     return res;
 }
 
@@ -147,12 +308,11 @@ parse_quals(array_t *form,
         }
         trt->dsource = value;
     } else if (strcmp(s, ":id") == 0) {
-        int64_t val;
-        if (lparse_next_int(form, it, &val, 1) != 0) {
+        if (lparse_next_int(form, it, (int64_t *)&trt->id, 1) != 0) {
             return 1;
         }
-        trt->id = bytes_new(64);
-        snprintf((char *)trt->id->data, trt->id->sz, "testrt.%016lx", val);
+        trt->name = bytes_new(64);
+        snprintf((char *)trt->name->data, trt->name->sz, "testrt.%016lx", trt->id);
     } else {
         TRACE("unknown qual: %s", s);
     }
@@ -164,7 +324,8 @@ static int
 testrt_init(testrt_t *trt)
 {
     trt->dsource = NULL;
-    trt->id = NULL;
+    trt->id = 0;
+    trt->name = NULL;
     trt->seeexpr = NULL;
     trt->doexpr = NULL;
     trt->takeexpr = NULL;
@@ -180,7 +341,7 @@ testrt_fini(testrt_t *trt)
     (void)lkit_expr_destroy(&trt->doexpr);
     (void)lkit_expr_destroy(&trt->takeexpr);
     (void)lkit_type_destroy((lkit_type_t **)(&trt->type));
-    bytes_destroy(&trt->id);
+    bytes_destroy(&trt->name);
     return 0;
 }
 
@@ -491,7 +652,7 @@ _parse_trt(array_t *form, array_iter_t *it)
         TRRET(TESTRT_PARSE + 2);
     }
 
-    if (trt->id == NULL) {
+    if (trt->name == NULL) {
         TRRET(TESTRT_PARSE + 3);
     }
 
@@ -581,7 +742,7 @@ __compile(lkit_gitem_t **gitem, UNUSED void *udata)
 
     TRACE("compiling %s", name->data);
     lkit_expr_dump(expr);
-    return builtingen_sym_compile(gitem, udata);
+    return builtin_compile(gitem, udata);
 }
 
 
@@ -589,9 +750,12 @@ static int
 _compile_trt(testrt_t *trt, void *udata)
 {
     int res = 0;
+    lkit_struct_t *ts;
+    lkit_expr_t **expr;
+    array_iter_t it;
     LLVMModuleRef module = (LLVMModuleRef)udata;
     LLVMBuilderRef builder;
-    LLVMValueRef fn, fnmain, target, ctarget;
+    LLVMValueRef fn, fnmain, av, args[2], target, ctarget;
     LLVMBasicBlockRef bb;
 
     char buf[1024];
@@ -599,7 +763,7 @@ _compile_trt(testrt_t *trt, void *udata)
     builder = LLVMCreateBuilder();
 
     /* TAKE and DO */
-    snprintf(buf, sizeof(buf), "%s.run", trt->id->data);
+    snprintf(buf, sizeof(buf), "%s.run", trt->name->data);
     fn = LLVMAddFunction(module,
                         buf,
                         LLVMFunctionType(LLVMVoidType(), NULL, 0, 0));
@@ -614,24 +778,36 @@ _compile_trt(testrt_t *trt, void *udata)
     }
 
 
+    /* key */
+    ts = (lkit_struct_t *)trt->takeexpr->type;
+    av = LLVMBuildAlloca(builder,
+                         ts->deref_backend,
+                         NEWVAR("alloca"));
+    for (expr = array_first(&trt->takeexpr->subs, &it);
+         expr != NULL;
+         expr = array_next(&trt->takeexpr->subs, &it)) {
+        LLVMValueRef res, gep;
+
+        res = builtin_compile_expr(module, builder, *expr);
+        gep = LLVMBuildStructGEP(builder, av, it.iter, NEWVAR("gep"));
+        LLVMBuildStore(builder, res, gep);
+    }
+
+    /* backend *ctarget = (backend *)testrt_get_target(trt, key) */
+    args[0] = LLVMConstIntToPtr(
+        LLVMConstInt(LLVMInt64Type(),
+            (uintptr_t)trt, 0),
+        LLVMPointerType(LLVMVoidType(), 0));
+    args[1] = av;
+
     target = LLVMBuildCall(builder,
                            LLVMGetNamedFunction(module, "testrt_get_target"),
-                           NULL, 0, NEWVAR("call"));
+                           args, 2, NEWVAR("call"));
 
-    //if ((target = LLVMGetNamedGlobal(module, TESTRT_TARGET)) == NULL) {
-    //    res = TESTRT_COMPILE + 201;
-    //    goto end;
-    //}
-
-    //ctarget = LLVMBuildPointerCast(builder,
-    //                               target,
-    //                               LLVMPointerType(
-    //                                  trt->type->base.backend, 0),
-    //                               NEWVAR(TESTRT_TARGET));
     ctarget = LLVMBuildPointerCast(builder,
                                    target,
                                    trt->type->base.backend,
-                                   NEWVAR(TESTRT_TARGET));
+                                   NEWVAR("cast"));
     //LLVMBuildLoad(builder, ctarget, NEWVAR("tmp"));
     //LLVMBuildStore(builder, ctarget, NEWVAR("tmp"));
 
@@ -658,7 +834,7 @@ _compile_trt(testrt_t *trt, void *udata)
 
         tblock = LLVMAppendBasicBlock(fnmain, NEWVAR("L.if.true"));
         endblock = LLVMAppendBasicBlock(fnmain, NEWVAR("L.if.end"));
-        res = compile_expr(module, builder, *seecond);
+        res = builtin_compile_expr(module, builder, *seecond);
         assert(res != NULL);
         LLVMBuildCondBr(builder, res, tblock, endblock);
         LLVMPositionBuilderAtEnd(builder, tblock);
@@ -670,12 +846,6 @@ _compile_trt(testrt_t *trt, void *udata)
         LLVMBuildCall(builder, fn, NULL, 0, NEWVAR("call"));
     }
 
-    //if (compile_expr(module, builder, trt->seeexpr) == NULL) {
-    //    res = TESTRT_COMPILE + 1;
-    //    goto end;
-    //}
-
-
 end:
     LLVMDisposeBuilder(builder);
     return res;
@@ -683,13 +853,18 @@ end:
 
 
 static int
-_compile(UNUSED LLVMModuleRef module)
+_compile(LLVMModuleRef module)
 {
     LLVMBuilderRef builder;
     LLVMValueRef fn;
     LLVMBasicBlockRef bb;
 
     builder = LLVMCreateBuilder();
+
+    if (dsource_compile(module) != 0) {
+        TRRET(TESTRT_COMPILE + 100);
+    }
+
     fn = LLVMAddFunction(module,
                         TESTRT_START,
                         LLVMFunctionType(LLVMVoidType(), NULL, 0, 0));
@@ -697,12 +872,12 @@ _compile(UNUSED LLVMModuleRef module)
     bb = LLVMAppendBasicBlock(fn, NEWVAR(".BB"));
     LLVMPositionBuilderAtEnd(builder, bb);
 
-    builtin_call_eager_iitializers(module, builder);
+    builtin_call_eager_initializers(module, builder);
 
     if (array_traverse(&testrts,
                        (array_traverser_t)_compile_trt,
                        module) != 0) {
-        return 1;
+        TRRET(TESTRT_COMPILE + 101);
     }
 
     bb = LLVMGetLastBasicBlock(fn);
@@ -733,6 +908,11 @@ _init(void)
     array_init(&testrts, sizeof(testrt_t), 0,
                (array_initializer_t)testrt_init,
                (array_finalizer_t)testrt_fini);
+
+    dict_init(&targets, 101,
+              (dict_hashfn_t)testrt_target_hash,
+              (dict_item_comparator_t)testrt_target_cmp,
+              (dict_item_finalizer_t)testrt_target_fini);
 }
 
 

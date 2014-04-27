@@ -7,8 +7,7 @@
 extern "C" {
 #endif
 
-int builtingen_sym_compile(lkit_gitem_t **gitem, void *udata);
-int builtin_call_eager_iitializers(LLVMModuleRef, LLVMBuilderRef);
+int builtingen_call_eager_initializer(lkit_gitem_t **, void *);
 #ifdef __cplusplus
 }
 #endif

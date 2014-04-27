@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <llvm-c/Core.h>
+
 #include <mrkcommon/array.h>
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
@@ -9,6 +11,7 @@
 #include <mrklkit/fparser.h>
 #include <mrklkit/lparse.h>
 #include <mrklkit/ltype.h>
+#include <mrklkit/ltypegen.h>
 
 #include <mrklkit/modules/dsource.h>
 
@@ -30,7 +33,7 @@ dsource_init(dsource_t *dsource)
     dsource->duration_index = -1;
     dsource->error = 0;
     /* weak ref */
-    dsource->logtype = NULL;
+    dsource->kind = NULL;
     dsource->_struct = NULL;
 }
 
@@ -43,7 +46,7 @@ dsource_fini(dsource_t *dsource)
     dsource->duration_index = -1;
     dsource->error = 0;
     /* weak ref */
-    dsource->logtype = NULL;
+    dsource->kind = NULL;
     /* weak ref */
     dsource->_struct = NULL;
 }
@@ -72,7 +75,7 @@ dsource_destroy(dsource_t **dsource)
 
 
 /**
- * dsource ::= (dsource quals? logtype _struct?)
+ * dsource ::= (dsource quals? kind _struct?)
  *
  */
 static int
@@ -114,8 +117,8 @@ dsource_parse(array_t *form, array_iter_t *it)
     }
     *dsource = dsource_new();
 
-    /* logtype */
-    if (lparse_next_word(form, it, &(*dsource)->logtype, 1) != 0) {
+    /* kind */
+    if (lparse_next_word_bytes(form, it, &(*dsource)->kind, 1) != 0) {
         (*dsource)->error = 1;
         return 1;
     }
@@ -141,12 +144,30 @@ dsource_get(const char *name)
          v != NULL;
          v = array_next(&dsources, &it)) {
 
-        if (strcmp(name, (const char *)(*v)->logtype) == 0) {
+        if (strcmp(name, (const char *)(*v)->kind->data) == 0) {
             return *v;
         }
     }
 
     return NULL;
+}
+
+
+int
+dsource_compile(LLVMModuleRef module)
+{
+    array_iter_t it;
+    dsource_t **ds;
+    for (ds = array_first(&dsources, &it);
+         ds != NULL;
+         ds = array_next(&dsources, &it)) {
+        if (ltype_compile_methods((lkit_type_t *)(*ds)->_struct,
+                                  module,
+                                  (*ds)->kind)) {
+            TRRET(DSOURCE + 100);
+        }
+    }
+    return 0;
 }
 
 

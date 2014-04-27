@@ -6,6 +6,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -100,9 +101,11 @@ ltype_compile(lkit_type_t *ty,
             }
 
             bfields[it.iter] = (*field)->backend;
+            ts->base.rtsz += (*field)->rtsz;
         }
 
-        ty->backend = LLVMPointerType(LLVMStructType(bfields, ts->fields.elnum, 0), 0);
+        ts->deref_backend = LLVMStructType(bfields, ts->fields.elnum, 0);
+        ty->backend = LLVMPointerType(ts->deref_backend, 0);
 
 end_struct:
         break;
@@ -168,6 +171,164 @@ end_struct:
     if (bfields != NULL) {
         free(bfields);
         bfields = NULL;
+    }
+
+    return 0;
+}
+
+int
+ltype_compile_methods(lkit_type_t *ty,
+                      LLVMModuleRef module,
+                      bytes_t *name)
+{
+    char *buf1 = NULL, *buf2 = NULL;
+
+    switch (ty->tag) {
+    case LKIT_STRUCT:
+        {
+            lkit_struct_t *ts;
+            array_iter_t it;
+            LLVMBuilderRef b1, b2;
+            LLVMValueRef fn1, fn2, cast1, cast2;
+            LLVMTypeRef argty;
+            lkit_type_t **fty;
+            LLVMBasicBlockRef bb;
+
+            if ((buf1 = malloc(name->sz + 64)) == NULL) {
+                FAIL("malloc");
+            }
+            if ((buf2 = malloc(name->sz + 64)) == NULL) {
+                FAIL("malloc");
+            }
+
+            ts = (lkit_struct_t *)ty;
+
+            b1 = LLVMCreateBuilder();
+            b2 = LLVMCreateBuilder();
+
+            snprintf(buf1, name->sz + 32, ".mrklkit.init.%s", name->data);
+            snprintf(buf2, name->sz + 32, ".mrklkit.fini.%s", name->data);
+
+            if (LLVMGetNamedFunction(module, buf1) != NULL) {
+                TRRET(LTYPE_COMPILE_METHODS + 1);
+            }
+            if (LLVMGetNamedFunction(module, buf1) != NULL) {
+                TRRET(LTYPE_COMPILE_METHODS + 2);
+            }
+
+            argty = LLVMPointerType(LLVMVoidType(), 0);
+
+            fn1 = LLVMAddFunction(module,
+                                  buf1,
+                                  LLVMFunctionType(LLVMVoidType(),
+                                                   &argty,
+                                                   1,
+                                                   0));
+            fn2 = LLVMAddFunction(module,
+                                  buf2,
+                                  LLVMFunctionType(LLVMVoidType(),
+                                                   &argty,
+                                                   1,
+                                                   0));
+
+            bb = LLVMAppendBasicBlock(fn1, NEWVAR(".BB"));
+            LLVMPositionBuilderAtEnd(b1, bb);
+            bb = LLVMAppendBasicBlock(fn2, NEWVAR(".BB"));
+            LLVMPositionBuilderAtEnd(b2, bb);
+
+            cast1 = LLVMBuildPointerCast(b1,
+                                         LLVMGetParam(fn1, 0),
+                                         ts->base.backend,
+                                         NEWVAR("cast"));
+            cast2 = LLVMBuildPointerCast(b2,
+                                         LLVMGetParam(fn2, 0),
+                                         ts->base.backend,
+                                         NEWVAR("cast"));
+
+            for (fty = array_first(&ts->fields, &it);
+                 fty != NULL;
+                 fty = array_next(&ts->fields, &it)) {
+
+                LLVMValueRef gep1, gep2;
+                const char *dtor_name = NULL;
+
+                gep1 = LLVMBuildStructGEP(b1, cast1, it.iter, NEWVAR("gep"));
+                gep2 = LLVMBuildStructGEP(b2, cast2, it.iter, NEWVAR("gep"));
+
+#define CALLDTOR \
+{ \
+    LLVMValueRef pnull, dtor; \
+    pnull = LLVMConstPointerNull((*fty)->backend); \
+    LLVMBuildStore(b1, pnull, gep1); \
+    if ((dtor = LLVMGetNamedFunction(module, \
+                                     dtor_name)) == NULL) { \
+        TRACE("no name: %s", dtor_name); \
+        TRRET(LTYPE_COMPILE_METHODS + 3); \
+    } \
+    LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
+}
+
+                switch ((*fty)->tag) {
+                case LKIT_STR:
+                    dtor_name = "bytes_destroy";
+                    CALLDTOR;
+                    break;
+                case LKIT_ARRAY:
+                    dtor_name = "mrklkit_rt_array_destroy";
+                    CALLDTOR;
+                    break;
+                case LKIT_DICT:
+                    dtor_name = "mrklkit_rt_dict_destroy";
+                    CALLDTOR;
+                    break;
+                case LKIT_STRUCT:
+                    dtor_name = "mrklkit_rt_struct_destroy";
+                    CALLDTOR;
+                    break;
+
+                case LKIT_INT:
+                case LKIT_BOOL:
+                    {
+                        LLVMValueRef zero;
+
+                        zero = LLVMConstInt((*fty)->backend, 0, 1);
+                        LLVMBuildStore(b1, zero, gep1);
+                        LLVMBuildStore(b2, zero, gep2);
+                    }
+                    break;
+
+                case LKIT_FLOAT:
+                    {
+                        LLVMValueRef zero;
+
+                        zero = LLVMConstReal((*fty)->backend, 0.0);
+                        LLVMBuildStore(b1, zero, gep1);
+                        LLVMBuildStore(b2, zero, gep2);
+                    }
+                    break;
+
+                default:
+                    TRRET(LTYPE_COMPILE_METHODS + 4);
+                }
+
+            }
+
+            LLVMBuildRetVoid(b1);
+            LLVMBuildRetVoid(b2);
+
+            LLVMDisposeBuilder(b1);
+            LLVMDisposeBuilder(b2);
+        }
+        break;
+
+    default:
+        break;
+    }
+    if (buf1 != NULL) {
+        free(buf1);
+    }
+    if (buf2 != NULL) {
+        free(buf2);
     }
 
     return 0;

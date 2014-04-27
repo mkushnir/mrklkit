@@ -608,7 +608,7 @@ builtin_sym_compile(LLVMModuleRef module)
     }
 
     if (array_traverse(&root.glist,
-                       (array_traverser_t)builtingen_sym_compile,
+                       (array_traverser_t)builtin_compile,
                        module) != 0) {
         TRRET(BUILTIN_SYM_COMPILE + 2);
     }
@@ -616,7 +616,7 @@ builtin_sym_compile(LLVMModuleRef module)
 }
 
 int
-builtin_call_eager_iitializers(LLVMModuleRef module, LLVMBuilderRef builder)
+builtin_call_eager_initializers(LLVMModuleRef module, LLVMBuilderRef builder)
 {
     struct {
         LLVMModuleRef module;

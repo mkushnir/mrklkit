@@ -297,7 +297,7 @@ dump_bytes_dict(bytes_t *k, bytes_t *v, UNUSED void *udata)
 }
 
 
-static int
+UNUSED static int
 dump_tobj(tobj_t *o, void *udata)
 {
     if (o->type != NULL) {
@@ -861,6 +861,57 @@ test_dict_str(void)
     close(fd);
 }
 
+static void
+struct_00_dump(rt_struct_t *value)
+{
+    int64_t *fint;
+    union {
+        void **v;
+        double *d;
+    } ffloat;
+    bytes_t **fstr;
+
+    fint = array_get(&value->fields, 0);
+    assert(fint != NULL);
+    TRACE("val=%ld", *fint);
+    ffloat.v = array_get(&value->fields, 1);
+    assert(ffloat.v != NULL);
+    TRACE("val=%lf", *ffloat.d);
+    fstr = array_get(&value->fields, 2);
+    assert(fstr != NULL);
+    TRACE("val=%s", *fstr != NULL ? (*fstr)->data : NULL);
+}
+
+static void
+struct_00_init(rt_struct_t *value)
+{
+    int64_t *fint;
+    union {
+        void **v;
+        double *d;
+    } ffloat;
+    bytes_t **fstr;
+
+    fint = array_get(&value->fields, 0);
+    assert(fint != NULL);
+    *fint = 0;
+    ffloat.v = array_get(&value->fields, 1);
+    assert(ffloat.v != NULL);
+    *ffloat.d = 0.0;
+    fstr = array_get(&value->fields, 2);
+    assert(fstr != NULL);
+    *fstr = NULL;
+}
+
+static void
+struct_00_fini(rt_struct_t *value)
+{
+    bytes_t **fstr;
+    fstr = array_get(&value->fields, 2);
+    assert(fstr != NULL);
+    bytes_destroy(fstr);
+}
+
 
 static void
 test_struct_00(void)
@@ -911,7 +962,7 @@ test_struct_00(void)
             continue;
         }
 
-        mrklkit_rt_struct_init(&value, stty);
+        mrklkit_rt_struct_init(&value, stty, struct_00_init, struct_00_fini);
 
         if ((res = dparse_struct(&bs,
                                  FDELIM,
@@ -925,11 +976,11 @@ test_struct_00(void)
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            array_traverse(&value.fields, (array_traverser_t)dump_tobj, NULL);
+            struct_00_dump(&value);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            array_traverse(&value.fields, (array_traverser_t)dump_tobj, NULL);
+            struct_00_dump(&value);
         }
 
         if (delim == '\n') {

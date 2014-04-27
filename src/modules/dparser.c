@@ -6,7 +6,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -554,7 +554,7 @@ dparse_struct(bytestream_t *bs,
 {
     off_t spos = SPOS(bs);
     lkit_type_t **fty;
-    tobj_t *val;
+    void **val;
     ssize_t idx;
 
     idx = value->current;
@@ -566,11 +566,9 @@ dparse_struct(bytestream_t *bs,
             FAIL("array_get");
         }
 
-        val->type = *fty;
-
         switch ((*fty)->tag) {
         case LKIT_INT:
-            if (dparse_int(bs, fdelim, rdelim, (int64_t *)&val->value, ch, flags) != 0) {
+            if (dparse_int(bs, fdelim, rdelim, (int64_t *)val, ch, flags) != 0) {
                 goto err;
             }
             break;
@@ -579,24 +577,24 @@ dparse_struct(bytestream_t *bs,
             {
                 union {
                     double d;
-                    void *p;
+                    void *v;
                 } v;
                 assert(sizeof(double) == sizeof(void *));
                 if (dparse_float(bs, fdelim, rdelim, &v.d, ch, flags) != 0) {
                     goto err;
                 }
-                val->value = v.p;
+                val = v.v;
             }
             break;
 
         case LKIT_STR:
-            if (dparse_str(bs, fdelim, rdelim, (bytes_t **)&val->value, ch, flags) != 0) {
+            if (dparse_str(bs, fdelim, rdelim, (bytes_t **)val, ch, flags) != 0) {
                 goto err;
             }
             break;
 
         default:
-            FAIL("dparse_struct");
+            FAIL("dparse_struct: need more types to handle in dparse");
         }
     }
 

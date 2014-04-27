@@ -69,6 +69,7 @@ mrklkit_parse(int fd)
 
     if (FPARSER_DATUM_TAG(root) != FPARSER_SEQ) {
         root->error = 1;
+        TR(MRKLKIT_PARSE + 1);
         goto err;
     }
 
@@ -92,26 +93,16 @@ mrklkit_parse(int fd)
                 if (strcmp((char *)first, "type") == 0) {
                     if (lkit_parse_typedef(nform, &nit) != 0) {
                         (*fnode)->error = 1;
+                        TR(MRKLKIT_PARSE + 2);
                         goto err;
                     }
 
                 } else if (strcmp((char *)first, "sym") == 0) {
                     if (builtin_sym_parse(nform, &nit) != 0) {
                         (*fnode)->error = 1;
+                        TR(MRKLKIT_PARSE + 3);
                         goto err;
                     }
-
-                //} else if (strcmp((char *)first, "testrt") == 0) {
-                //    if (testrt_parse(nform, &nit) != 0) {
-                //        (*fnode)->error = 1;
-                //        goto err;
-                //    }
-
-                //} else if (strcmp((char *)first, "dsource") == 0) {
-                //    if (dsource_parse(nform, &nit) != 0) {
-                //        (*fnode)->error = 1;
-                //        goto err;
-                //    }
 
                 } else {
                     mrklkit_module_t **mod;
@@ -131,6 +122,7 @@ mrklkit_parse(int fd)
                                 if (strcmp((char *)first, pi->keyword) == 0) {
                                     if (pi->parser(nform, &nit) != 0) {
                                         (*fnode)->error = 1;
+                                        TR(MRKLKIT_PARSE + 2);
                                         goto err;
                                     }
                                 }
@@ -235,7 +227,7 @@ mrklkit_compile(int fd)
 
         if ((*mod)->precompile != NULL) {
             if ((*mod)->precompile()) {
-                TRRET(MRKLKIT_COMPILE + 4);
+                TRRET(MRKLKIT_COMPILE + 2);
             }
         }
     }
@@ -243,14 +235,14 @@ mrklkit_compile(int fd)
 
     if (ltype_transform((dict_traverser_t)ltype_compile,
                         NULL) != 0) {
-        TRRET(MRKLKIT_COMPILE + 2);
+        TRRET(MRKLKIT_COMPILE + 3);
     }
 
     /* compile */
 
     /* builtin */
     if (builtin_sym_compile(module) != 0) {
-        TRRET(MRKLKIT_COMPILE + 3);
+        TRRET(MRKLKIT_COMPILE + 4);
     }
 
     /* modules */
@@ -261,7 +253,7 @@ mrklkit_compile(int fd)
 
         if ((*mod)->compile != NULL) {
             if ((*mod)->compile(module)) {
-                TRRET(MRKLKIT_COMPILE + 4);
+                TRRET(MRKLKIT_COMPILE + 5);
             }
         }
     }

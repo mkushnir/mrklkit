@@ -62,6 +62,8 @@ typedef struct _lkit_type {
     /* weak ref */
     char *name;
     uint64_t hash;
+    /* run time size, or 0 if not known at compile time */
+    size_t rtsz;
     LLVMTypeRef backend;
     int error:1;
     lkit_type_dtor_t dtor;
@@ -118,6 +120,7 @@ typedef struct _lkit_dict {
 
 typedef struct _lkit_struct {
     struct _lkit_type base;
+    LLVMTypeRef deref_backend;
     lkit_parser_t parser;
     /* weak ref, will use delim[0] */
     unsigned char *delim;
