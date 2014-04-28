@@ -583,7 +583,7 @@ dparse_struct(bytestream_t *bs,
                 if (dparse_float(bs, fdelim, rdelim, &v.d, ch, flags) != 0) {
                     goto err;
                 }
-                val = v.v;
+                *val = v.v;
             }
             break;
 

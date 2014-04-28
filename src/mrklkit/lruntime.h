@@ -61,6 +61,12 @@ bytes_t *mrklkit_rt_get_struct_item_str(rt_struct_t *, int64_t, bytes_t *);
 array_t *mrklkit_rt_get_struct_item_array(rt_struct_t *, int64_t, array_t *);
 dict_t *mrklkit_rt_get_struct_item_dict(rt_struct_t *, int64_t, dict_t *);
 rt_struct_t *mrklkit_rt_get_struct_item_struct(rt_struct_t *, int64_t, rt_struct_t *);
+void mrklkit_rt_set_struct_item_int(rt_struct_t *, int64_t, int64_t);
+void mrklkit_rt_set_struct_item_float(rt_struct_t *, int64_t, double);
+void mrklkit_rt_set_struct_item_bool(rt_struct_t *, int64_t, int64_t);
+void mrklkit_rt_set_struct_item_str(rt_struct_t *, int64_t, bytes_t *);
+
+void mrklkit_rt_struct_shallow_copy(rt_struct_t *, rt_struct_t *);
 
 void lruntime_init(void);
 void lruntime_fini(void);

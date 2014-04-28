@@ -511,7 +511,7 @@ _compile_trt(testrt_t *trt, void *udata)
     array_iter_t it;
     LLVMModuleRef module = (LLVMModuleRef)udata;
     LLVMBuilderRef builder;
-    LLVMValueRef fn, fnmain, av, args[2], target, ctarget;
+    LLVMValueRef fn, fnmain, av, arg;
     LLVMBasicBlockRef bb;
 
     char buf[1024];
@@ -535,37 +535,83 @@ _compile_trt(testrt_t *trt, void *udata)
 
 
     /* key */
+    arg = LLVMConstIntToPtr(
+        LLVMConstInt(LLVMInt64Type(), (uintptr_t)trt, 0),
+        LLVMPointerType(LLVMVoidType(), 0));
+
     ts = (lkit_struct_t *)trt->takeexpr->type;
-    av = LLVMBuildAlloca(builder,
-                         ts->deref_backend,
-                         NEWVAR("alloca"));
+    av = LLVMBuildCall(builder,
+                       LLVMGetNamedFunction(module,
+                                            "testrt_acquire_take_key"),
+                       &arg,
+                       1,
+                       NEWVAR("call"));
+    av = LLVMBuildPointerCast(builder, av, ts->base.backend, NEWVAR("cast"));
+
     for (expr = array_first(&trt->takeexpr->subs, &it);
          expr != NULL;
          expr = array_next(&trt->takeexpr->subs, &it)) {
-        LLVMValueRef res, gep;
 
-        res = builtin_compile_expr(module, builder, *expr);
+        LLVMValueRef val, gep;
+
+        val = builtin_compile_expr(module, builder, *expr);
         gep = LLVMBuildStructGEP(builder, av, it.iter, NEWVAR("gep"));
-        LLVMBuildStore(builder, res, gep);
+        LLVMBuildStore(builder, val, gep);
     }
 
-    /* backend *ctarget = (backend *)testrt_get_target(trt, key) */
-    args[0] = LLVMConstIntToPtr(
-        LLVMConstInt(LLVMInt64Type(),
-            (uintptr_t)trt, 0),
-        LLVMPointerType(LLVMVoidType(), 0));
-    args[1] = av;
+    av = LLVMBuildCall(builder,
+                       LLVMGetNamedFunction(module, "testrt_get_do"),
+                       &arg,
+                       1,
+                       NEWVAR("call"));
 
-    target = LLVMBuildCall(builder,
-                           LLVMGetNamedFunction(module, "testrt_get_target"),
-                           args, 2, NEWVAR("call"));
+    /* do */
+    ts = (lkit_struct_t *)trt->doexpr->type;
+    av = LLVMBuildPointerCast(builder, av, ts->base.backend, NEWVAR("cast"));
 
-    ctarget = LLVMBuildPointerCast(builder,
-                                   target,
-                                   trt->type->base.backend,
-                                   NEWVAR("cast"));
-    //LLVMBuildLoad(builder, ctarget, NEWVAR("tmp"));
-    //LLVMBuildStore(builder, ctarget, NEWVAR("tmp"));
+    for (expr = array_first(&trt->doexpr->subs, &it);
+         expr != NULL;
+         expr = array_next(&trt->doexpr->subs, &it)) {
+
+        LLVMValueRef val, gep;
+
+        lkit_expr_dump(*expr);
+
+        TRACE("expr %s", (*expr)->name->data);
+
+        gep = LLVMBuildStructGEP(builder, av, it.iter, NEWVAR("gep"));
+        val = LLVMBuildLoad(builder, gep, NEWVAR("val"));
+
+        if (strcmp((char *)(*expr)->name->data, "MERGE") == 0) {
+            lkit_expr_t **arg;
+
+            if ((arg = array_get(&(*expr)->subs, 0)) == NULL) {
+                res = TESTRT_COMPILE + 201;
+                goto end;
+            }
+
+            switch ((*arg)->type->tag) {
+            case LKIT_INT:
+                val = LLVMBuildAdd(builder,
+                                   val,
+                                   builtin_compile_expr(module, builder, *arg),
+                                   NEWVAR("val"));
+                break;
+
+            case LKIT_FLOAT:
+                val = LLVMBuildFAdd(builder,
+                                    val,
+                                    builtin_compile_expr(module, builder, *arg),
+                                    NEWVAR("val"));
+                break;
+
+            default:
+                res = TESTRT_COMPILE + 202;
+                goto end;
+            }
+        }
+        LLVMBuildStore(builder, val, gep);
+    }
 
     LLVMBuildRetVoid(builder);
     //LLVMSetLinkage(fn, LLVMExternalLinkage);
@@ -662,69 +708,91 @@ _link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
  *
  */
 static void
-testrt_target_init(testrt_target_t *tg, uint64_t id, lkit_struct_t *kty, lkit_struct_t *vty)
+testrt_target_init(testrt_target_t *tgt, uint64_t id, lkit_struct_t *type)
 {
-    tg->id = id;
-    tg->kty = kty;
-    tg->vty = vty;
-    tg->hash = 0;
+    tgt->id = id;
+    tgt->type = type;
+    tgt->hash = 0;
+    TRACE("init=%p", type->init);
+    if (type->init != NULL) {
+        type->init(&tgt->value);
+    } else {
+        FAIL("testrt_target's type is not finalized?");
+    }
 }
 
 
 static testrt_target_t *
-testrt_target_new(uint64_t id, lkit_struct_t *kty, lkit_struct_t *vty)
+testrt_target_new(uint64_t id, lkit_struct_t *type)
 {
-    testrt_target_t *tg;
+    testrt_target_t *tgt;
 
-    if ((tg = malloc(sizeof(testrt_target_t) +
-                     kty->base.rtsz +
-                     (vty != NULL ? vty->base.rtsz : 0))) == NULL) {
+    if ((tgt = malloc(sizeof(testrt_target_t))) == NULL) {
         FAIL("malloc");
     }
-    testrt_target_init(tg, id, kty, vty);
-    /* the data follow */
-    tg->value = (void **)tg->data;
-    return tg;
+    testrt_target_init(tgt, id, type);
+    return tgt;
 }
 
 
 static uint64_t
-testrt_target_hash(testrt_target_t *tg)
+testrt_target_hash(testrt_target_t *tgt)
 {
-    if (tg->hash == 0) {
+    if (tgt->hash == 0) {
         lkit_type_t **ty;
         array_iter_t it;
 
-        //lkit_type_dump((lkit_type_t *)tg->kty);
-
-        for (ty = array_first(&tg->kty->fields, &it);
+        for (ty = array_first(&tgt->type->fields, &it);
              ty != NULL;
-             ty = array_next(&tg->kty->fields, &it)) {
+             ty = array_next(&tgt->type->fields, &it)) {
 
             //TRACE("tag=%s rtsz=%ld iter=%u", LKIT_TAG_STR((*ty)->tag), (*ty)->rtsz, it.iter);
 
             switch ((*ty)->tag) {
             case LKIT_INT:
+                {
+                    union {
+                        int64_t i;
+                        unsigned char c;
+                    } v;
+
+                    v.i = mrklkit_rt_get_struct_item_int(&tgt->value, it.iter, 0);
+                    tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
+                }
+                break;
+
             case LKIT_FLOAT:
+                {
+                    union {
+                        double d;
+                        unsigned char c;
+                    } v;
+
+                    v.d = mrklkit_rt_get_struct_item_float(&tgt->value, it.iter, 0.0);
+                    tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
+                }
+                break;
+
             case LKIT_BOOL:
                 {
-                    unsigned char *v;
+                    union {
+                        uint64_t i;
+                        unsigned char c;
+                    } v;
 
-                    v = (unsigned char *)(tg->value + it.iter);
-                    //TRACE("%p/%p", tg->value, tg->value + it.iter);
-                    //D8(v, (*ty)->rtsz);
-                    tg->hash = fasthash(tg->hash, v, (*ty)->rtsz);
+                    v.i = mrklkit_rt_get_struct_item_bool(&tgt->value, it.iter, 0.0);
+                    tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
                 }
                 break;
 
             case LKIT_STR:
                 {
-                    bytes_t **bytes;
+                    bytes_t *v;
 
-                    bytes = (bytes_t **)(tg->value + it.iter);
-                    //TRACE("%p/%p", tg->value, tg->value + it.iter);
-                    //D8(bytes, sizeof(*bytes));
-                    tg->hash = fasthash(tg->hash, (*bytes)->data, (*bytes)->sz);
+                    v = mrklkit_rt_get_struct_item_str(&tgt->value, it.iter, NULL);
+                    if (v != NULL) {
+                        tgt->hash = fasthash(tgt->hash, v->data, v->sz);
+                    }
                 }
                 break;
 
@@ -734,7 +802,7 @@ testrt_target_hash(testrt_target_t *tg)
         }
     }
 
-    return tg->hash;
+    return tgt->hash;
 }
 
 
@@ -758,30 +826,48 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
         lkit_type_t **ty;
         array_iter_t it;
 
-        for (ty = array_first(&a->kty->fields, &it);
+        for (ty = array_first(&a->type->fields, &it);
              ty != NULL;
-             ty = array_next(&a->kty->fields, &it)) {
+             ty = array_next(&a->type->fields, &it)) {
 
             switch ((*ty)->tag) {
             case LKIT_INT:
-            case LKIT_FLOAT:
-            case LKIT_BOOL:
                 {
                     int64_t ai, bi;
 
-                    ai = (int64_t)(a->value + it.iter);
-                    bi = (int64_t)(b->value + it.iter);
+                    ai = mrklkit_rt_get_struct_item_int(&a->value, it.iter, 0);
+                    bi = mrklkit_rt_get_struct_item_int(&b->value, it.iter, 0);
                     diff = ai - bi;
+                }
+                break;
+
+            case LKIT_BOOL:
+                {
+                    int64_t ab, bb;
+
+                    ab = mrklkit_rt_get_struct_item_bool(&a->value, it.iter, 0);
+                    bb = mrklkit_rt_get_struct_item_bool(&b->value, it.iter, 0);
+                    diff = ab - bb;
+                }
+                break;
+
+            case LKIT_FLOAT:
+                {
+                    double af, bf;
+
+                    af = mrklkit_rt_get_struct_item_float(&a->value, it.iter, 0.0);
+                    bf = mrklkit_rt_get_struct_item_float(&b->value, it.iter, 0.0);
+                    diff = af > bf ? 1 : af < bf ? -1 : 0;
                 }
                 break;
 
             case LKIT_STR:
                 {
-                    bytes_t *ab, *bb;
+                    bytes_t *as, *bs;
 
-                    ab = (bytes_t *)*(a->value + it.iter);
-                    bb = (bytes_t *)*(b->value + it.iter);
-                    diff = bytes_hash(ab) - bytes_hash(bb);
+                    as = mrklkit_rt_get_struct_item_str(&a->value, it.iter, NULL);
+                    bs = mrklkit_rt_get_struct_item_str(&b->value, it.iter, NULL);
+                    diff = bytes_cmp(as, bs);
                 }
                 break;
 
@@ -800,29 +886,56 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
 
 
 static void
-testrt_target_fini(testrt_target_t *k, UNUSED testrt_target_t *v)
+testrt_target_fini(testrt_target_t *tgt)
+{
+    mrklkit_rt_struct_fini(&tgt->value);
+    tgt->hash = 0;
+}
+
+
+static void
+testrt_target_fini_dict_item(testrt_target_t *k, testrt_target_t *v)
 {
     if (k != NULL) {
+        testrt_target_fini(k);
         free(k);
+    }
+    if (v != NULL) {
+        testrt_target_fini(v);
+        free(v);
     }
 }
 
 
 void *
-testrt_get_target(testrt_t *trt, void *key)
+testrt_acquire_take_key(testrt_t *trt)
 {
-    testrt_target_t tg, *probe;
+    testrt_target_init(&trt->key,
+                       trt->id,
+                       (lkit_struct_t *)trt->takeexpr->type);
+    TRACE("data=%p", trt->key.value.fields.data);
+    return trt->key.value.fields.data;
+}
 
-    testrt_target_init(&tg, trt->id, (lkit_struct_t *)trt->takeexpr->type, NULL);
-    tg.value = key;
-    //TRACE("key=%p", key);
-    if ((probe = dict_get_item(&targets, &tg)) == NULL) {
-        probe = testrt_target_new(trt->id,
-                                  (lkit_struct_t *)trt->takeexpr->type,
-                                  (lkit_struct_t *)trt->doexpr->type);
+void *
+testrt_get_do(testrt_t *trt)
+{
+    testrt_target_t *d0;
+
+    TRACE();
+    D8(trt->key.value.fields.data, 16);
+
+    if ((d0 = dict_get_item(&targets, &trt->key)) == NULL) {
+        testrt_target_t *take;
+
+        take = testrt_target_new(trt->id,
+                                 (lkit_struct_t *)trt->takeexpr->type);
+        d0 = testrt_target_new(trt->id, (lkit_struct_t *)trt->doexpr->type);
+        mrklkit_rt_struct_shallow_copy(&take->value, &trt->key.value);
+        dict_set_item(&targets, take, d0);
     }
-    return probe;
-    //return testrt_target->fields->data;
+    testrt_target_fini(&trt->key);
+    return d0;
 }
 
 
@@ -892,7 +1005,7 @@ _init(void)
     dict_init(&targets, 101,
               (dict_hashfn_t)testrt_target_hash,
               (dict_item_comparator_t)testrt_target_cmp,
-              (dict_item_finalizer_t)testrt_target_fini);
+              (dict_item_finalizer_t)testrt_target_fini_dict_item);
 }
 
 

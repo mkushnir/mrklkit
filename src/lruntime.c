@@ -324,6 +324,64 @@ mrklkit_rt_get_struct_item_struct(rt_struct_t *value, int64_t idx, rt_struct_t *
 }
 
 
+void
+mrklkit_rt_set_struct_item_int(rt_struct_t *s, int64_t idx, int64_t val)
+{
+    int64_t *p;
+
+    if ((p = array_get(&s->fields, idx)) == NULL) {
+        FAIL("array_get");
+    }
+    *p = val;
+}
+
+
+void
+mrklkit_rt_set_struct_item_float(rt_struct_t *s, int64_t idx, double val)
+{
+    union {
+        void **v;
+        double *d;
+    } p;
+
+    if ((p.v = array_get(&s->fields, idx)) == NULL) {
+        FAIL("array_get");
+    }
+    *p.d = val;
+}
+
+
+void
+mrklkit_rt_set_struct_item_bool(rt_struct_t *s, int64_t idx, int64_t val)
+{
+    int64_t *p;
+
+    if ((p = array_get(&s->fields, idx)) == NULL) {
+        FAIL("array_get");
+    }
+    *p = val;
+}
+
+
+void
+mrklkit_rt_set_struct_item_str(rt_struct_t *s, int64_t idx, bytes_t *val)
+{
+    bytes_t **p;
+
+    if ((p = array_get(&s->fields, idx)) == NULL) {
+        FAIL("array_get");
+    }
+    *p = val;
+}
+
+
+void
+mrklkit_rt_struct_shallow_copy(rt_struct_t *dst, rt_struct_t *src)
+{
+    array_copy(&dst->fields, &src->fields);
+}
+
+
 /**
  * tobj_t operations
  */
