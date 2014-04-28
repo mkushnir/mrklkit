@@ -932,6 +932,8 @@ test_struct_00(void)
      */
     stty = (lkit_struct_t *)lkit_type_get(LKIT_STRUCT);
     stty->delim = (unsigned char *)" ";
+    stty->init = struct_00_init;
+    stty->fini = struct_00_fini;
 
     fnam = array_incr(&stty->names);
     *fnam = "fint";
@@ -962,7 +964,7 @@ test_struct_00(void)
             continue;
         }
 
-        mrklkit_rt_struct_init(&value, stty, struct_00_init, struct_00_fini);
+        mrklkit_rt_struct_init(&value, stty);
 
         if ((res = dparse_struct(&bs,
                                  FDELIM,

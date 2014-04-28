@@ -8,8 +8,12 @@
 
 #include "diag.h"
 
-UNUSED static array_t objects;
+//UNUSED static array_t objects;
 
+
+/**
+ * dict
+ */
 static void
 rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
 {
@@ -68,6 +72,51 @@ mrklkit_rt_dict_destroy(dict_t **value)
 }
 
 
+int64_t
+mrklkit_rt_get_dict_item_int(dict_t *value, bytes_t *key, int64_t dflt)
+{
+    union {
+        void *v;
+        int64_t i;
+    } res;
+
+    if ((res.v = dict_get_item(value, key)) == NULL) {
+        res.i = dflt;
+    }
+    return res.i;
+}
+
+
+double
+mrklkit_rt_get_dict_item_float(dict_t *value, bytes_t *key, double dflt)
+{
+    union {
+        void *v;
+        double d;
+    } res;
+
+    if ((res.v = dict_get_item(value, key)) == NULL) {
+        res.d = dflt;
+    }
+    return res.d;
+}
+
+
+bytes_t *
+mrklkit_rt_get_dict_item_str(dict_t *value, bytes_t *key, bytes_t *dflt)
+{
+    bytes_t *res;
+
+    if ((res = dict_get_item(value, key)) == NULL) {
+        res = dflt;
+    }
+    return res;
+}
+
+
+/**
+ * array
+ */
 void
 mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
 {
@@ -91,10 +140,21 @@ mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
 }
 
 
-void *
-mrklkit_rt_get_array_item(array_t *value, int64_t idx, void *dflt)
+void
+mrklkit_rt_array_destroy(array_t **value)
 {
-    void **res;
+    if (*value != NULL) {
+        array_fini(*value);
+        free(*value);
+        *value = NULL;
+    }
+}
+
+
+int64_t
+mrklkit_rt_get_array_item_int(array_t *value, int64_t idx, int64_t dflt)
+{
+    int64_t *res;
 
     if ((res = array_get(value, idx)) == NULL) {
         return dflt;
@@ -103,15 +163,77 @@ mrklkit_rt_get_array_item(array_t *value, int64_t idx, void *dflt)
 }
 
 
-void *
-mrklkit_rt_get_dict_item(dict_t *value, bytes_t *key, void *dflt)
+double
+mrklkit_rt_get_array_item_float(array_t *value, int64_t idx, double dflt)
 {
-    void *res;
+    double *res;
 
-    if ((res = dict_get_item(value, key)) == NULL) {
-        res = dflt;
+    if ((res = array_get(value, idx)) == NULL) {
+        return dflt;
     }
-    return res;
+    return *res;
+}
+
+
+bytes_t *
+mrklkit_rt_get_array_item_str(array_t *value, int64_t idx, bytes_t *dflt)
+{
+    bytes_t **res;
+
+    if ((res = array_get(value, idx)) == NULL) {
+        return dflt;
+    }
+    return *res;
+}
+
+
+/**
+ * struct
+ */
+void
+mrklkit_rt_struct_init(rt_struct_t *value, lkit_struct_t *stty)
+{
+    value->current = 0;
+    value->init = stty->init;
+    value->fini = stty->fini;
+    array_init(&value->fields, sizeof(void *), stty->fields.elnum, NULL, NULL);
+    if (value->init != NULL) {
+        value->init(value);
+    }
+}
+
+int
+mrklkit_rt_struct_fini(rt_struct_t *value)
+{
+    if (value->fini != NULL) {
+        value->fini(value);
+    }
+    array_fini(&value->fields);
+    value->current = 0;
+    return 0;
+}
+
+rt_struct_t *
+mrklkit_rt_struct_new(lkit_struct_t *stty)
+{
+    rt_struct_t *v;
+
+    if ((v = malloc(sizeof(rt_struct_t))) == NULL) {
+        FAIL("malloc");
+    }
+    mrklkit_rt_struct_init(v, stty);
+    return v;
+}
+
+
+void
+mrklkit_rt_struct_destroy(rt_struct_t **value)
+{
+    if (*value != NULL) {
+        (void)mrklkit_rt_struct_fini(*value);
+        free(*value); \
+        *value = NULL;
+    }
 }
 
 
@@ -202,17 +324,11 @@ mrklkit_rt_get_struct_item_struct(rt_struct_t *value, int64_t idx, rt_struct_t *
 }
 
 
-void
-mrklkit_rt_array_destroy(array_t **value)
-{
-    if (*value != NULL) {
-        array_fini(*value);
-        free(*value);
-        *value = NULL;
-    }
-}
+/**
+ * tobj_t operations
+ */
 
-
+#if 0
 static int
 dump_int_array(int64_t *v, UNUSED void *udata)
 {
@@ -382,62 +498,9 @@ tobj_fini(tobj_t *o)
     return 0;
 }
 
-
-void
-mrklkit_rt_struct_init(rt_struct_t *value,
-                       lkit_struct_t *stty,
-                       void (*init)(rt_struct_t *),
-                       void (*fini)(rt_struct_t *))
-{
-    value->current = 0;
-    value->init = init;
-    value->fini = fini;
-    array_init(&value->fields, sizeof(void *), stty->fields.elnum, NULL, NULL);
-    if (init != NULL) {
-        init(value);
-    }
-}
-
-int
-mrklkit_rt_struct_fini(rt_struct_t *value)
-{
-    if (value->fini != NULL) {
-        value->fini(value);
-    }
-    array_fini(&value->fields);
-    value->current = 0;
-    return 0;
-}
-
-rt_struct_t *
-mrklkit_rt_struct_new(lkit_struct_t *stty,
-                      void (*init)(rt_struct_t *),
-                      void (*fini)(rt_struct_t *))
-{
-    rt_struct_t *v;
-
-    if ((v = malloc(sizeof(rt_struct_t))) == NULL) {
-        FAIL("malloc");
-    }
-    mrklkit_rt_struct_init(v, stty, init, fini);
-    return v;
-}
+#endif
 
 
-void
-mrklkit_rt_struct_destroy(rt_struct_t **value)
-{
-    if (*value != NULL) {
-        (void)mrklkit_rt_struct_fini(*value);
-        free(*value); \
-        *value = NULL;
-    }
-}
-
-
-/**
- * tobj_t operations
- */
 void
 mrklkit_rt_gc(void)
 {

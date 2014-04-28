@@ -168,7 +168,7 @@ int
 dparse_int(bytestream_t *bs,
            char fdelim,
            char rdelim[2],
-           int64_t *value,
+           OUT int64_t *value,
            char *ch,
            unsigned int flags)
 {
@@ -180,7 +180,7 @@ int
 dparse_float(bytestream_t *bs,
            char fdelim,
            char rdelim[2],
-           double *value,
+           OUT double *value,
            char *ch,
            unsigned int flags)
 {
@@ -192,7 +192,7 @@ int
 dparse_qstr(bytestream_t *bs,
             char fdelim,
             char rdelim[2],
-            bytes_t **value,
+            OUT bytes_t **value,
             char *ch,
             unsigned int flags)
 {
@@ -291,7 +291,7 @@ int
 dparse_str(bytestream_t *bs,
            char fdelim,
            char rdelim[2],
-           bytes_t **value,
+           OUT bytes_t **value,
            char *ch,
            unsigned int flags)
 {
@@ -326,7 +326,7 @@ dparse_kv_int(bytestream_t *bs,
               char kvdelim,
               char fdelim,
               char rdelim[2],
-              dict_t *value,
+              OUT dict_t *value,
               char *ch,
               unsigned int flags)
 {
@@ -339,7 +339,7 @@ dparse_kv_float(bytestream_t *bs,
                 char kvdelim,
                 char fdelim,
                 char rdelim[2],
-                dict_t *value,
+                OUT dict_t *value,
                 char *ch,
                 unsigned int flags)
 {
@@ -348,13 +348,13 @@ dparse_kv_float(bytestream_t *bs,
 
 
 static int
-dparse_kv_str_bytes(UNUSED bytestream_t *bs,
-                        UNUSED char kvdelim,
-                        UNUSED char fdelim,
-                        UNUSED char rdelim[2],
-                        UNUSED dict_t *value,
-                        UNUSED char *ch,
-                        UNUSED unsigned int flags)
+dparse_kv_str_bytes(bytestream_t *bs,
+                    char kvdelim,
+                    char fdelim,
+                    char rdelim[2],
+                    OUT dict_t *value,
+                    char *ch,
+                    unsigned int flags)
 {
     int res;
     off_t spos = SPOS(bs);
@@ -403,7 +403,7 @@ dparse_array(bytestream_t *bs,
              char fdelim,
              char rdelim[2],
              lkit_array_t *arty,
-             array_t *value,
+             OUT array_t *value,
              char *ch,
              unsigned int flags)
 {
@@ -477,7 +477,7 @@ dparse_dict(bytestream_t *bs,
             char fdelim,
             char rdelim[2],
             lkit_dict_t *dcty,
-            dict_t *value,
+            OUT dict_t *value,
             char *ch,
             unsigned int flags)
 {
@@ -548,7 +548,7 @@ dparse_struct(bytestream_t *bs,
               char fdelim,
               char rdelim[2],
               lkit_struct_t *stty,
-              rt_struct_t *value,
+              OUT rt_struct_t *value,
               char *ch,
               unsigned int flags)
 {

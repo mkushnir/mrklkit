@@ -118,9 +118,12 @@ typedef struct _lkit_dict {
     array_t fields;
 } lkit_dict_t;
 
+struct _rt_struct;
 typedef struct _lkit_struct {
     struct _lkit_type base;
     LLVMTypeRef deref_backend;
+    void (*init)(struct _rt_struct *);
+    void (*fini)(struct _rt_struct *);
     lkit_parser_t parser;
     /* weak ref, will use delim[0] */
     unsigned char *delim;

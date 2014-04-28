@@ -2,6 +2,7 @@
 #define DSOURCE_H_DEFINED
 
 #include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
 
@@ -29,6 +30,7 @@ typedef struct _dsource {
 int dsource_parse(array_t *, array_iter_t *);
 dsource_t *dsource_get(const char *);
 int dsource_compile(LLVMModuleRef);
+int dsource_link(LLVMExecutionEngineRef, LLVMModuleRef);
 
 void dsource_init_module(void);
 void dsource_fini_module(void);

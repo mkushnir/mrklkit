@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dumpm.h>
@@ -21,7 +22,6 @@
  * data source example
  *
  */
-
 static array_t dsources;
 
 static void
@@ -158,6 +158,7 @@ dsource_compile(LLVMModuleRef module)
 {
     array_iter_t it;
     dsource_t **ds;
+
     for (ds = array_first(&dsources, &it);
          ds != NULL;
          ds = array_next(&dsources, &it)) {
@@ -165,6 +166,27 @@ dsource_compile(LLVMModuleRef module)
                                   module,
                                   (*ds)->kind)) {
             TRRET(DSOURCE + 100);
+        }
+    }
+    return 0;
+}
+
+
+int
+dsource_link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
+{
+    array_iter_t it;
+    dsource_t **ds;
+
+
+    for (ds = array_first(&dsources, &it);
+         ds != NULL;
+         ds = array_next(&dsources, &it)) {
+        if (ltype_link_methods((lkit_type_t *)(*ds)->_struct,
+                               ee,
+                               module,
+                               (*ds)->kind)) {
+            TRRET(DSOURCE + 200);
         }
     }
     return 0;

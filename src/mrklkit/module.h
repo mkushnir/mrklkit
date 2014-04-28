@@ -2,6 +2,7 @@
 #define MODULE_H_DEFINED
 
 #include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/util.h>
@@ -21,6 +22,7 @@ typedef struct _mrklkit_module {
     mrklkit_parser_info_t *parsers;
     int (*precompile)(void);
     int (*compile)(LLVMModuleRef);
+    int (*link)(LLVMExecutionEngineRef, LLVMModuleRef);
 } mrklkit_module_t;
 
 

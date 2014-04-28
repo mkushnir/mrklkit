@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
@@ -206,8 +207,8 @@ ltype_compile_methods(lkit_type_t *ty,
             b1 = LLVMCreateBuilder();
             b2 = LLVMCreateBuilder();
 
-            snprintf(buf1, name->sz + 32, ".mrklkit.init.%s", name->data);
-            snprintf(buf2, name->sz + 32, ".mrklkit.fini.%s", name->data);
+            snprintf(buf1, name->sz + 64, ".mrklkit.init.%s", name->data);
+            snprintf(buf2, name->sz + 64, ".mrklkit.fini.%s", name->data);
 
             if (LLVMGetNamedFunction(module, buf1) != NULL) {
                 TRRET(LTYPE_COMPILE_METHODS + 1);
@@ -329,6 +330,63 @@ ltype_compile_methods(lkit_type_t *ty,
     }
     if (buf2 != NULL) {
         free(buf2);
+    }
+
+    return 0;
+}
+
+
+int
+ltype_link_methods(lkit_type_t *ty,
+                   LLVMExecutionEngineRef ee,
+                   LLVMModuleRef module,
+                   bytes_t *name)
+{
+
+    char *buf = NULL;
+
+    switch (ty->tag) {
+    case LKIT_STRUCT:
+        {
+            lkit_struct_t *ts;
+            void *p;
+            LLVMValueRef g;
+
+            if ((buf = malloc(name->sz + 64)) == NULL) {
+                FAIL("malloc");
+            }
+
+            ts = (lkit_struct_t *)ty;
+
+            snprintf(buf, name->sz + 64, ".mrklkit.init.%s", name->data);
+            if ((g = LLVMGetNamedFunction(module, buf)) == NULL) {
+                TRRET(LTYPE_LINK_METHODS + 1);
+            }
+            if ((p = LLVMGetPointerToGlobal(ee, g)) == NULL) {
+                TRRET(LTYPE_LINK_METHODS + 2);
+            }
+            //TRACE("%s:%p", buf, p);
+            ts->init = p;
+
+            snprintf(buf, name->sz + 64, ".mrklkit.fini.%s", name->data);
+            if ((g = LLVMGetNamedFunction(module, buf)) == NULL) {
+                TRRET(LTYPE_LINK_METHODS + 1);
+            }
+            if ((p = LLVMGetPointerToGlobal(ee, g)) == NULL) {
+                TRRET(LTYPE_LINK_METHODS + 2);
+            }
+            //TRACE("%s:%p", buf, p);
+            ts->fini = p;
+
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    if (buf != NULL) {
+        free(buf);
     }
 
     return 0;

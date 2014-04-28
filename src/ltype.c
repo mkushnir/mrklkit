@@ -5,7 +5,7 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/fasthash.h>
 #include <mrkcommon/util.h>
@@ -300,6 +300,8 @@ lkit_type_new(lkit_tag_t tag)
             ts->base.name = "struct";
             ts->base.rtsz = 0;
             LKIT_ERROR(ts) = 0;
+            ts->init = NULL;
+            ts->fini = NULL;
             ts->parser = LKIT_PARSER_NONE;
             ts->delim = NULL;
             ts->base.dtor = (lkit_type_dtor_t)mrklkit_rt_struct_destroy;

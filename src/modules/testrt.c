@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
@@ -37,231 +38,10 @@ struct {
     {&_call, "call"},
 };
 
-
 static lkit_expr_t root;
 static array_t testrts;
-
-
-rt_struct_t *testrt_source = NULL;
-UNUSED static rt_struct_t *testrt_target = NULL;
 static dict_t targets;
-
-static void
-testrt_target_init(testrt_target_t *tg, uint64_t id, lkit_struct_t *kty, lkit_struct_t *vty)
-{
-    tg->id = id;
-    tg->kty = kty;
-    tg->vty = vty;
-    tg->hash = 0;
-}
-
-
-UNUSED static testrt_target_t *
-testrt_target_new(uint64_t id, lkit_struct_t *kty, lkit_struct_t *vty)
-{
-    testrt_target_t *tg;
-
-    if ((tg = malloc(sizeof(testrt_target_t) +
-                     kty->base.rtsz +
-                     (vty != NULL ? vty->base.rtsz : 0))) == NULL) {
-        FAIL("malloc");
-    }
-    testrt_target_init(tg, id, kty, vty);
-    /* the data follow */
-    tg->value = (void **)tg->data;
-    return tg;
-}
-
-
-static uint64_t
-testrt_target_hash(testrt_target_t *tg)
-{
-    if (tg->hash == 0) {
-        lkit_type_t **ty;
-        array_iter_t it;
-
-        lkit_type_dump((lkit_type_t *)tg->kty);
-
-        for (ty = array_first(&tg->kty->fields, &it);
-             ty != NULL;
-             ty = array_next(&tg->kty->fields, &it)) {
-
-            TRACE("tag=%s rtsz=%ld iter=%u", LKIT_TAG_STR((*ty)->tag), (*ty)->rtsz, it.iter);
-
-            switch ((*ty)->tag) {
-            case LKIT_INT:
-            case LKIT_FLOAT:
-            case LKIT_BOOL:
-                {
-                    unsigned char *v;
-
-                    v = (unsigned char *)(tg->value + it.iter);
-                    TRACE("%p/%p", tg->value, tg->value + it.iter);
-                    D8(v, (*ty)->rtsz);
-                    tg->hash = fasthash(tg->hash, v, (*ty)->rtsz);
-                }
-                break;
-
-            case LKIT_STR:
-                {
-                    bytes_t *bytes;
-
-                    bytes = (bytes_t *)(tg->value + it.iter);
-                    TRACE("%p/%p", tg->value, tg->value + it.iter);
-                    D8(bytes, sizeof(*bytes));
-                    tg->hash = fasthash(tg->hash, bytes->data, bytes->sz);
-                }
-                break;
-
-            default:
-                FAIL("testrt_target_hash");
-            }
-        }
-    }
-
-    return tg->hash;
-}
-
-
-static int
-testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
-{
-    uint64_t diff;
-
-    if (a == b) {
-        return 0;
-    }
-
-    diff = a->id - b->id;
-    if (diff != 0) {
-        return diff;
-    }
-
-    diff = testrt_target_hash(a) - testrt_target_hash(b);
-
-    if (diff == 0) {
-        lkit_type_t **ty;
-        array_iter_t it;
-
-        for (ty = array_first(&a->kty->fields, &it);
-             ty != NULL;
-             ty = array_next(&a->kty->fields, &it)) {
-
-            switch ((*ty)->tag) {
-            case LKIT_INT:
-            case LKIT_FLOAT:
-            case LKIT_BOOL:
-                {
-                    int64_t ai, bi;
-
-                    ai = (int64_t)(a->value + it.iter);
-                    bi = (int64_t)(b->value + it.iter);
-                    diff = ai - bi;
-                }
-                break;
-
-            case LKIT_STR:
-                {
-                    bytes_t *ab, *bb;
-
-                    ab = (bytes_t *)*(a->value + it.iter);
-                    bb = (bytes_t *)*(b->value + it.iter);
-                    diff = bytes_hash(ab) - bytes_hash(bb);
-                }
-                break;
-
-            default:
-                FAIL("testrt_target_hash");
-            }
-
-            if (diff != 0) {
-                break;
-            }
-        }
-    }
-
-    return diff;
-}
-
-
-static void
-testrt_target_fini(testrt_target_t *k, UNUSED testrt_target_t *v)
-{
-    if (k != NULL) {
-        free(k);
-    }
-}
-
-
-void *
-testrt_get_target(testrt_t *trt, void *key)
-{
-    testrt_target_t tg, *probe;
-
-    testrt_target_init(&tg, trt->id, (lkit_struct_t *)trt->takeexpr->type, NULL);
-    tg.value = key;
-    TRACE("key=%p", key);
-    if ((probe = dict_get_item(&targets, &tg)) == NULL) {
-        probe = testrt_target_new(trt->id,
-                                  (lkit_struct_t *)trt->takeexpr->type,
-                                  (lkit_struct_t *)trt->doexpr->type);
-    }
-    return probe;
-    //return testrt_target->fields->data;
-}
-
-
-int
-testrt_run(bytestream_t *bs, dsource_t *ds)
-{
-    int res = 0;
-    char enddelim = '\0';
-
-    // XXX init, fini!
-    testrt_source = mrklkit_rt_struct_new(ds->_struct, NULL, NULL);
-
-    if ((res = dparse_struct(bs,
-                             ds->fdelim,
-                             ds->rdelim,
-                             ds->_struct,
-                             testrt_source,
-                             &enddelim,
-                             ds->parse_flags)) == DPARSE_NEEDMORE) {
-        goto end;
-
-    } else if (res == DPARSE_ERRORVALUE) {
-        TRACE("error, delim='%c'", enddelim);
-        array_traverse(&testrt_source->fields,
-                       (array_traverser_t)tobj_dump,
-                       NULL);
-        goto end;
-
-    } else {
-        if (enddelim != '\n') {
-            /* truncated input? */
-            res = 1;
-            goto end;
-        }
-
-        if (enddelim == '\n') {
-            TRACE("EOL");
-        }
-
-        TRACE("ok, delim='%c':", enddelim);
-        array_traverse(&testrt_source->fields,
-                       (array_traverser_t)tobj_dump,
-                       NULL);
-
-        if (mrklkit_call_void(TESTRT_START) != 0) {
-            FAIL("mrklkit_call_void");
-        }
-    }
-
-end:
-    mrklkit_rt_struct_destroy(&testrt_source);
-    return res;
-}
-
+rt_struct_t *testrt_source = NULL;
 
 int
 remove_undef(lkit_expr_t *expr)
@@ -577,7 +357,6 @@ _parse_clause(lkit_expr_t *ctx,
               fparser_datum_t *dat,
               int seterror)
 {
-
     switch (FPARSER_DATUM_TAG(dat)) {
     case FPARSER_SEQ:
         {
@@ -723,29 +502,6 @@ _precompile(void)
 }
 
 
-
-
-UNUSED static int
-_acb(lkit_gitem_t **gitem, void *udata)
-{
-    int (*cb)(lkit_expr_t *) = udata;
-    return cb((*gitem)->expr);
-}
-
-
-UNUSED static int
-__compile(lkit_gitem_t **gitem, UNUSED void *udata)
-{
-    UNUSED bytes_t *name = (*gitem)->name;
-    UNUSED lkit_expr_t *expr = (*gitem)->expr;
-    UNUSED LLVMModuleRef module = (LLVMModuleRef)udata;
-
-    TRACE("compiling %s", name->data);
-    lkit_expr_dump(expr);
-    return builtin_compile(gitem, udata);
-}
-
-
 static int
 _compile_trt(testrt_t *trt, void *udata)
 {
@@ -812,7 +568,8 @@ _compile_trt(testrt_t *trt, void *udata)
     //LLVMBuildStore(builder, ctarget, NEWVAR("tmp"));
 
     LLVMBuildRetVoid(builder);
-    LLVMSetLinkage(fn, LLVMExternalLinkage);
+    //LLVMSetLinkage(fn, LLVMExternalLinkage);
+    LLVMSetLinkage(fn, LLVMPrivateLinkage);
 
     /* see if we call from within start */
     fnmain = LLVMGetNamedFunction(module, TESTRT_START);
@@ -872,14 +629,17 @@ _compile(LLVMModuleRef module)
     bb = LLVMAppendBasicBlock(fn, NEWVAR(".BB"));
     LLVMPositionBuilderAtEnd(builder, bb);
 
+    /* initialize all non-lazy variables */
     builtin_call_eager_initializers(module, builder);
 
+    /* compile all */
     if (array_traverse(&testrts,
                        (array_traverser_t)_compile_trt,
                        module) != 0) {
         TRRET(TESTRT_COMPILE + 101);
     }
 
+    /* return */
     bb = LLVMGetLastBasicBlock(fn);
     LLVMPositionBuilderAtEnd(builder, bb);
     LLVMBuildRetVoid(builder);
@@ -888,6 +648,226 @@ _compile(LLVMModuleRef module)
     LLVMSetLinkage(fn, LLVMExternalLinkage);
 
     return 0;
+}
+
+
+static int
+_link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
+{
+    return dsource_link(ee, module);
+}
+
+
+/*
+ *
+ */
+static void
+testrt_target_init(testrt_target_t *tg, uint64_t id, lkit_struct_t *kty, lkit_struct_t *vty)
+{
+    tg->id = id;
+    tg->kty = kty;
+    tg->vty = vty;
+    tg->hash = 0;
+}
+
+
+static testrt_target_t *
+testrt_target_new(uint64_t id, lkit_struct_t *kty, lkit_struct_t *vty)
+{
+    testrt_target_t *tg;
+
+    if ((tg = malloc(sizeof(testrt_target_t) +
+                     kty->base.rtsz +
+                     (vty != NULL ? vty->base.rtsz : 0))) == NULL) {
+        FAIL("malloc");
+    }
+    testrt_target_init(tg, id, kty, vty);
+    /* the data follow */
+    tg->value = (void **)tg->data;
+    return tg;
+}
+
+
+static uint64_t
+testrt_target_hash(testrt_target_t *tg)
+{
+    if (tg->hash == 0) {
+        lkit_type_t **ty;
+        array_iter_t it;
+
+        //lkit_type_dump((lkit_type_t *)tg->kty);
+
+        for (ty = array_first(&tg->kty->fields, &it);
+             ty != NULL;
+             ty = array_next(&tg->kty->fields, &it)) {
+
+            //TRACE("tag=%s rtsz=%ld iter=%u", LKIT_TAG_STR((*ty)->tag), (*ty)->rtsz, it.iter);
+
+            switch ((*ty)->tag) {
+            case LKIT_INT:
+            case LKIT_FLOAT:
+            case LKIT_BOOL:
+                {
+                    unsigned char *v;
+
+                    v = (unsigned char *)(tg->value + it.iter);
+                    //TRACE("%p/%p", tg->value, tg->value + it.iter);
+                    //D8(v, (*ty)->rtsz);
+                    tg->hash = fasthash(tg->hash, v, (*ty)->rtsz);
+                }
+                break;
+
+            case LKIT_STR:
+                {
+                    bytes_t **bytes;
+
+                    bytes = (bytes_t **)(tg->value + it.iter);
+                    //TRACE("%p/%p", tg->value, tg->value + it.iter);
+                    //D8(bytes, sizeof(*bytes));
+                    tg->hash = fasthash(tg->hash, (*bytes)->data, (*bytes)->sz);
+                }
+                break;
+
+            default:
+                FAIL("testrt_target_hash");
+            }
+        }
+    }
+
+    return tg->hash;
+}
+
+
+static int
+testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
+{
+    uint64_t diff;
+
+    if (a == b) {
+        return 0;
+    }
+
+    diff = a->id - b->id;
+    if (diff != 0) {
+        return diff;
+    }
+
+    diff = testrt_target_hash(a) - testrt_target_hash(b);
+
+    if (diff == 0) {
+        lkit_type_t **ty;
+        array_iter_t it;
+
+        for (ty = array_first(&a->kty->fields, &it);
+             ty != NULL;
+             ty = array_next(&a->kty->fields, &it)) {
+
+            switch ((*ty)->tag) {
+            case LKIT_INT:
+            case LKIT_FLOAT:
+            case LKIT_BOOL:
+                {
+                    int64_t ai, bi;
+
+                    ai = (int64_t)(a->value + it.iter);
+                    bi = (int64_t)(b->value + it.iter);
+                    diff = ai - bi;
+                }
+                break;
+
+            case LKIT_STR:
+                {
+                    bytes_t *ab, *bb;
+
+                    ab = (bytes_t *)*(a->value + it.iter);
+                    bb = (bytes_t *)*(b->value + it.iter);
+                    diff = bytes_hash(ab) - bytes_hash(bb);
+                }
+                break;
+
+            default:
+                FAIL("testrt_target_hash");
+            }
+
+            if (diff != 0) {
+                break;
+            }
+        }
+    }
+
+    return diff;
+}
+
+
+static void
+testrt_target_fini(testrt_target_t *k, UNUSED testrt_target_t *v)
+{
+    if (k != NULL) {
+        free(k);
+    }
+}
+
+
+void *
+testrt_get_target(testrt_t *trt, void *key)
+{
+    testrt_target_t tg, *probe;
+
+    testrt_target_init(&tg, trt->id, (lkit_struct_t *)trt->takeexpr->type, NULL);
+    tg.value = key;
+    //TRACE("key=%p", key);
+    if ((probe = dict_get_item(&targets, &tg)) == NULL) {
+        probe = testrt_target_new(trt->id,
+                                  (lkit_struct_t *)trt->takeexpr->type,
+                                  (lkit_struct_t *)trt->doexpr->type);
+    }
+    return probe;
+    //return testrt_target->fields->data;
+}
+
+
+int
+testrt_run(bytestream_t *bs, dsource_t *ds)
+{
+    int res = 0;
+    char enddelim = '\0';
+
+    testrt_source = mrklkit_rt_struct_new(ds->_struct);
+
+    if ((res = dparse_struct(bs,
+                             ds->fdelim,
+                             ds->rdelim,
+                             ds->_struct,
+                             testrt_source,
+                             &enddelim,
+                             ds->parse_flags)) == DPARSE_NEEDMORE) {
+        goto end;
+
+    } else if (res == DPARSE_ERRORVALUE) {
+        TRACE("error, delim='%c'", enddelim);
+        goto end;
+
+    } else {
+        if (enddelim != '\n') {
+            /* truncated input? */
+            res = 1;
+            goto end;
+        }
+
+        if (enddelim == '\n') {
+            TRACE("EOL");
+        }
+
+        TRACE("ok, delim='%c':", enddelim);
+
+        if (mrklkit_call_void(TESTRT_START) != 0) {
+            FAIL("mrklkit_call_void");
+        }
+    }
+
+end:
+    mrklkit_rt_struct_destroy(&testrt_source);
+    return res;
 }
 
 
@@ -930,8 +910,8 @@ _fini(void)
 }
 
 static mrklkit_parser_info_t _parsers[] = {
-    {"testrt", _parse_trt},
     {"dsource", dsource_parse},
+    {"testrt", _parse_trt},
     {NULL, NULL},
 };
 
@@ -942,4 +922,5 @@ mrklkit_module_t testrt_module = {
     _parsers,
     _precompile,
     _compile,
+    _link,
 };

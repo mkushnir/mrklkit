@@ -33,8 +33,8 @@
 
 #include "diag.h"
 
-LLVMModuleRef module;
-LLVMExecutionEngineRef ee;
+LLVMModuleRef module = NULL;
+LLVMExecutionEngineRef ee = NULL;
 
 /* mrklkit ctx */
 static fparser_datum_t *root;
@@ -207,6 +207,7 @@ do_analysis(void)
 int
 mrklkit_compile(int fd)
 {
+    UNUSED char *error_msg = NULL;
     UNUSED int res = 0;
     UNUSED LLVMTargetRef tr;
     UNUSED LLVMTargetMachineRef tmr;
@@ -258,7 +259,7 @@ mrklkit_compile(int fd)
         }
     }
 
-#if 1
+#if 0
     TRACEC("-----------------------------------------------\n");
     LLVMDumpModule(module);
 #endif
@@ -308,6 +309,57 @@ mrklkit_compile(int fd)
     return 0;
 }
 
+
+int
+mrklkit_init_runtime(void)
+{
+    char *error_msg = NULL;
+    mrklkit_module_t **mod;
+    array_iter_t it;
+
+    LLVMLinkInJIT();
+    assert(module != NULL);
+    if (LLVMCreateJITCompilerForModule(&ee,
+                                       module,
+                                       0,
+                                       &error_msg) != 0) {
+        TRACE("%s", error_msg);
+        FAIL("LLVMCreateExecutionEngineForModule");
+    }
+    //LLVMLinkInInterpreter();
+    //if (LLVMCreateInterpreterForModule(&ee,
+    //if (LLVMCreateExecutionEngineForModule(&ee,
+    //                                       module,
+    //                                       &error_msg) != 0) {
+    //    TRACE("%s", error_msg);
+    //    FAIL("LLVMCreateExecutionEngineForModule");
+    //}
+
+    //LLVMLinkInMCJIT();
+    //LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
+    //opts.NoFramePointerElim = 1;
+    //opts.EnableFastISel = 1;
+    //if (LLVMCreateMCJITCompilerForModule(&ee,
+    //                                     module,
+    //                                     &opts, sizeof(opts),
+    //                                     &error_msg) != 0) {
+    //    TRACE("%s", error_msg);
+    //    FAIL("LLVMCreateMCJITCompilerForModule");
+    //}
+
+    if (modules != NULL) {
+        for (mod = array_last(modules, &it);
+             mod != NULL;
+             mod = array_prev(modules, &it)) {
+            if ((*mod)->link != NULL) {
+                (*mod)->link(ee, module);
+            }
+        }
+    }
+    return 0;
+}
+
+
 int
 mrklkit_call_void(const char *name)
 {
@@ -346,7 +398,7 @@ static void
 llvm_init(void)
 {
     LLVMPassRegistryRef pr;
-    char *error_msg = NULL;
+    UNUSED char *error_msg = NULL;
     UNUSED struct LLVMMCJITCompilerOptions opts;
 
     LLVMInitializeAllAsmPrinters();
@@ -377,42 +429,15 @@ llvm_init(void)
         FAIL("LLVMModuleCreateWithName");
     }
 
-    LLVMLinkInJIT();
-
-    if (LLVMCreateJITCompilerForModule(&ee,
-                                       module,
-                                       0,
-                                       &error_msg) != 0) {
-        TRACE("%s", error_msg);
-        FAIL("LLVMCreateExecutionEngineForModule");
-    }
-    //LLVMLinkInInterpreter();
-    //if (LLVMCreateInterpreterForModule(&ee,
-    //if (LLVMCreateExecutionEngineForModule(&ee,
-    //                                       module,
-    //                                       &error_msg) != 0) {
-    //    TRACE("%s", error_msg);
-    //    FAIL("LLVMCreateExecutionEngineForModule");
-    //}
-
-    //LLVMLinkInMCJIT();
-    //LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
-    //opts.NoFramePointerElim = 1;
-    //opts.EnableFastISel = 1;
-    //if (LLVMCreateMCJITCompilerForModule(&ee,
-    //                                     module,
-    //                                     &opts, sizeof(opts),
-    //                                     &error_msg) != 0) {
-    //    TRACE("%s", error_msg);
-    //    FAIL("LLVMCreateMCJITCompilerForModule");
-    //}
-
 }
 
 static void
 llvm_fini(void)
 {
-    LLVMDisposeExecutionEngine(ee);
+    if (ee != NULL) {
+        LLVMDisposeExecutionEngine(ee);
+        ee = NULL;
+    }
 }
 
 void
@@ -439,8 +464,6 @@ mrklkit_init(array_t *mod)
         }
     }
 
-    /* dsource module? */
-    //dsource_init_module();
 }
 
 
@@ -459,8 +482,6 @@ mrklkit_fini(void)
             }
         }
     }
-    ///* dsource module? */
-    //dsource_fini_module();
 
     lruntime_fini();
     builtin_fini();

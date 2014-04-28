@@ -59,13 +59,17 @@ test1(void)
 
     close(fd);
 
+    /* post-init, need to integrate it better */
     if ((ds = dsource_get("qwe")) == NULL) {
         FAIL("dsource_get");
     }
-
     ds->rdelim[0] = '\n';
     ds->rdelim[1] = '\0';
     ds->fdelim = ds->_struct->delim[0];
+
+    if (mrklkit_init_runtime() != 0) {
+        FAIL("mrklkit_init_runtime");
+    }
 
     if ((fd = open(input, O_RDONLY)) == -1) {
         FAIL("open");

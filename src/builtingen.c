@@ -784,38 +784,67 @@ compile_function(LLVMModuleRef module,
         switch ((*cont)->type->tag) {
         case LKIT_ARRAY:
             /* idx */
-            if ((arg = array_get(&expr->subs, 1)) == NULL) {
-                FAIL("array_get");
+            {
+                char buf[64];
+                lkit_type_t *fty;
+
+                if ((arg = array_get(&expr->subs, 1)) == NULL) {
+                    FAIL("array_get");
+                }
+                if ((args[1] = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                    TR(COMPILE_FUNCTION + 1302);
+                    goto err;
+                }
+
+                if ((fty = lkit_array_get_element_type(
+                            (lkit_array_t *)(*cont)->type)) == NULL) {
+                    TR(COMPILE_FUNCTION + 1303);
+                    goto err;
+                }
+                snprintf(buf,
+                         sizeof(buf),
+                         "mrklkit_rt_get_array_item_%s",
+                         fty->name);
+
+                //(sym mrklkit_rt_get_array_item (func undef array int undef))
+                if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
+                    TR(COMPILE_FUNCTION + 1304);
+                    goto err;
+                }
+                v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
             }
-            if ((args[1] = builtin_compile_expr(module, builder, *arg)) == NULL) {
-                TR(COMPILE_FUNCTION + 1302);
-                goto err;
-            }
-            //(sym mrklkit_rt_get_array_item (func undef array int undef))
-            if ((fn = LLVMGetNamedFunction(module,
-                    "mrklkit_rt_get_array_item")) == NULL) {
-                TR(COMPILE_FUNCTION + 1303);
-                goto err;
-            }
-            v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
             break;
 
         case LKIT_DICT:
             /* key */
-            if ((arg = array_get(&expr->subs, 1)) == NULL) {
-                FAIL("array_get");
+            {
+                char buf[64];
+                lkit_type_t *fty;
+
+                if ((arg = array_get(&expr->subs, 1)) == NULL) {
+                    FAIL("array_get");
+                }
+                if ((args[1] = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                    TR(COMPILE_FUNCTION + 1305);
+                    goto err;
+                }
+
+                if ((fty = lkit_dict_get_element_type(
+                            (lkit_dict_t *)(*cont)->type)) == NULL) {
+                    TR(COMPILE_FUNCTION + 1306);
+                    goto err;
+                }
+                snprintf(buf,
+                         sizeof(buf),
+                         "mrklkit_rt_get_dict_item_%s",
+                         fty->name);
+
+                if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
+                    TR(COMPILE_FUNCTION + 1307);
+                    goto err;
+                }
+                v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
             }
-            if ((args[1] = builtin_compile_expr(module, builder, *arg)) == NULL) {
-                TR(COMPILE_FUNCTION + 1304);
-                goto err;
-            }
-            //(sym mrklkit_rt_get_dict_item (func undef dict str undef))
-            if ((fn = LLVMGetNamedFunction(module,
-                    "mrklkit_rt_get_dict_item")) == NULL) {
-                TR(COMPILE_FUNCTION + 1305);
-                goto err;
-            }
-            v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
             break;
 
         case LKIT_STRUCT:
@@ -835,14 +864,14 @@ compile_function(LLVMModuleRef module,
                 if ((idx = lkit_struct_get_field_index(
                             (lkit_struct_t *)(*cont)->type,
                             (bytes_t *)(*arg)->value.literal->body)) == -1) {
-                    TR(COMPILE_FUNCTION + 1306);
+                    TR(COMPILE_FUNCTION + 1308);
                     goto err;
                 }
 
                 if ((fty = lkit_struct_get_field_type(
                             (lkit_struct_t *)(*cont)->type,
                             (bytes_t *)(*arg)->value.literal->body)) == NULL) {
-                    TR(COMPILE_FUNCTION + 1307);
+                    TR(COMPILE_FUNCTION + 1309);
                     goto err;
                 }
                 snprintf(buf,
@@ -854,7 +883,7 @@ compile_function(LLVMModuleRef module,
 
                 //(sym mrklkit_rt_get_struct_item_* (func undef struct int undef))
                 if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
-                    TR(COMPILE_FUNCTION + 1308);
+                    TR(COMPILE_FUNCTION + 1310);
                     goto err;
                 }
                 v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
