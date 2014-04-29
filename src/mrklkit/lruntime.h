@@ -30,8 +30,8 @@ typedef struct _tobj {
 
 typedef struct _rt_struct {
     ssize_t current;
-    void (*init)(struct _rt_struct *);
-    void (*fini)(struct _rt_struct *);
+    void (*init)(void **);
+    void (*fini)(void **);
     /* array of void *  */
     array_t fields;
 } rt_struct_t;

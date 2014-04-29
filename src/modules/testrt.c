@@ -88,11 +88,13 @@ parse_quals(array_t *form,
         }
         trt->dsource = value;
     } else if (strcmp(s, ":id") == 0) {
+        char buf[1024];
+
         if (lparse_next_int(form, it, (int64_t *)&trt->id, 1) != 0) {
             return 1;
         }
-        trt->name = bytes_new(64);
-        snprintf((char *)trt->name->data, trt->name->sz, "testrt.%016lx", trt->id);
+        snprintf(buf, sizeof(buf), "testrt.%016lx", trt->id);
+        trt->name = bytes_new_from_str(buf);
     } else {
         TRACE("unknown qual: %s", s);
     }
@@ -109,7 +111,6 @@ testrt_init(testrt_t *trt)
     trt->seeexpr = NULL;
     trt->doexpr = NULL;
     trt->takeexpr = NULL;
-    trt->type = (lkit_struct_t *)lkit_type_get(LKIT_STRUCT);
     return 0;
 }
 
@@ -120,7 +121,6 @@ testrt_fini(testrt_t *trt)
     (void)lkit_expr_destroy(&trt->seeexpr);
     (void)lkit_expr_destroy(&trt->doexpr);
     (void)lkit_expr_destroy(&trt->takeexpr);
-    (void)lkit_type_destroy((lkit_type_t **)(&trt->type));
     bytes_destroy(&trt->name);
     return 0;
 }
@@ -448,61 +448,6 @@ _parse_trt(array_t *form, array_iter_t *it)
 }
 
 static int
-_precompile_trt(testrt_t *trt)
-{
-    lkit_struct_t *ts;
-    array_iter_t it;
-    lkit_type_t **ty;
-
-    /* finalize trt->type */
-
-    ts = (lkit_struct_t *)trt->takeexpr->type;
-    for (ty = array_first(&ts->fields, &it);
-         ty != NULL;
-         ty = array_next(&ts->fields, &it)) {
-
-        lkit_type_t **fty;
-
-        if ((fty = array_incr(&trt->type->fields)) == NULL) {
-            FAIL("array_incr");
-        }
-        *fty = *ty;
-    }
-
-    ts = (lkit_struct_t *)trt->doexpr->type;
-    for (ty = array_first(&ts->fields, &it);
-         ty != NULL;
-         ty = array_next(&ts->fields, &it)) {
-
-        lkit_type_t **fty;
-
-        if ((fty = array_incr(&trt->type->fields)) == NULL) {
-            FAIL("array_incr");
-        }
-        *fty = *ty;
-    }
-
-    return 0;
-}
-
-static int
-_precompile(void)
-{
-    array_iter_t it;
-    testrt_t *trt;
-
-    for (trt = array_first(&testrts, &it);
-         trt != NULL;
-         trt = array_next(&testrts, &it)) {
-        if (_precompile_trt(trt) != 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-
-static int
 _compile_trt(testrt_t *trt, void *udata)
 {
     int res = 0;
@@ -513,12 +458,34 @@ _compile_trt(testrt_t *trt, void *udata)
     LLVMBuilderRef builder;
     LLVMValueRef fn, fnmain, av, arg;
     LLVMBasicBlockRef bb;
-
+    bytes_t *name;
     char buf[1024];
 
     builder = LLVMCreateBuilder();
 
     /* TAKE and DO */
+
+    /* methods */
+    snprintf(buf, sizeof(buf), "%s.take", trt->name->data);
+    name = bytes_new_from_str(buf);
+    if (ltype_compile_methods((lkit_type_t *)trt->takeexpr->type,
+                              module,
+                              name) != 0) {
+        res = TESTRT_COMPILE + 200;
+        goto end;
+    }
+    bytes_destroy(&name);
+    snprintf(buf, sizeof(buf), "%s.do", trt->name->data);
+    name = bytes_new_from_str(buf);
+    if (ltype_compile_methods((lkit_type_t *)trt->doexpr->type,
+                              module,
+                              name) != 0) {
+        res = TESTRT_COMPILE + 200;
+        goto end;
+    }
+    bytes_destroy(&name);
+
+    /* run */
     snprintf(buf, sizeof(buf), "%s.run", trt->name->data);
     fn = LLVMAddFunction(module,
                         buf,
@@ -527,14 +494,7 @@ _compile_trt(testrt_t *trt, void *udata)
     bb = LLVMAppendBasicBlock(fn, NEWVAR(".BB"));
     LLVMPositionBuilderAtEnd(builder, bb);
 
-    /* ... */
-    if (ltype_compile((lkit_type_t *)trt->type, NULL) != 0) {
-        res = TESTRT_COMPILE + 200;
-        goto end;
-    }
-
-
-    /* key */
+    /* take key */
     arg = LLVMConstIntToPtr(
         LLVMConstInt(LLVMInt64Type(), (uintptr_t)trt, 0),
         LLVMPointerType(LLVMVoidType(), 0));
@@ -700,7 +660,37 @@ _compile(LLVMModuleRef module)
 static int
 _link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
 {
-    return dsource_link(ee, module);
+    testrt_t *trt;
+    array_iter_t it;
+
+    if (dsource_link(ee, module) != 0) {
+        TRRET(TESTRT_LINK + 1);
+    }
+
+    /* testrt link */
+    for (trt = array_first(&testrts, &it);
+         trt != NULL;
+         trt = array_next(&testrts, &it)) {
+
+        char buf[1024];
+        bytes_t *name;
+
+        snprintf(buf, sizeof(buf), "%s.take", trt->name->data);
+        name = bytes_new_from_str(buf);
+        if (ltype_link_methods((lkit_type_t *)trt->takeexpr->type, ee, module, name)) {
+            TRRET(TESTRT_LINK + 2);
+        }
+        bytes_destroy(&name);
+
+        snprintf(buf, sizeof(buf), "%s.do", trt->name->data);
+        name = bytes_new_from_str(buf);
+        if (ltype_link_methods((lkit_type_t *)trt->doexpr->type, ee, module, name)) {
+            TRRET(TESTRT_LINK + 2);
+        }
+        bytes_destroy(&name);
+    }
+
+    return 0;
 }
 
 
@@ -713,12 +703,7 @@ testrt_target_init(testrt_target_t *tgt, uint64_t id, lkit_struct_t *type)
     tgt->id = id;
     tgt->type = type;
     tgt->hash = 0;
-    TRACE("init=%p", type->init);
-    if (type->init != NULL) {
-        type->init(&tgt->value);
-    } else {
-        FAIL("testrt_target's type is not finalized?");
-    }
+    mrklkit_rt_struct_init(&tgt->value, tgt->type);
 }
 
 
@@ -990,8 +975,7 @@ _init(void)
     size_t i;
 
     for (i = 0; i < countof(const_bytes); ++i) {
-        *const_bytes[i].var = bytes_new(strlen(const_bytes[i].val) + 1);
-        memcpy((*const_bytes[i].var)->data, const_bytes[i].val, (*const_bytes[i].var)->sz);
+        *const_bytes[i].var = bytes_new_from_str(const_bytes[i].val);
     }
 
     dsource_init_module();
@@ -1033,7 +1017,7 @@ mrklkit_module_t testrt_module = {
     _init,
     _fini,
     _parsers,
-    _precompile,
+    NULL,
     _compile,
     _link,
 };

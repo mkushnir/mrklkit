@@ -20,6 +20,7 @@ bytes_hash(bytes_t *bytes)
     return bytes->hash;
 }
 
+
 int
 bytes_cmp(bytes_t *a, bytes_t *b)
 {
@@ -39,6 +40,7 @@ bytes_cmp(bytes_t *a, bytes_t *b)
     return diff;
 }
 
+
 bytes_t *
 bytes_new(size_t sz)
 {
@@ -47,11 +49,31 @@ bytes_new(size_t sz)
     if ((res = malloc(sizeof(bytes_t) + sz)) == NULL) {
         FAIL("malloc");
     }
-    res->nref = 1;
+    res->nref = 0;
     res->sz = sz;
     res->hash = 0;
     return res;
 }
+
+
+bytes_t *
+bytes_new_from_str(const char *s)
+{
+    bytes_t *res;
+    size_t sz;
+
+    sz = strlen(s) + 1;
+
+    if ((res = malloc(sizeof(bytes_t) + sz)) == NULL) {
+        FAIL("malloc");
+    }
+    memcpy(res->data, s, sz);
+    res->nref = 0;
+    res->sz = sz;
+    res->hash = 0;
+    return res;
+}
+
 
 void
 bytes_destroy(bytes_t **value)

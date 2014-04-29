@@ -30,6 +30,7 @@ do { \
 
 
 bytes_t *bytes_new(size_t);
+bytes_t *bytes_new_from_str(const char *);
 void bytes_destroy(bytes_t **);
 #define bytes_decref bytes_destroy
 uint64_t bytes_hash(bytes_t *);

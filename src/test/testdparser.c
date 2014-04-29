@@ -883,7 +883,7 @@ struct_00_dump(rt_struct_t *value)
 }
 
 static void
-struct_00_init(rt_struct_t *value)
+struct_00_init(void **value)
 {
     int64_t *fint;
     union {
@@ -892,23 +892,19 @@ struct_00_init(rt_struct_t *value)
     } ffloat;
     bytes_t **fstr;
 
-    fint = array_get(&value->fields, 0);
-    assert(fint != NULL);
+    fint = (int64_t *)value;
     *fint = 0;
-    ffloat.v = array_get(&value->fields, 1);
-    assert(ffloat.v != NULL);
+    ffloat.v = value + 1;
     *ffloat.d = 0.0;
-    fstr = array_get(&value->fields, 2);
-    assert(fstr != NULL);
+    fstr = (bytes_t **)(value + 2);
     *fstr = NULL;
 }
 
 static void
-struct_00_fini(rt_struct_t *value)
+struct_00_fini(void **value)
 {
     bytes_t **fstr;
-    fstr = array_get(&value->fields, 2);
-    assert(fstr != NULL);
+    fstr = (bytes_t **)(value + 2);
     bytes_destroy(fstr);
 }
 

@@ -27,6 +27,7 @@ typedef struct _testrt_target {
 
 typedef struct _testrt {
     bytes_t *dsource;
+    /* quals */
     uint64_t id;
     bytes_t *name;
     /*
@@ -36,10 +37,6 @@ typedef struct _testrt {
     lkit_expr_t *doexpr;
     lkit_expr_t *takeexpr;
     lkit_expr_t *seeexpr;
-    /*
-     * concatenation of doexpr->type and takeexpr->type
-     */
-    lkit_struct_t *type;
     testrt_target_t key;
 } testrt_t;
 

@@ -198,7 +198,8 @@ mrklkit_rt_struct_init(rt_struct_t *value, lkit_struct_t *stty)
     value->fini = stty->fini;
     array_init(&value->fields, sizeof(void *), stty->fields.elnum, NULL, NULL);
     if (value->init != NULL) {
-        value->init(value);
+        TRACE();
+        value->init(value->fields.data);
     }
 }
 
@@ -206,7 +207,7 @@ int
 mrklkit_rt_struct_fini(rt_struct_t *value)
 {
     if (value->fini != NULL) {
-        value->fini(value);
+        value->fini(value->fields.data);
     }
     array_fini(&value->fields);
     value->current = 0;
