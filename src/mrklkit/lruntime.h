@@ -20,17 +20,51 @@ typedef struct _rt_struct {
     void *fields[];
 } rt_struct_t;
 
-void mrklkit_rt_dict_init(dict_t *, lkit_type_t *);
-void mrklkit_rt_dict_destroy(dict_t **);
-int64_t mrklkit_rt_get_dict_item_int(dict_t *, bytes_t *, int64_t);
-double mrklkit_rt_get_dict_item_float(dict_t *, bytes_t *, double);
-bytes_t *mrklkit_rt_get_dict_item_str(dict_t *, bytes_t *, bytes_t *);
+typedef struct _rt_array {
+    ssize_t nref;
+    array_t fields;
+} rt_array_t;
 
-void mrklkit_rt_array_init(array_t *, lkit_type_t *);
-void mrklkit_rt_array_destroy(array_t **);
-int64_t mrklkit_rt_get_array_item_int(array_t *, int64_t, int64_t);
-double mrklkit_rt_get_array_item_float(array_t *, int64_t, double);
-bytes_t *mrklkit_rt_get_array_item_str(array_t *, int64_t, bytes_t *);
+#define ARRAY_DECREF(ar) \
+do { \
+    if (*(ar) != NULL) { \
+        --(*(ar))->nref; \
+        if ((*(ar))->nref <= 0) { \
+            array_fini(&(*(ar))->fields); \
+            free(*(ar)); \
+        } \
+        *(ar) = NULL; \
+    } \
+} while (0)
+
+typedef struct _rt_dict {
+    ssize_t nref;
+    dict_t fields;
+} rt_dict_t;
+
+#define DICT_DECREF(dc) \
+do { \
+    if (*(dc) != NULL) { \
+        --(*(dc))->nref; \
+        if ((*(dc))->nref <= 0) { \
+            dict_fini(&(*(dc))->fields); \
+            free(*(dc)); \
+        } \
+        *(dc) = NULL; \
+    } \
+} while (0)
+
+rt_array_t *mrklkit_rt_array_new(lkit_type_t *);
+void mrklkit_rt_array_destroy(rt_array_t **);
+int64_t mrklkit_rt_get_array_item_int(rt_array_t *, int64_t, int64_t);
+double mrklkit_rt_get_array_item_float(rt_array_t *, int64_t, double);
+bytes_t *mrklkit_rt_get_array_item_str(rt_array_t *, int64_t, bytes_t *);
+
+rt_dict_t *mrklkit_rt_dict_new(lkit_type_t *);
+void mrklkit_rt_dict_destroy(rt_dict_t **);
+int64_t mrklkit_rt_get_dict_item_int(rt_dict_t *, bytes_t *, int64_t);
+double mrklkit_rt_get_dict_item_float(rt_dict_t *, bytes_t *, double);
+bytes_t *mrklkit_rt_get_dict_item_str(rt_dict_t *, bytes_t *, bytes_t *);
 
 rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
 void mrklkit_rt_struct_destroy(rt_struct_t **);

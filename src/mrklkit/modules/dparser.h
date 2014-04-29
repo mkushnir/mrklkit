@@ -6,6 +6,7 @@
  */
 #include <mrkcommon/bytestream.h>
 #include <mrklkit/ltype.h>
+#include <mrklkit/lruntime.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,9 +22,9 @@ int dparse_int(bytestream_t *, char, char[2], int64_t *, char *, unsigned int);
 int dparse_float(bytestream_t *, char, char[2], double *, char *, unsigned int);
 int dparse_qstr(bytestream_t *, char, char[2], bytes_t **, char *, unsigned int);
 int dparse_str(bytestream_t *, char, char[2], bytes_t **, char *, unsigned int);
-int dparse_array(bytestream_t *, char, char[2], lkit_array_t *, array_t *, char *, unsigned int);
+int dparse_array(bytestream_t *, char, char[2], lkit_array_t *, rt_array_t *, char *, unsigned int);
 int
-dparse_dict(bytestream_t *, char, char[2], lkit_dict_t *, dict_t *, char *, unsigned int);
+dparse_dict(bytestream_t *, char, char[2], lkit_dict_t *, rt_dict_t *, char *, unsigned int);
 int
 dparse_struct(bytestream_t *, char, char[2], lkit_struct_t *, rt_struct_t *, char *, unsigned int);
 

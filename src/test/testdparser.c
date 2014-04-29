@@ -320,7 +320,7 @@ test_array_int(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        array_t value;
+        rt_array_t *value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -330,32 +330,32 @@ test_array_int(void)
             continue;
         }
 
-        mrklkit_rt_array_init(&value, *fty);
+        value = mrklkit_rt_array_new(*fty);
 
         if ((res = dparse_array(&bs,
                                 FDELIM,
                                 rdelim,
                                 arty,
-                                &value,
+                                value,
                                 &delim,
                                 DPFLAGS)) == DPARSE_NEEDMORE) {
-            array_fini(&value);
+            mrklkit_rt_array_destroy(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            array_traverse(&value, (array_traverser_t)dump_int_array, NULL);
+            array_traverse(&value->fields, (array_traverser_t)dump_int_array, NULL);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            array_traverse(&value, (array_traverser_t)dump_int_array, NULL);
+            array_traverse(&value->fields, (array_traverser_t)dump_int_array, NULL);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        array_fini(&value);
+        mrklkit_rt_array_destroy(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&arty);
@@ -387,7 +387,7 @@ test_array_float(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        array_t value;
+        rt_array_t *value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -397,32 +397,32 @@ test_array_float(void)
             continue;
         }
 
-        mrklkit_rt_array_init(&value, *fty);
+        value = mrklkit_rt_array_new(*fty);
 
         if ((res = dparse_array(&bs,
                                 FDELIM,
                                 rdelim,
                                 arty,
-                                &value,
+                                value,
                                 &delim,
                                 DPFLAGS)) == DPARSE_NEEDMORE) {
-            array_fini(&value);
+            mrklkit_rt_array_destroy(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            array_traverse(&value, (array_traverser_t)dump_float_array, NULL);
+            array_traverse(&value->fields, (array_traverser_t)dump_float_array, NULL);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            array_traverse(&value, (array_traverser_t)dump_float_array, NULL);
+            array_traverse(&value->fields, (array_traverser_t)dump_float_array, NULL);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        array_fini(&value);
+        mrklkit_rt_array_destroy(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&arty);
@@ -454,7 +454,7 @@ test_array_str(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        array_t value;
+        rt_array_t *value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -464,32 +464,32 @@ test_array_str(void)
             continue;
         }
 
-        mrklkit_rt_array_init(&value, *fty);
+        value = mrklkit_rt_array_new(*fty);
 
         if ((res = dparse_array(&bs,
                                 FDELIM,
                                 rdelim,
                                 arty,
-                                &value,
+                                value,
                                 &delim,
                                 DPFLAGS)) == DPARSE_NEEDMORE) {
-            array_fini(&value);
+            mrklkit_rt_array_destroy(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            array_traverse(&value, (array_traverser_t)dump_bytes_array, NULL);
+            array_traverse(&value->fields, (array_traverser_t)dump_bytes_array, NULL);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            array_traverse(&value, (array_traverser_t)dump_bytes_array, &bs);
+            array_traverse(&value->fields, (array_traverser_t)dump_bytes_array, &bs);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        array_fini(&value);
+        mrklkit_rt_array_destroy(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&arty);
@@ -521,7 +521,7 @@ test_array_qstr(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        array_t value;
+        rt_array_t *value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -531,32 +531,32 @@ test_array_qstr(void)
             continue;
         }
 
-        mrklkit_rt_array_init(&value, *fty);
+        value = mrklkit_rt_array_new(*fty);
 
         if ((res = dparse_array(&bs,
                                 FDELIM,
                                 rdelim,
                                 arty,
-                                &value,
+                                value,
                                 &delim,
                                 DPFLAGS)) == DPARSE_NEEDMORE) {
-            array_fini(&value);
+            mrklkit_rt_array_destroy(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            array_traverse(&value, (array_traverser_t)dump_bytes_array, NULL);
+            array_traverse(&value->fields, (array_traverser_t)dump_bytes_array, NULL);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            array_traverse(&value, (array_traverser_t)dump_bytes_array, &bs);
+            array_traverse(&value->fields, (array_traverser_t)dump_bytes_array, &bs);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        array_fini(&value);
+        mrklkit_rt_array_destroy(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&arty);
@@ -588,7 +588,7 @@ test_dict_int(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        dict_t value;
+        rt_dict_t *value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -598,32 +598,32 @@ test_dict_int(void)
             continue;
         }
 
-        mrklkit_rt_dict_init(&value, *fty);
+        value = mrklkit_rt_dict_new(*fty);
 
         if ((res = dparse_dict(&bs,
                                FDELIM,
                                rdelim,
                                dcty,
-                               &value,
+                               value,
                                &delim,
                                DPFLAGS)) == DPARSE_NEEDMORE) {
-            dict_fini(&value);
+            mrklkit_rt_dict_destroy(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            dict_traverse(&value, (dict_traverser_t)dump_int_dict, NULL);
+            dict_traverse(&value->fields, (dict_traverser_t)dump_int_dict, NULL);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            dict_traverse(&value, (dict_traverser_t)dump_int_dict, NULL);
+            dict_traverse(&value->fields, (dict_traverser_t)dump_int_dict, NULL);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        dict_fini(&value);
+        mrklkit_rt_dict_destroy(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&dcty);
@@ -655,7 +655,7 @@ test_dict_float(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        dict_t value;
+        rt_dict_t *value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -665,32 +665,32 @@ test_dict_float(void)
             continue;
         }
 
-        mrklkit_rt_dict_init(&value, *fty);
+        value = mrklkit_rt_dict_new(*fty);
 
         if ((res = dparse_dict(&bs,
                                FDELIM,
                                rdelim,
                                dcty,
-                               &value,
+                               value,
                                &delim,
                                DPFLAGS)) == DPARSE_NEEDMORE) {
-            dict_fini(&value);
+            mrklkit_rt_dict_destroy(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            dict_traverse(&value, (dict_traverser_t)dump_float_dict, NULL);
+            dict_traverse(&value->fields, (dict_traverser_t)dump_float_dict, NULL);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            dict_traverse(&value, (dict_traverser_t)dump_float_dict, NULL);
+            dict_traverse(&value->fields, (dict_traverser_t)dump_float_dict, NULL);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        dict_fini(&value);
+        mrklkit_rt_dict_destroy(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&dcty);
@@ -722,7 +722,7 @@ test_dict_str(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        dict_t value;
+        rt_dict_t *value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -732,32 +732,32 @@ test_dict_str(void)
             continue;
         }
 
-        mrklkit_rt_dict_init(&value, *fty);
+        value = mrklkit_rt_dict_new(*fty);
 
         if ((res = dparse_dict(&bs,
                                FDELIM,
                                rdelim,
                                dcty,
-                               &value,
+                               value,
                                &delim,
                                DPFLAGS)) == DPARSE_NEEDMORE) {
-            dict_fini(&value);
+            mrklkit_rt_dict_destroy(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            dict_traverse(&value, (dict_traverser_t)dump_bytes_dict, NULL);
+            dict_traverse(&value->fields, (dict_traverser_t)dump_bytes_dict, NULL);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            dict_traverse(&value, (dict_traverser_t)dump_bytes_dict, NULL);
+            dict_traverse(&value->fields, (dict_traverser_t)dump_bytes_dict, NULL);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        dict_fini(&value);
+        mrklkit_rt_dict_destroy(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&dcty);

@@ -95,6 +95,7 @@ parse_quals(array_t *form,
         }
         snprintf(buf, sizeof(buf), "testrt.%016lx", trt->id);
         trt->name = bytes_new_from_str(buf);
+        BYTES_INCREF(trt->name);
     } else {
         TRACE("unknown qual: %s", s);
     }
@@ -974,6 +975,7 @@ _init(void)
 
     for (i = 0; i < countof(const_bytes); ++i) {
         *const_bytes[i].var = bytes_new_from_str(const_bytes[i].val);
+        BYTES_INCREF(*const_bytes[i].var);
     }
 
     dsource_init_module();

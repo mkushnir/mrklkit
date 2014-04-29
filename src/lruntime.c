@@ -12,6 +12,79 @@
 
 
 /**
+ * array
+ */
+rt_array_t *
+mrklkit_rt_array_new(lkit_type_t *ty)
+{
+    rt_array_t *res;
+
+    if ((res = malloc(sizeof(rt_array_t))) == NULL) {
+        FAIL("malloc");
+    }
+
+    res->nref = 0;
+
+    switch (ty->tag) {
+    case LKIT_INT:
+    case LKIT_FLOAT:
+    case LKIT_STR:
+        array_init(&res->fields, sizeof(void *), 0, NULL, NULL);
+
+    default:
+        FAIL("mrklkit_rt_array_init");
+    }
+    return res;
+}
+
+
+void
+mrklkit_rt_array_destroy(rt_array_t **value)
+{
+    ARRAY_DECREF(value);
+}
+
+
+int64_t
+mrklkit_rt_get_array_item_int(rt_array_t *value, int64_t idx, int64_t dflt)
+{
+    int64_t *res;
+
+    if ((res = array_get(&value->fields, idx)) == NULL) {
+        return dflt;
+    }
+    return *res;
+}
+
+
+double
+mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, double dflt)
+{
+    union {
+        void **v;
+        double *d;
+    } res;
+
+    if ((res.v = array_get(&value->fields, idx)) == NULL) {
+        return dflt;
+    }
+    return *res.d;
+}
+
+
+bytes_t *
+mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
+{
+    bytes_t **res;
+
+    if ((res = array_get(&value->fields, idx)) == NULL) {
+        return dflt;
+    }
+    return *res;
+}
+
+
+/**
  * dict
  */
 static void
@@ -34,13 +107,20 @@ rt_dict_fini_keyval(bytes_t *key, void *val)
 }
 
 
-void
-mrklkit_rt_dict_init(dict_t *value, lkit_type_t *ty)
+rt_dict_t *
+mrklkit_rt_dict_new(lkit_type_t *ty)
 {
+    rt_dict_t *res;
+
+    if ((res = malloc(sizeof(rt_dict_t))) == NULL) {
+        FAIL("malloc");
+    }
+    res->nref = 0;
+
     switch (ty->tag) {
     case LKIT_INT:
     case LKIT_FLOAT:
-        dict_init(value,
+        dict_init(&res->fields,
                   17,
                   (dict_hashfn_t)bytes_hash,
                   (dict_item_comparator_t)bytes_cmp,
@@ -48,7 +128,7 @@ mrklkit_rt_dict_init(dict_t *value, lkit_type_t *ty)
         break;
 
     case LKIT_STR:
-        dict_init(value,
+        dict_init(&res->fields,
                   17,
                   (dict_hashfn_t)bytes_hash,
                   (dict_item_comparator_t)bytes_cmp,
@@ -58,29 +138,26 @@ mrklkit_rt_dict_init(dict_t *value, lkit_type_t *ty)
     default:
         FAIL("mrklkit_rt_dict_init");
     }
+    return res;
 }
 
 
 void
-mrklkit_rt_dict_destroy(dict_t **value)
+mrklkit_rt_dict_destroy(rt_dict_t **value)
 {
-    if (*value != NULL) {
-        dict_fini(*value);
-        free(*value);
-        *value = NULL;
-    }
+    DICT_DECREF(value);
 }
 
 
 int64_t
-mrklkit_rt_get_dict_item_int(dict_t *value, bytes_t *key, int64_t dflt)
+mrklkit_rt_get_dict_item_int(rt_dict_t *value, bytes_t *key, int64_t dflt)
 {
     union {
         void *v;
         int64_t i;
     } res;
 
-    if ((res.v = dict_get_item(value, key)) == NULL) {
+    if ((res.v = dict_get_item(&value->fields, key)) == NULL) {
         res.i = dflt;
     }
     return res.i;
@@ -88,14 +165,14 @@ mrklkit_rt_get_dict_item_int(dict_t *value, bytes_t *key, int64_t dflt)
 
 
 double
-mrklkit_rt_get_dict_item_float(dict_t *value, bytes_t *key, double dflt)
+mrklkit_rt_get_dict_item_float(rt_dict_t *value, bytes_t *key, double dflt)
 {
     union {
         void *v;
         double d;
     } res;
 
-    if ((res.v = dict_get_item(value, key)) == NULL) {
+    if ((res.v = dict_get_item(&value->fields, key)) == NULL) {
         res.d = dflt;
     }
     return res.d;
@@ -103,87 +180,14 @@ mrklkit_rt_get_dict_item_float(dict_t *value, bytes_t *key, double dflt)
 
 
 bytes_t *
-mrklkit_rt_get_dict_item_str(dict_t *value, bytes_t *key, bytes_t *dflt)
+mrklkit_rt_get_dict_item_str(rt_dict_t *value, bytes_t *key, bytes_t *dflt)
 {
     bytes_t *res;
 
-    if ((res = dict_get_item(value, key)) == NULL) {
+    if ((res = dict_get_item(&value->fields, key)) == NULL) {
         res = dflt;
     }
     return res;
-}
-
-
-/**
- * array
- */
-void
-mrklkit_rt_array_init(array_t *value, lkit_type_t *ty)
-{
-    switch (ty->tag) {
-    case LKIT_INT:
-        array_init(value, sizeof(int64_t), 0, NULL, NULL);
-
-    case LKIT_FLOAT:
-
-        array_init(value, sizeof(double), 0, NULL, NULL);
-        break;
-
-    case LKIT_STR:
-        array_init(value, sizeof(byterange_t), 0,
-                   NULL,
-                   (array_finalizer_t)bytes_destroy);
-
-    default:
-        FAIL("mrklkit_rt_array_init");
-    }
-}
-
-
-void
-mrklkit_rt_array_destroy(array_t **value)
-{
-    if (*value != NULL) {
-        array_fini(*value);
-        free(*value);
-        *value = NULL;
-    }
-}
-
-
-int64_t
-mrklkit_rt_get_array_item_int(array_t *value, int64_t idx, int64_t dflt)
-{
-    int64_t *res;
-
-    if ((res = array_get(value, idx)) == NULL) {
-        return dflt;
-    }
-    return *res;
-}
-
-
-double
-mrklkit_rt_get_array_item_float(array_t *value, int64_t idx, double dflt)
-{
-    double *res;
-
-    if ((res = array_get(value, idx)) == NULL) {
-        return dflt;
-    }
-    return *res;
-}
-
-
-bytes_t *
-mrklkit_rt_get_array_item_str(array_t *value, int64_t idx, bytes_t *dflt)
-{
-    bytes_t **res;
-
-    if ((res = array_get(value, idx)) == NULL) {
-        return dflt;
-    }
-    return *res;
 }
 
 
@@ -270,6 +274,7 @@ mrklkit_rt_get_struct_item_str(rt_struct_t *value, int64_t idx)
 
     assert(idx < value->fnum);
     res = (bytes_t **)(value->fields + idx);
+    BYTES_INCREF(*res);
     return *res;
 }
 

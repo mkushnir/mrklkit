@@ -324,7 +324,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 400);
                     goto err;
                 }
@@ -340,7 +342,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 401);
                     goto err;
                 }
@@ -375,7 +379,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 501);
                     goto err;
                 }
@@ -389,7 +395,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 502);
                     goto err;
                 }
@@ -419,7 +427,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 601);
                     goto err;
                 }
@@ -433,7 +443,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 602);
                     goto err;
                 }
@@ -458,7 +470,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 700);
                     goto err;
                 }
@@ -474,7 +488,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 701);
                     goto err;
                 }
@@ -504,7 +520,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 801);
                     goto err;
                 }
@@ -518,7 +536,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 802);
                     goto err;
                 }
@@ -574,7 +594,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 902);
                     goto err;
                 }
@@ -595,7 +617,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 903);
                     goto err;
                 }
@@ -632,7 +656,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 1001);
                     goto err;
                 }
@@ -653,7 +679,9 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((rand = builtin_compile_expr(module,
+                                                 builder,
+                                                 *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 1002);
                     goto err;
                 }
@@ -763,19 +791,24 @@ compile_function(LLVMModuleRef module,
         lkit_expr_t **arg, **cont;
         LLVMValueRef fn, args[3];
 
-        /* default */
-        if ((arg = array_get(&expr->subs, 2)) == NULL) {
-            FAIL("array_get");
-        }
-        if ((args[2] = builtin_compile_expr(module, builder, *arg)) == NULL) {
-            TR(COMPILE_FUNCTION + 1300);
-            goto err;
-        }
-
         /* container */
         if ((cont = array_get(&expr->subs, 0)) == NULL) {
             FAIL("array_get");
         }
+
+        if ((*cont)->type->tag != LKIT_STRUCT) {
+            /* default */
+            if ((arg = array_get(&expr->subs, 2)) == NULL) {
+                FAIL("array_get");
+            }
+            if ((args[2] = builtin_compile_expr(module,
+                                                builder,
+                                                *arg)) == NULL) {
+                TR(COMPILE_FUNCTION + 1300);
+                goto err;
+            }
+        }
+
         if ((args[0] = builtin_compile_expr(module, builder, *cont)) == NULL) {
             TR(COMPILE_FUNCTION + 1301);
             goto err;
@@ -791,7 +824,9 @@ compile_function(LLVMModuleRef module,
                 if ((arg = array_get(&expr->subs, 1)) == NULL) {
                     FAIL("array_get");
                 }
-                if ((args[1] = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((args[1] = builtin_compile_expr(module,
+                                                    builder,
+                                                    *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 1302);
                     goto err;
                 }
@@ -824,7 +859,9 @@ compile_function(LLVMModuleRef module,
                 if ((arg = array_get(&expr->subs, 1)) == NULL) {
                     FAIL("array_get");
                 }
-                if ((args[1] = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((args[1] = builtin_compile_expr(module,
+                                                    builder,
+                                                    *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 1305);
                     goto err;
                 }
@@ -881,12 +918,11 @@ compile_function(LLVMModuleRef module,
 
                 args[1] = LLVMConstInt(LLVMInt64Type(), idx, 1);
 
-                //(sym mrklkit_rt_get_struct_item_* (func undef struct int undef))
                 if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
                     TR(COMPILE_FUNCTION + 1310);
                     goto err;
                 }
-                v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
+                v = LLVMBuildCall(builder, fn, args, 2, NEWVAR(name));
             }
 
             break;

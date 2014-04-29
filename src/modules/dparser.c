@@ -151,7 +151,7 @@ err: \
         } else if (res == DPARSE_ERRORVALUE) { \
             goto err; \
         } \
-        dict_set_item(value, key, val.p); \
+        dict_set_item(&value->fields, key, val.p); \
         return 0; \
     } \
 needmore: \
@@ -233,6 +233,7 @@ dparse_qstr(bytestream_t *bs,
                 state = QSTR_ST_OUT;
 
                 *value = bytes_new(br.end - br.start + 1);
+                BYTES_INCREF(*value);
                 /* unescape starting from next by initial " */
                 qstr_unescape((char *)(*value)->data,
                               SDATA(bs, br.start + 1),
@@ -304,6 +305,7 @@ dparse_str(bytestream_t *bs,
         if (DPARSE_TEST_DELIM(*ch)) {
             br.end = SPOS(bs);
             *value = bytes_new(br.end - br.start + 1);
+            BYTES_INCREF(*value);
             memcpy((*value)->data, SDATA(bs, br.start), br.end - br.start); \
             (*value)->data[br.end - br.start] = '\0'; \
             if (flags & DPARSE_MERGEDELIM) {
@@ -326,7 +328,7 @@ dparse_kv_int(bytestream_t *bs,
               char kvdelim,
               char fdelim,
               char rdelim[2],
-              OUT dict_t *value,
+              OUT rt_dict_t *value,
               char *ch,
               unsigned int flags)
 {
@@ -339,7 +341,7 @@ dparse_kv_float(bytestream_t *bs,
                 char kvdelim,
                 char fdelim,
                 char rdelim[2],
-                OUT dict_t *value,
+                OUT rt_dict_t *value,
                 char *ch,
                 unsigned int flags)
 {
@@ -352,7 +354,7 @@ dparse_kv_str_bytes(bytestream_t *bs,
                     char kvdelim,
                     char fdelim,
                     char rdelim[2],
-                    OUT dict_t *value,
+                    OUT rt_dict_t *value,
                     char *ch,
                     unsigned int flags)
 {
@@ -382,7 +384,7 @@ dparse_kv_str_bytes(bytestream_t *bs,
         } else if (res == DPARSE_ERRORVALUE) {
             goto err;
         }
-        dict_set_item(value, key, val);
+        dict_set_item(&value->fields, key, val);
         return 0;
     }
 
@@ -403,7 +405,7 @@ dparse_array(bytestream_t *bs,
              char fdelim,
              char rdelim[2],
              lkit_array_t *arty,
-             OUT array_t *value,
+             OUT rt_array_t *value,
              char *ch,
              unsigned int flags)
 {
@@ -421,7 +423,7 @@ dparse_array(bytestream_t *bs,
         while (!SNEEDMORE(bs)) { \
             int res; \
             ty *val; \
-            if ((val = array_incr(value)) == NULL) { \
+            if ((val = array_incr(&value->fields)) == NULL) { \
                 FAIL("array_incr"); \
             } \
             if ((res = fn(bs, \
@@ -477,7 +479,7 @@ dparse_dict(bytestream_t *bs,
             char fdelim,
             char rdelim[2],
             lkit_dict_t *dcty,
-            OUT dict_t *value,
+            OUT rt_dict_t *value,
             char *ch,
             unsigned int flags)
 {

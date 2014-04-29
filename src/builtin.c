@@ -213,7 +213,7 @@ builtin_remove_undef(lkit_expr_t *expr)
              * (sym get (func undef dict conststr undef))
              * (sym get (func undef array constint undef))
              */
-            lkit_expr_t **cont, **dflt;
+            lkit_expr_t **cont;
             lkit_type_t *ty;
 
             //expr->isbuiltin = 1;
@@ -315,16 +315,20 @@ builtin_remove_undef(lkit_expr_t *expr)
                 TRRET(REMOVE_UNDEF + 19);
             }
 
-            dflt = array_get(&expr->subs, 2);
-            assert(dflt != NULL);
+            if (ty->tag != LKIT_STRUCT) {
+                lkit_expr_t **dflt;
 
-            if (builtin_remove_undef(*dflt) != 0) {
-                TRRET(REMOVE_UNDEF + 20);
-            }
+                dflt = array_get(&expr->subs, 2);
+                assert(dflt != NULL);
 
-            if (lkit_type_cmp(expr->type, (*dflt)->type) != 0) {
-                (*dflt)->error = 1;
-                TRRET(REMOVE_UNDEF + 21);
+                if (builtin_remove_undef(*dflt) != 0) {
+                    TRRET(REMOVE_UNDEF + 20);
+                }
+
+                if (lkit_type_cmp(expr->type, (*dflt)->type) != 0) {
+                    (*dflt)->error = 1;
+                    TRRET(REMOVE_UNDEF + 21);
+                }
             }
 
         } else if (strcmp(name, "set") == 0) {
