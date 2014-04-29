@@ -768,22 +768,16 @@ test_dict_str(void)
 static void
 struct_00_dump(rt_struct_t *value)
 {
-    int64_t *fint;
-    union {
-        void **v;
-        double *d;
-    } ffloat;
-    bytes_t **fstr;
+    int64_t fint;
+    double ffloat;
+    bytes_t *fstr;
 
-    fint = array_get(&value->fields, 0);
-    assert(fint != NULL);
-    TRACE("val=%ld", *fint);
-    ffloat.v = array_get(&value->fields, 1);
-    assert(ffloat.v != NULL);
-    TRACE("val=%lf", *ffloat.d);
-    fstr = array_get(&value->fields, 2);
-    assert(fstr != NULL);
-    TRACE("val=%s", *fstr != NULL ? (*fstr)->data : NULL);
+    fint = mrklkit_rt_get_struct_item_int(value, 0);
+    TRACE("val=%ld", fint);
+    ffloat = mrklkit_rt_get_struct_item_float(value, 1);
+    TRACE("val=%lf", ffloat);
+    fstr = mrklkit_rt_get_struct_item_str(value, 2);
+    TRACE("val=%s", fstr->data);
 }
 
 static void
@@ -854,7 +848,7 @@ test_struct_00(void)
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
-        rt_struct_t value;
+        rt_struct_t *value;
         char delim = 0;
         char rdelim[2] = {'\n', '\0'};
 
@@ -864,32 +858,32 @@ test_struct_00(void)
             continue;
         }
 
-        mrklkit_rt_struct_init(&value, stty);
+        value = mrklkit_rt_struct_new(stty);
 
         if ((res = dparse_struct(&bs,
                                  FDELIM,
                                  rdelim,
                                  stty,
-                                 &value,
+                                 value,
                                  &delim,
                                  DPFLAGS)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_struct_fini(&value);
+            mrklkit_rt_struct_destroy(&value);
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {
             TRACE("error, delim='%c'", delim);
-            struct_00_dump(&value);
+            struct_00_dump(value);
 
         } else {
             TRACE("ok, delim='%c':", delim);
-            struct_00_dump(&value);
+            struct_00_dump(value);
         }
 
         if (delim == '\n') {
             TRACE("EOL");
         }
 
-        mrklkit_rt_struct_fini(&value);
+        mrklkit_rt_struct_destroy(&value);
     }
     bytestream_fini(&bs);
     lkit_type_destroy((lkit_type_t **)&stty);

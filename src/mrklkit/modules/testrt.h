@@ -21,7 +21,7 @@ typedef struct _testrt_target {
     /* weak ref */
     lkit_struct_t *type;
     uint64_t hash;
-    rt_struct_t value;
+    rt_struct_t *value;
 } testrt_target_t;
 
 

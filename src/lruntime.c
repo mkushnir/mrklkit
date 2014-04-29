@@ -190,38 +190,24 @@ mrklkit_rt_get_array_item_str(array_t *value, int64_t idx, bytes_t *dflt)
 /**
  * struct
  */
-void
-mrklkit_rt_struct_init(rt_struct_t *value, lkit_struct_t *stty)
-{
-    value->current = 0;
-    value->init = stty->init;
-    value->fini = stty->fini;
-    array_init(&value->fields, sizeof(void *), stty->fields.elnum, NULL, NULL);
-    if (value->init != NULL) {
-        value->init(value->fields.data);
-    }
-}
-
-int
-mrklkit_rt_struct_fini(rt_struct_t *value)
-{
-    if (value->fini != NULL) {
-        value->fini(value->fields.data);
-    }
-    array_fini(&value->fields);
-    value->current = 0;
-    return 0;
-}
-
 rt_struct_t *
 mrklkit_rt_struct_new(lkit_struct_t *stty)
 {
     rt_struct_t *v;
 
-    if ((v = malloc(sizeof(rt_struct_t))) == NULL) {
+    size_t sz = stty->fields.elnum * sizeof(void *);
+
+    if ((v = malloc(sizeof(rt_struct_t) + sz)) == NULL) {
         FAIL("malloc");
     }
-    mrklkit_rt_struct_init(v, stty);
+    v->fnum = stty->fields.elnum;
+    v->nref = 1;
+    v->init = stty->init;
+    v->fini = stty->fini;
+    v->current = 0;
+    if (v->init != NULL) {
+        v->init(v->fields);
+    }
     return v;
 }
 
@@ -230,148 +216,140 @@ void
 mrklkit_rt_struct_destroy(rt_struct_t **value)
 {
     if (*value != NULL) {
-        (void)mrklkit_rt_struct_fini(*value);
+        if ((*value)->fini != NULL) {
+            (*value)->fini((*value)->fields);
+        }
         free(*value); \
         *value = NULL;
     }
 }
 
 
-int64_t
-mrklkit_rt_get_struct_item_int(rt_struct_t *value, int64_t idx, int64_t dflt)
+void **
+mrklkit_rt_get_struct_item_addr(rt_struct_t *value, int64_t idx)
 {
-    int64_t *res;
+    assert(idx < value->fnum);
+    return value->fields + idx;
+}
 
-    if ((res = array_get(&value->fields, idx)) == NULL) {
-        return dflt;
-    }
-    return *res;
+
+int64_t
+mrklkit_rt_get_struct_item_int(rt_struct_t *value, int64_t idx)
+{
+    assert(idx < value->fnum);
+    return *(int64_t *)(value->fields + idx);
 }
 
 
 double
-mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx, double dflt)
+mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)
 {
     union {
         void **v;
         double *d;
     } res;
 
-    if ((res.v = array_get(&value->fields, idx)) == NULL) {
-        return dflt;
-    }
+    assert(idx < value->fnum);
+    res.v = value->fields + idx;
     return *res.d;
 }
 
 
 int64_t
-mrklkit_rt_get_struct_item_bool(rt_struct_t *value, int64_t idx, int64_t dflt)
+mrklkit_rt_get_struct_item_bool(rt_struct_t *value, int64_t idx)
 {
-    int64_t *res;
-
-    if ((res = array_get(&value->fields, idx)) == NULL) {
-        return dflt;
-    }
-    return *res;
+    assert(idx < value->fnum);
+    return *(int64_t *)(value->fields + idx);
 }
 
 
 bytes_t *
-mrklkit_rt_get_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *dflt)
+mrklkit_rt_get_struct_item_str(rt_struct_t *value, int64_t idx)
 {
     bytes_t **res;
 
-    if ((res = array_get(&value->fields, idx)) == NULL) {
-        return dflt;
-    }
-    BYTES_INCREF(*res);
+    assert(idx < value->fnum);
+    res = (bytes_t **)(value->fields + idx);
     return *res;
 }
 
 
 array_t *
-mrklkit_rt_get_struct_item_array(rt_struct_t *value, int64_t idx, array_t *dflt)
+mrklkit_rt_get_struct_item_array(rt_struct_t *value, int64_t idx)
 {
     array_t **res;
 
-    if ((res = array_get(&value->fields, idx)) == NULL) {
-        return dflt;
-    }
+    assert(idx < value->fnum);
+    res = (array_t **)(value->fields + idx);
     return *res;
 }
 
 
 dict_t *
-mrklkit_rt_get_struct_item_dict(rt_struct_t *value, int64_t idx, dict_t *dflt)
+mrklkit_rt_get_struct_item_dict(rt_struct_t *value, int64_t idx)
 {
     dict_t **res;
 
-    if ((res = array_get(&value->fields, idx)) == NULL) {
-        return dflt;
-    }
+    assert(idx < value->fnum);
+    res = (dict_t **)(value->fields + idx);
     return *res;
 }
 
 
 rt_struct_t *
-mrklkit_rt_get_struct_item_struct(rt_struct_t *value, int64_t idx, rt_struct_t *dflt)
+mrklkit_rt_get_struct_item_struct(rt_struct_t *value, int64_t idx)
 {
     rt_struct_t **res;
 
-    if ((res = array_get(&value->fields, idx)) == NULL) {
-        return dflt;
-    }
+    assert(idx < value->fnum);
+    res = (rt_struct_t **)(value->fields + idx);
     return *res;
 }
 
 
 void
-mrklkit_rt_set_struct_item_int(rt_struct_t *s, int64_t idx, int64_t val)
+mrklkit_rt_set_struct_item_int(rt_struct_t *value, int64_t idx, int64_t val)
 {
     int64_t *p;
 
-    if ((p = array_get(&s->fields, idx)) == NULL) {
-        FAIL("array_get");
-    }
+    assert(idx < value->fnum);
+    p = (int64_t *)(value->fields + idx);
     *p = val;
 }
 
 
 void
-mrklkit_rt_set_struct_item_float(rt_struct_t *s, int64_t idx, double val)
+mrklkit_rt_set_struct_item_float(rt_struct_t *value, int64_t idx, double val)
 {
     union {
         void **v;
         double *d;
     } p;
 
-    if ((p.v = array_get(&s->fields, idx)) == NULL) {
-        FAIL("array_get");
-    }
+    assert(idx < value->fnum);
+    p.v = (value->fields + idx);
     *p.d = val;
 }
 
 
 void
-mrklkit_rt_set_struct_item_bool(rt_struct_t *s, int64_t idx, int64_t val)
+mrklkit_rt_set_struct_item_bool(rt_struct_t *value, int64_t idx, int64_t val)
 {
     int64_t *p;
 
-    if ((p = array_get(&s->fields, idx)) == NULL) {
-        FAIL("array_get");
-    }
+    assert(idx < value->fnum);
+    p = (int64_t *)(value->fields + idx);
     *p = val;
 }
 
 
 void
-mrklkit_rt_set_struct_item_str(rt_struct_t *s, int64_t idx, bytes_t *val)
+mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 {
     bytes_t **p;
 
-    if ((p = array_get(&s->fields, idx)) == NULL) {
-        FAIL("array_get");
-    }
+    assert(idx < value->fnum);
+    p = (bytes_t **)(value->fields + idx);
     *p = val;
 }
 
@@ -379,7 +357,8 @@ mrklkit_rt_set_struct_item_str(rt_struct_t *s, int64_t idx, bytes_t *val)
 void
 mrklkit_rt_struct_shallow_copy(rt_struct_t *dst, rt_struct_t *src)
 {
-    array_copy(&dst->fields, &src->fields);
+    assert(dst->fnum == src->fnum);
+    memcpy(dst->fields, src->fields, dst->fnum * sizeof(void *));
 }
 
 

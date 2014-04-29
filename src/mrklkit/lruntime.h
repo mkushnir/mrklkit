@@ -11,11 +11,13 @@ extern "C" {
 #endif
 
 typedef struct _rt_struct {
-    ssize_t current;
+    ssize_t fnum;
+    ssize_t nref;
     void (*init)(void **);
     void (*fini)(void **);
+    ssize_t current;
     /* array of void *  */
-    array_t fields;
+    void *fields[];
 } rt_struct_t;
 
 void mrklkit_rt_dict_init(dict_t *, lkit_type_t *);
@@ -31,16 +33,15 @@ double mrklkit_rt_get_array_item_float(array_t *, int64_t, double);
 bytes_t *mrklkit_rt_get_array_item_str(array_t *, int64_t, bytes_t *);
 
 rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
-void mrklkit_rt_struct_init(rt_struct_t *, lkit_struct_t *);
-int mrklkit_rt_struct_fini(rt_struct_t *);
 void mrklkit_rt_struct_destroy(rt_struct_t **);
-int64_t mrklkit_rt_get_struct_item_int(rt_struct_t *, int64_t, int64_t);
-double mrklkit_rt_get_struct_item_float(rt_struct_t *, int64_t, double);
-int64_t mrklkit_rt_get_struct_item_bool(rt_struct_t *, int64_t, int64_t);
-bytes_t *mrklkit_rt_get_struct_item_str(rt_struct_t *, int64_t, bytes_t *);
-array_t *mrklkit_rt_get_struct_item_array(rt_struct_t *, int64_t, array_t *);
-dict_t *mrklkit_rt_get_struct_item_dict(rt_struct_t *, int64_t, dict_t *);
-rt_struct_t *mrklkit_rt_get_struct_item_struct(rt_struct_t *, int64_t, rt_struct_t *);
+void **mrklkit_rt_get_struct_item_addr(rt_struct_t *, int64_t);
+int64_t mrklkit_rt_get_struct_item_int(rt_struct_t *, int64_t);
+double mrklkit_rt_get_struct_item_float(rt_struct_t *, int64_t);
+int64_t mrklkit_rt_get_struct_item_bool(rt_struct_t *, int64_t);
+bytes_t *mrklkit_rt_get_struct_item_str(rt_struct_t *, int64_t);
+array_t *mrklkit_rt_get_struct_item_array(rt_struct_t *, int64_t);
+dict_t *mrklkit_rt_get_struct_item_dict(rt_struct_t *, int64_t);
+rt_struct_t *mrklkit_rt_get_struct_item_struct(rt_struct_t *, int64_t);
 void mrklkit_rt_set_struct_item_int(rt_struct_t *, int64_t, int64_t);
 void mrklkit_rt_set_struct_item_float(rt_struct_t *, int64_t, double);
 void mrklkit_rt_set_struct_item_bool(rt_struct_t *, int64_t, int64_t);

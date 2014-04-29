@@ -703,7 +703,7 @@ testrt_target_init(testrt_target_t *tgt, uint64_t id, lkit_struct_t *type)
     tgt->id = id;
     tgt->type = type;
     tgt->hash = 0;
-    mrklkit_rt_struct_init(&tgt->value, tgt->type);
+    tgt->value = mrklkit_rt_struct_new(tgt->type);
 }
 
 
@@ -741,7 +741,7 @@ testrt_target_hash(testrt_target_t *tgt)
                         unsigned char c;
                     } v;
 
-                    v.i = mrklkit_rt_get_struct_item_int(&tgt->value, it.iter, 0);
+                    v.i = mrklkit_rt_get_struct_item_int(tgt->value, it.iter);
                     tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
                 }
                 break;
@@ -753,7 +753,7 @@ testrt_target_hash(testrt_target_t *tgt)
                         unsigned char c;
                     } v;
 
-                    v.d = mrklkit_rt_get_struct_item_float(&tgt->value, it.iter, 0.0);
+                    v.d = mrklkit_rt_get_struct_item_float(tgt->value, it.iter);
                     tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
                 }
                 break;
@@ -765,7 +765,7 @@ testrt_target_hash(testrt_target_t *tgt)
                         unsigned char c;
                     } v;
 
-                    v.i = mrklkit_rt_get_struct_item_bool(&tgt->value, it.iter, 0.0);
+                    v.i = mrklkit_rt_get_struct_item_bool(tgt->value, it.iter);
                     tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
                 }
                 break;
@@ -774,7 +774,7 @@ testrt_target_hash(testrt_target_t *tgt)
                 {
                     bytes_t *v;
 
-                    v = mrklkit_rt_get_struct_item_str(&tgt->value, it.iter, NULL);
+                    v = mrklkit_rt_get_struct_item_str(tgt->value, it.iter);
                     if (v != NULL) {
                         //TRACE("v=%p", v);
                         //D8(v, sizeof(*v));
@@ -822,8 +822,8 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
                 {
                     int64_t ai, bi;
 
-                    ai = mrklkit_rt_get_struct_item_int(&a->value, it.iter, 0);
-                    bi = mrklkit_rt_get_struct_item_int(&b->value, it.iter, 0);
+                    ai = mrklkit_rt_get_struct_item_int(a->value, it.iter);
+                    bi = mrklkit_rt_get_struct_item_int(b->value, it.iter);
                     diff = ai - bi;
                 }
                 break;
@@ -832,8 +832,8 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
                 {
                     int64_t ab, bb;
 
-                    ab = mrklkit_rt_get_struct_item_bool(&a->value, it.iter, 0);
-                    bb = mrklkit_rt_get_struct_item_bool(&b->value, it.iter, 0);
+                    ab = mrklkit_rt_get_struct_item_bool(a->value, it.iter);
+                    bb = mrklkit_rt_get_struct_item_bool(b->value, it.iter);
                     diff = ab - bb;
                 }
                 break;
@@ -842,8 +842,8 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
                 {
                     double af, bf;
 
-                    af = mrklkit_rt_get_struct_item_float(&a->value, it.iter, 0.0);
-                    bf = mrklkit_rt_get_struct_item_float(&b->value, it.iter, 0.0);
+                    af = mrklkit_rt_get_struct_item_float(a->value, it.iter);
+                    bf = mrklkit_rt_get_struct_item_float(b->value, it.iter);
                     diff = af > bf ? 1 : af < bf ? -1 : 0;
                 }
                 break;
@@ -852,8 +852,8 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
                 {
                     bytes_t *as, *bs;
 
-                    as = mrklkit_rt_get_struct_item_str(&a->value, it.iter, NULL);
-                    bs = mrklkit_rt_get_struct_item_str(&b->value, it.iter, NULL);
+                    as = mrklkit_rt_get_struct_item_str(a->value, it.iter);
+                    bs = mrklkit_rt_get_struct_item_str(b->value, it.iter);
                     diff = bytes_cmp(as, bs);
                 }
                 break;
@@ -875,7 +875,7 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
 static void
 testrt_target_fini(testrt_target_t *tgt)
 {
-    mrklkit_rt_struct_fini(&tgt->value);
+    mrklkit_rt_struct_destroy(&tgt->value);
     tgt->hash = 0;
 }
 
@@ -900,8 +900,7 @@ testrt_acquire_take_key(testrt_t *trt)
     testrt_target_init(&trt->key,
                        trt->id,
                        (lkit_struct_t *)trt->takeexpr->type);
-    //TRACE("data=%p", trt->key.value.fields.data);
-    return trt->key.value.fields.data;
+    return trt->key.value->fields;
 }
 
 void *
@@ -909,16 +908,13 @@ testrt_get_do(testrt_t *trt)
 {
     testrt_target_t *d0;
 
-    //TRACE();
-    //D8(trt->key.value.fields.data, 16);
-
     if ((d0 = dict_get_item(&targets, &trt->key)) == NULL) {
         testrt_target_t *take;
 
         take = testrt_target_new(trt->id,
                                  (lkit_struct_t *)trt->takeexpr->type);
         d0 = testrt_target_new(trt->id, (lkit_struct_t *)trt->doexpr->type);
-        mrklkit_rt_struct_shallow_copy(&take->value, &trt->key.value);
+        mrklkit_rt_struct_shallow_copy(take->value, trt->key.value);
         dict_set_item(&targets, take, d0);
     }
     testrt_target_fini(&trt->key);

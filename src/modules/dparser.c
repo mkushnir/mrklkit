@@ -562,9 +562,7 @@ dparse_struct(bytestream_t *bs,
          fty != NULL;
          fty = array_get(&stty->fields, ++idx)) {
 
-        if ((val = array_get(&value->fields, idx)) == NULL) {
-            FAIL("array_get");
-        }
+        val = mrklkit_rt_get_struct_item_addr(value, idx);
 
         switch ((*fty)->tag) {
         case LKIT_INT:
