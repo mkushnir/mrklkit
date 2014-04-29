@@ -598,7 +598,6 @@ lkit_type_dump(lkit_type_t *ty)
 void
 lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
 {
-
     if (ty == NULL) {
         bytestream_cat(bs, 6, "<null>");
         return;

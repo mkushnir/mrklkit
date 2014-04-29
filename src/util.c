@@ -84,6 +84,13 @@ bytes_destroy(bytes_t **value)
 }
 
 
+void
+bytes_incref(bytes_t *value)
+{
+    BYTES_INCREF(value);
+}
+
+
 char *newvar(char *buf, size_t sz, const char *prefix)
 {
     static uint64_t idx = 0;

@@ -57,7 +57,6 @@ check_function(bytes_t *name)
 /**
  * LLVM IR emitter.
  */
-
 static LLVMValueRef
 compile_if(LLVMModuleRef module,
            LLVMBuilderRef builder,
@@ -122,6 +121,7 @@ compile_if(LLVMModuleRef module,
     return v;
 }
 
+
 static LLVMValueRef
 compile_cmp(LLVMModuleRef module,
            LLVMBuilderRef builder,
@@ -172,8 +172,14 @@ compile_cmp(LLVMModuleRef module,
              * bytes_t *
              *
              */
-            args[0] = LLVMBuildStructGEP(builder, v, 2, NEWVAR("tmp"));
-            args[1] = LLVMBuildStructGEP(builder, rand, 2, NEWVAR("tmp"));
+            args[0] = LLVMBuildStructGEP(builder,
+                                         v,
+                                         BYTES_DATA_IDX,
+                                         NEWVAR("tmp"));
+            args[1] = LLVMBuildStructGEP(builder,
+                                         rand,
+                                         BYTES_DATA_IDX,
+                                         NEWVAR("tmp"));
             rv = LLVMBuildCall(builder,
                               ref,
                               args,
@@ -195,6 +201,7 @@ compile_cmp(LLVMModuleRef module,
 end:
     return v;
 }
+
 
 static LLVMValueRef
 compile_function(LLVMModuleRef module,
@@ -282,8 +289,17 @@ compile_function(LLVMModuleRef module,
                     /*
                      * bytes_t *
                      */
-                    args[1] = LLVMBuildStructGEP(builder,
-                            v, 2, NEWVAR((char *)(*arg)->name->data));
+                    {
+                        char *n;
+
+                        n = ((*arg)->name != NULL) ?
+                                (char *)(*arg)->name->data :
+                                "str";
+                        args[1] = LLVMBuildStructGEP(builder,
+                                                     v,
+                                                     BYTES_DATA_IDX,
+                                                     NEWVAR(n));
+                    }
                     break;
 
                 case LKIT_BOOL:
@@ -463,7 +479,7 @@ compile_function(LLVMModuleRef module,
 
         //(sym * (func undef undef ...))
         if (expr->type->tag == LKIT_INT) {
-            v = LLVMConstInt(expr->type->backend, 0, 1);
+            v = LLVMConstInt(expr->type->backend, 1, 1);
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -481,7 +497,7 @@ compile_function(LLVMModuleRef module,
             }
 
         } else if (expr->type->tag == LKIT_FLOAT) {
-            v = LLVMConstReal(expr->type->backend, 0.0);
+            v = LLVMConstReal(expr->type->backend, 1.0);
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -983,17 +999,94 @@ err:
     goto end;
 }
 
+
 static LLVMTypeRef
 compile_bytes_t(size_t sz)
 {
-    LLVMTypeRef fields[3], ty;
+    LLVMTypeRef fields[4], ty;
 
     fields[0] = LLVMInt64Type();
     fields[1] = LLVMInt64Type();
-    fields[2] = LLVMArrayType(LLVMInt8Type(), sz + 1);
-    ty = LLVMStructType(fields, 3, 0);
+    fields[2] = LLVMInt64Type();
+    fields[3] = LLVMArrayType(LLVMInt8Type(), sz + 1);
+    ty = LLVMStructType(fields, countof(fields), 0);
     return ty;
 }
+
+
+static int
+compile_dynamic_initializer(LLVMModuleRef module,
+                            LLVMValueRef v,
+                            bytes_t *name,
+                            lkit_expr_t *value)
+{
+    char buf[1024];
+    LLVMBasicBlockRef bb;
+    LLVMBuilderRef builder;
+    LLVMValueRef chkv, fn, storedv;
+
+    /* dynamic initializer */
+    //lkit_type_dump(value->type);
+    //lkit_expr_dump(value);
+
+    snprintf(buf, sizeof(buf), ".mrklkit.init.%s", (char *)name->data);
+
+    fn = LLVMAddFunction(module,
+                         buf,
+                         LLVMFunctionType(LLVMVoidType(), NULL, 0, 0));
+    builder = LLVMCreateBuilder();
+
+    if (value->lazy_init) {
+        LLVMValueRef UNUSED res, cond;
+        LLVMBasicBlockRef currblock, endblock, tblock, fblock;
+
+        snprintf(buf, sizeof(buf), ".mrklkit.init.done.%s", (char *)name->data);
+        chkv = LLVMAddGlobal(module, LLVMInt1Type(), buf);
+        LLVMSetLinkage(chkv, LLVMPrivateLinkage);
+        LLVMSetInitializer(chkv, LLVMConstInt(LLVMInt1Type(), 0, 0));
+
+        currblock = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
+        tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
+        fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
+        endblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.end"));
+
+        LLVMPositionBuilderAtEnd(builder, tblock);
+
+        if ((storedv = builtin_compile_expr(module, builder, value)) == NULL) {
+            TRRET(COMPILE_DYNAMIC_INITIALIZER + 1);
+        }
+        LLVMBuildStore(builder, storedv, v);
+        LLVMBuildStore(builder, LLVMConstInt(LLVMInt1Type(), 1, 0), chkv);
+        res = LLVMBuildBr(builder, endblock);
+
+        LLVMPositionBuilderAtEnd(builder, fblock);
+        res = LLVMBuildBr(builder, endblock);
+
+        LLVMPositionBuilderAtEnd(builder, currblock);
+        cond = LLVMBuildICmp(builder,
+                             LLVMIntEQ,
+                             LLVMBuildLoad(builder, chkv, NEWVAR("test")),
+                             LLVMConstInt(LLVMInt1Type(), 0, 0),
+                             NEWVAR("test"));
+        LLVMPositionBuilderAtEnd(builder, currblock);
+        LLVMBuildCondBr(builder, cond, tblock, fblock);
+        LLVMPositionBuilderAtEnd(builder, endblock);
+
+    } else {
+        bb = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
+        LLVMPositionBuilderAtEnd(builder, bb);
+        if ((storedv = builtin_compile_expr(module, builder, value)) == NULL) {
+            TRRET(COMPILE_DYNAMIC_INITIALIZER + 2);
+        }
+        LLVMBuildStore(builder, storedv, v);
+    }
+
+    LLVMBuildRetVoid(builder);
+    LLVMDisposeBuilder(builder);
+    LLVMSetLinkage(v, LLVMPrivateLinkage);
+    return 0;
+}
+
 
 LLVMValueRef
 builtin_compile_expr(LLVMModuleRef module,
@@ -1134,36 +1227,19 @@ builtin_compile_expr(LLVMModuleRef module,
 
             case LKIT_STR:
                 {
-#if 0
                     bytes_t *b;
-                    LLVMValueRef tmp;
-
-                    b = (bytes_t *)expr->value.literal->body;
-                    tmp = LLVMAddGlobal(module,
-                                        LLVMArrayType(LLVMInt8Type(),
-                                                      b->sz + 1),
-                                        NEWVAR(".mrklkit.literal"));
-                    LLVMSetLinkage(tmp, LLVMPrivateLinkage);
-                    LLVMSetInitializer(tmp,
-                                       LLVMConstString((char *)b->data,
-                                                       b->sz,
-                                                       0));
-                    v = LLVMConstBitCast(tmp, expr->type->backend);
-#endif
-
-#if 1
-                    bytes_t *b;
-                    LLVMValueRef binit[3];
+                    LLVMValueRef binit[4];
 
                     b = (bytes_t *)expr->value.literal->body;
                     v = LLVMAddGlobal(module,
-                                         compile_bytes_t(b->sz),
-                                         NEWVAR(".mrklkit.val"));
-                    binit[0] = LLVMConstInt(LLVMInt64Type(), b->sz, 0);
-                    binit[1] = LLVMConstInt(LLVMInt64Type(), bytes_hash(b), 0);
-                    binit[2] = LLVMConstString((char *)b->data, b->sz, 0);
-                    LLVMSetInitializer(v, LLVMConstStruct(binit, 3, 0));
-#endif
+                                      compile_bytes_t(b->sz),
+                                      NEWVAR(".mrklkit.val"));
+                    binit[0] = LLVMConstInt(LLVMInt64Type(), 0xdada, 0);
+                    binit[1] = LLVMConstInt(LLVMInt64Type(), b->sz, 0);
+                    binit[2] = LLVMConstInt(LLVMInt64Type(), bytes_hash(b), 0);
+                    binit[3] = LLVMConstString((char *)b->data, b->sz, 1);
+                    LLVMSetInitializer(v,
+                        LLVMConstStruct(binit, countof(binit), 0));
                 }
                 break;
 
@@ -1175,90 +1251,18 @@ builtin_compile_expr(LLVMModuleRef module,
 
                 //lkit_expr_dump(expr);
                 //LLVMDumpModule(module);
-                TR(BUILTIN_COMPILE_EXPR + 6);
-               break;
+                TR(BUILTIN_COMPILE_EXPR + 7);
+                break;
 
             }
         } else {
-            TR(BUILTIN_COMPILE_EXPR + 7);
+            TR(BUILTIN_COMPILE_EXPR + 8);
         }
     }
 
     return v;
 }
 
-static int
-compile_dynamic_initializer(LLVMModuleRef module,
-                            LLVMValueRef v,
-                            bytes_t *name,
-                            lkit_expr_t *value)
-{
-    char buf[1024];
-    LLVMBasicBlockRef bb;
-    LLVMBuilderRef builder;
-    LLVMValueRef chkv, fn, storedv;
-
-    /* dynamic initializer */
-    //lkit_type_dump(value->type);
-    //lkit_expr_dump(value);
-
-    snprintf(buf, sizeof(buf), ".mrklkit.init.%s", (char *)name->data);
-
-    fn = LLVMAddFunction(module,
-                         buf,
-                         LLVMFunctionType(LLVMVoidType(), NULL, 0, 0));
-    builder = LLVMCreateBuilder();
-
-    if (value->lazy_init) {
-        LLVMValueRef UNUSED res, cond;
-        LLVMBasicBlockRef currblock, endblock, tblock, fblock;
-
-        snprintf(buf, sizeof(buf), ".mrklkit.init.done.%s", (char *)name->data);
-        chkv = LLVMAddGlobal(module, LLVMInt1Type(), buf);
-        LLVMSetLinkage(chkv, LLVMPrivateLinkage);
-        LLVMSetInitializer(chkv, LLVMConstInt(LLVMInt1Type(), 0, 0));
-
-        currblock = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
-        tblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.true"));
-        fblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.false"));
-        endblock = LLVMAppendBasicBlock(fn, NEWVAR("L.if.end"));
-
-        LLVMPositionBuilderAtEnd(builder, tblock);
-
-        if ((storedv = builtin_compile_expr(module, builder, value)) == NULL) {
-            TRRET(COMPILE_DYNAMIC_INITIALIZER + 1);
-        }
-        LLVMBuildStore(builder, storedv, v);
-        LLVMBuildStore(builder, LLVMConstInt(LLVMInt1Type(), 1, 0), chkv);
-        res = LLVMBuildBr(builder, endblock);
-
-        LLVMPositionBuilderAtEnd(builder, fblock);
-        res = LLVMBuildBr(builder, endblock);
-
-        LLVMPositionBuilderAtEnd(builder, currblock);
-        cond = LLVMBuildICmp(builder,
-                             LLVMIntEQ,
-                             LLVMBuildLoad(builder, chkv, NEWVAR("test")),
-                             LLVMConstInt(LLVMInt1Type(), 0, 0),
-                             NEWVAR("test"));
-        LLVMPositionBuilderAtEnd(builder, currblock);
-        LLVMBuildCondBr(builder, cond, tblock, fblock);
-        LLVMPositionBuilderAtEnd(builder, endblock);
-
-    } else {
-        bb = LLVMAppendBasicBlock(fn, NEWVAR("L.dyninit"));
-        LLVMPositionBuilderAtEnd(builder, bb);
-        if ((storedv = builtin_compile_expr(module, builder, value)) == NULL) {
-            TRRET(COMPILE_DYNAMIC_INITIALIZER + 2);
-        }
-        LLVMBuildStore(builder, storedv, v);
-    }
-
-    LLVMBuildRetVoid(builder);
-    LLVMDisposeBuilder(builder);
-    LLVMSetLinkage(v, LLVMPrivateLinkage);
-    return 0;
-}
 
 static LLVMValueRef
 compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
@@ -1281,6 +1285,7 @@ compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
     }
     return fn;
 }
+
 
 int
 builtin_compile(lkit_gitem_t **gitem, void *udata)
@@ -1323,6 +1328,7 @@ builtin_compile(lkit_gitem_t **gitem, void *udata)
 
     return 0;
 }
+
 
 int
 builtingen_call_eager_initializer(lkit_gitem_t **gitem, void *udata)

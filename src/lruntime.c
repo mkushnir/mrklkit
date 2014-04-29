@@ -195,19 +195,19 @@ mrklkit_rt_get_dict_item_str(rt_dict_t *value, bytes_t *key, bytes_t *dflt)
  * struct
  */
 rt_struct_t *
-mrklkit_rt_struct_new(lkit_struct_t *stty)
+mrklkit_rt_struct_new(lkit_struct_t *ty)
 {
     rt_struct_t *v;
 
-    size_t sz = stty->fields.elnum * sizeof(void *);
+    size_t sz = ty->fields.elnum * sizeof(void *);
 
     if ((v = malloc(sizeof(rt_struct_t) + sz)) == NULL) {
         FAIL("malloc");
     }
-    v->fnum = stty->fields.elnum;
+    v->fnum = ty->fields.elnum;
     v->nref = 1;
-    v->init = stty->init;
-    v->fini = stty->fini;
+    v->init = ty->init;
+    v->fini = ty->fini;
     v->current = 0;
     if (v->init != NULL) {
         v->init(v->fields);
@@ -219,12 +219,37 @@ mrklkit_rt_struct_new(lkit_struct_t *stty)
 void
 mrklkit_rt_struct_destroy(rt_struct_t **value)
 {
-    if (*value != NULL) {
-        if ((*value)->fini != NULL) {
-            (*value)->fini((*value)->fields);
+    STRUCT_DECREF(value);
+}
+
+
+void
+mrklkit_rt_struct_dump(rt_struct_t *value, lkit_struct_t *ty)
+{
+    lkit_type_t **fty;
+    array_iter_t it;
+
+    //TRACE("ty=%p", ty);
+    for (fty = array_first(&ty->fields, &it);
+         fty != NULL;
+         fty = array_next(&ty->fields, &it)) {
+
+        switch ((*fty)->tag) {
+        case LKIT_INT:
+            TRACEC("%ld ", mrklkit_rt_get_struct_item_int(value, it.iter));
+            break;
+
+        case LKIT_FLOAT:
+            TRACEC("%lf ", mrklkit_rt_get_struct_item_float(value, it.iter));
+            break;
+
+        case LKIT_STR:
+            TRACEC("%s ", mrklkit_rt_get_struct_item_str(value, it.iter)->data);
+            break;
+
+        default:
+            FAIL("mrklkit_rt_struct_dump");
         }
-        free(*value); \
-        *value = NULL;
     }
 }
 
@@ -274,7 +299,6 @@ mrklkit_rt_get_struct_item_str(rt_struct_t *value, int64_t idx)
 
     assert(idx < value->fnum);
     res = (bytes_t **)(value->fields + idx);
-    BYTES_INCREF(*res);
     return *res;
 }
 
@@ -360,10 +384,49 @@ mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 
 
 void
-mrklkit_rt_struct_shallow_copy(rt_struct_t *dst, rt_struct_t *src)
+mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
+                               rt_struct_t *src,
+                               UNUSED lkit_struct_t *ty)
 {
+    UNUSED lkit_type_t **fty;
+    UNUSED array_iter_t it;
+
     assert(dst->fnum == src->fnum);
+
+#if 1
+    for (fty = array_first(&ty->fields, &it);
+         fty != NULL;
+         fty = array_next(&ty->fields, &it)) {
+
+        *(dst->fields + it.iter) = *(src->fields + it.iter);
+
+        switch ((*fty)->tag) {
+        case LKIT_STR:
+            BYTES_INCREF((bytes_t *)(*(dst->fields + it.iter)));
+            break;
+
+        case LKIT_ARRAY:
+            ARRAY_INCREF((rt_array_t *)(*(dst->fields + it.iter)));
+            break;
+
+        case LKIT_DICT:
+            DICT_INCREF((rt_dict_t *)(*(dst->fields + it.iter)));
+            break;
+
+        case LKIT_STRUCT:
+            STRUCT_INCREF((rt_struct_t *)(*(dst->fields + it.iter)));
+            break;
+
+        default:
+            break;
+        }
+    }
+#endif
+
+#if 0
     memcpy(dst->fields, src->fields, dst->fnum * sizeof(void *));
+#endif
+
 }
 
 

@@ -536,6 +536,9 @@ builtin_remove_undef(lkit_expr_t *expr)
                 lkit_expr_dump(expr);
                 TRRET(REMOVE_UNDEF + 37);
             }
+            if (builtin_remove_undef(ref) != 0) {
+                TRRET(REMOVE_UNDEF + 38);
+            }
             expr->type = ref->type;
         }
 
@@ -557,7 +560,7 @@ builtin_remove_undef(lkit_expr_t *expr)
                  arg = array_next(&expr->subs, &it)) {
 
                 if (builtin_remove_undef(*arg) != 0) {
-                    TRRET(REMOVE_UNDEF + 38);
+                    TRRET(REMOVE_UNDEF + 39);
                 }
             }
 
@@ -573,7 +576,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             assert(arg != NULL);
 
             if (builtin_remove_undef(*arg) != 0) {
-                TRRET(REMOVE_UNDEF + 39);
+                TRRET(REMOVE_UNDEF + 40);
             }
 
         } else {
@@ -585,7 +588,7 @@ builtin_remove_undef(lkit_expr_t *expr)
     }
     if (expr->type->tag == LKIT_UNDEF) {
         /* should not be reached */
-        //lkit_type_dump(expr->type);
+        lkit_type_dump(expr->type);
         lkit_expr_dump(expr);
         assert(0);
     }

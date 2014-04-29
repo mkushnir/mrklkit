@@ -10,19 +10,28 @@
 extern "C" {
 #endif
 
+/*
+ * XXX check out compile_bytes_t(), builtin_compile_expr(), and ltype_compile()
+ */
 typedef struct _bytes {
     ssize_t nref;
     size_t sz;
     uint64_t hash;
+#define BYTES_DATA_IDX 3
     unsigned char data[];
 } bytes_t;
 
-#define BYTES_INCREF(b) (++(b)->nref)
+#define BYTES_INCREF(b) \
+do { \
+    (++(b)->nref); \
+    /* TRACE(">>> %p nref=%ld sz=%ld data=%p", (b), (b)->nref, (b)->sz, (b)->data); */ \
+} while (0)
+
 #define BYTES_DECREF(pb) \
 do { \
     if (*(pb) != NULL) { \
-        /* TRACE("%p nref=%ld sz=%ld data=%s", *(pb), (*(pb))->nref, (*(pb))->sz, (*(pb))->data); */ \
         --(*(pb))->nref; \
+        /* TRACE("<<< %p nref=%ld sz=%ld data=%s", *(pb), (*(pb))->nref, (*(pb))->sz, (*(pb))->data); */ \
         if ((*(pb))->nref <= 0) { \
             free(*(pb)); \
         } \
@@ -33,6 +42,7 @@ do { \
 
 bytes_t *bytes_new(size_t);
 bytes_t *bytes_new_from_str(const char *);
+void bytes_incref(bytes_t *);
 void bytes_destroy(bytes_t **);
 #define bytes_decref bytes_destroy
 uint64_t bytes_hash(bytes_t *);

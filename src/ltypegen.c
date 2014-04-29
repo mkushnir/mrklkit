@@ -47,15 +47,17 @@ ltype_compile(lkit_type_t *ty,
 
     case LKIT_STR:
         {
-            LLVMTypeRef fields[3];
+            LLVMTypeRef fields[4];
 
             /*
              * bytes_t *
              */
             fields[0] = LLVMInt64Type();
             fields[1] = LLVMInt64Type();
-            fields[2] = LLVMArrayType(LLVMInt8Type(), 0);
-            ty->backend = LLVMPointerType(LLVMStructType(fields, 3, 0), 0);
+            fields[2] = LLVMInt64Type();
+            fields[3] = LLVMArrayType(LLVMInt8Type(), 0);
+            ty->backend = LLVMPointerType(
+                LLVMStructType(fields, countof(fields), 0), 0);
         }
         break;
 

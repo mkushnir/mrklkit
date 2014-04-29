@@ -95,6 +95,9 @@ test1(void)
     }
     bytestream_fini(&bs);
     close(fd);
+
+    /**/
+    testrt_dump_targets();
 }
 
 static void

@@ -37,6 +37,8 @@ typedef struct _testrt {
     lkit_expr_t *doexpr;
     lkit_expr_t *takeexpr;
     lkit_expr_t *seeexpr;
+    /* weak refs */
+    array_t otherexpr;
     testrt_target_t key;
 } testrt_t;
 
@@ -47,6 +49,7 @@ extern rt_struct_t *testrt_source;
 void *testrt_acquire_take_key(testrt_t *);
 void *testrt_get_do(testrt_t *);
 int testrt_run(bytestream_t *, dsource_t *);
+void testrt_dump_targets(void);
 
 
 #ifdef __cplusplus

@@ -10,20 +10,12 @@
 extern "C" {
 #endif
 
-typedef struct _rt_struct {
-    ssize_t fnum;
-    ssize_t nref;
-    void (*init)(void **);
-    void (*fini)(void **);
-    ssize_t current;
-    /* array of void *  */
-    void *fields[];
-} rt_struct_t;
-
 typedef struct _rt_array {
     ssize_t nref;
     array_t fields;
 } rt_array_t;
+
+#define ARRAY_INCREF(ar) (++(ar)->nref)
 
 #define ARRAY_DECREF(ar) \
 do { \
@@ -42,6 +34,8 @@ typedef struct _rt_dict {
     dict_t fields;
 } rt_dict_t;
 
+#define DICT_INCREF(dc) (++(dc)->nref)
+
 #define DICT_DECREF(dc) \
 do { \
     if (*(dc) != NULL) { \
@@ -54,20 +48,49 @@ do { \
     } \
 } while (0)
 
+typedef struct _rt_struct {
+    ssize_t fnum;
+    ssize_t nref;
+    void (*init)(void **);
+    void (*fini)(void **);
+    ssize_t current;
+    /* array of void *  */
+    void *fields[];
+} rt_struct_t;
+
+#define STRUCT_INCREF(st) (++(st)->nref)
+
+#define STRUCT_DECREF(st) \
+do { \
+    if (*(st) != NULL) { \
+        --(*(st))->nref; \
+        if ((*(st))->nref <= 0) { \
+            if ((*(st))->fini != NULL) { \
+                (*(st))->fini((*(st))->fields); \
+            } \
+            free(*(st)); \
+        } \
+        *(st) = NULL; \
+    } \
+} while (0)
+
 rt_array_t *mrklkit_rt_array_new(lkit_type_t *);
 void mrklkit_rt_array_destroy(rt_array_t **);
+void mrklkit_rt_array_dump(rt_array_t *, lkit_type_t *);
 int64_t mrklkit_rt_get_array_item_int(rt_array_t *, int64_t, int64_t);
 double mrklkit_rt_get_array_item_float(rt_array_t *, int64_t, double);
 bytes_t *mrklkit_rt_get_array_item_str(rt_array_t *, int64_t, bytes_t *);
 
 rt_dict_t *mrklkit_rt_dict_new(lkit_type_t *);
 void mrklkit_rt_dict_destroy(rt_dict_t **);
+void mrklkit_rt_dict_dump(rt_dict_t *, lkit_type_t *);
 int64_t mrklkit_rt_get_dict_item_int(rt_dict_t *, bytes_t *, int64_t);
 double mrklkit_rt_get_dict_item_float(rt_dict_t *, bytes_t *, double);
 bytes_t *mrklkit_rt_get_dict_item_str(rt_dict_t *, bytes_t *, bytes_t *);
 
 rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
 void mrklkit_rt_struct_destroy(rt_struct_t **);
+void mrklkit_rt_struct_dump(rt_struct_t *, lkit_struct_t *);
 void **mrklkit_rt_get_struct_item_addr(rt_struct_t *, int64_t);
 int64_t mrklkit_rt_get_struct_item_int(rt_struct_t *, int64_t);
 double mrklkit_rt_get_struct_item_float(rt_struct_t *, int64_t);
@@ -81,7 +104,9 @@ void mrklkit_rt_set_struct_item_float(rt_struct_t *, int64_t, double);
 void mrklkit_rt_set_struct_item_bool(rt_struct_t *, int64_t, int64_t);
 void mrklkit_rt_set_struct_item_str(rt_struct_t *, int64_t, bytes_t *);
 
-void mrklkit_rt_struct_shallow_copy(rt_struct_t *, rt_struct_t *);
+void mrklkit_rt_struct_shallow_copy(rt_struct_t *,
+                                    rt_struct_t *,
+                                    lkit_struct_t *);
 
 void lruntime_init(void);
 void lruntime_fini(void);
