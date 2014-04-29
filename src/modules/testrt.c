@@ -535,9 +535,9 @@ _compile_trt(testrt_t *trt, void *udata)
 
         LLVMValueRef val, gep;
 
-        lkit_expr_dump(*expr);
+        //lkit_expr_dump(*expr);
 
-        TRACE("expr %s", (*expr)->name->data);
+        //TRACE("expr %s", (*expr)->name->data);
 
         gep = LLVMBuildStructGEP(builder, av, it.iter, NEWVAR("gep"));
         val = LLVMBuildLoad(builder, gep, NEWVAR("val"));
@@ -776,6 +776,8 @@ testrt_target_hash(testrt_target_t *tgt)
 
                     v = mrklkit_rt_get_struct_item_str(&tgt->value, it.iter, NULL);
                     if (v != NULL) {
+                        //TRACE("v=%p", v);
+                        //D8(v, sizeof(*v));
                         tgt->hash = fasthash(tgt->hash, v->data, v->sz);
                     }
                 }
@@ -898,7 +900,7 @@ testrt_acquire_take_key(testrt_t *trt)
     testrt_target_init(&trt->key,
                        trt->id,
                        (lkit_struct_t *)trt->takeexpr->type);
-    TRACE("data=%p", trt->key.value.fields.data);
+    //TRACE("data=%p", trt->key.value.fields.data);
     return trt->key.value.fields.data;
 }
 
@@ -907,8 +909,8 @@ testrt_get_do(testrt_t *trt)
 {
     testrt_target_t *d0;
 
-    TRACE();
-    D8(trt->key.value.fields.data, 16);
+    //TRACE();
+    //D8(trt->key.value.fields.data, 16);
 
     if ((d0 = dict_get_item(&targets, &trt->key)) == NULL) {
         testrt_target_t *take;

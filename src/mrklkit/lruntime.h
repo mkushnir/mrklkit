@@ -10,24 +10,6 @@
 extern "C" {
 #endif
 
-/* typed object */
-typedef struct _tobj {
-    /* weak ref */
-    lkit_type_t *type;
-    /*
-     * LKIT_INT     int64_t
-     * LKIT_BOOL    char
-     * LKIT_FLOAT   double
-     * LKIT_STR     bytes_t *
-     * LKIT_ARRAY   array_t *
-     * LKIT_STRUCT  rt_struct_t * of void *
-     * LKIT_DICT    dict_t *
-     */
-    void *value;
-} tobj_t;
-
-#define LRUNTIME_V2O(v) ((v) - sizeof(lkit_type_t *))
-
 typedef struct _rt_struct {
     ssize_t current;
     void (*init)(void **);
@@ -35,8 +17,6 @@ typedef struct _rt_struct {
     /* array of void *  */
     array_t fields;
 } rt_struct_t;
-
-void mrklkit_rt_gc(void);
 
 void mrklkit_rt_dict_init(dict_t *, lkit_type_t *);
 void mrklkit_rt_dict_destroy(dict_t **);

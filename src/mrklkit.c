@@ -259,7 +259,7 @@ mrklkit_compile(int fd)
         }
     }
 
-#if 1
+#if 0
     TRACEC("-----------------------------------------------\n");
     LLVMDumpModule(module);
 #endif

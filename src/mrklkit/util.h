@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+#include <mrkcommon/dumpm.h>
 #include <mrkcommon/fasthash.h>
 
 #ifdef __cplusplus
@@ -20,6 +21,7 @@ typedef struct _bytes {
 #define BYTES_DECREF(pb) \
 do { \
     if (*(pb) != NULL) { \
+        /* TRACE("%p nref=%ld sz=%ld data=%s", *(pb), (*(pb))->nref, (*(pb))->sz, (*(pb))->data); */ \
         --(*(pb))->nref; \
         if ((*(pb))->nref <= 0) { \
             free(*(pb)); \

@@ -52,6 +52,7 @@ bytes_new(size_t sz)
     res->nref = 0;
     res->sz = sz;
     res->hash = 0;
+    //TRACE("%p", res);
     return res;
 }
 
@@ -71,6 +72,7 @@ bytes_new_from_str(const char *s)
     res->nref = 0;
     res->sz = sz;
     res->hash = 0;
+    //TRACE("%p sz=%ld data=%s", res, res->sz, res->data);
     return res;
 }
 
