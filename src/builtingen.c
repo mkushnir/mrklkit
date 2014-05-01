@@ -1156,6 +1156,8 @@ builtin_compile_expr(LLVMModuleRef module,
         case LKIT_FLOAT:
         case LKIT_BOOL:
         case LKIT_STR:
+        case LKIT_ARRAY:
+        case LKIT_DICT:
         case LKIT_STRUCT:
             {
                 LLVMValueRef ref;

@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <llvm-c/Core.h>
 #include <llvm-c/Initialization.h>
@@ -23,10 +24,9 @@
 const char *_malloc_options = "AJ";
 #endif
 
-LLVMModuleRef module;
-LLVMPassManagerRef pm;
+static const char *fname;
+static uint64_t flags;
 
-const char *fname;
 
 UNUSED static void
 test0(void)
@@ -56,7 +56,7 @@ test1(void)
         FAIL("open");
     }
 
-    if ((res = mrklkit_compile(fd)) != 0) {
+    if ((res = mrklkit_compile(fd, flags)) != 0) {
         perror("mrklkit_compile");
     } else {
         TRACE(FGREEN("running qwe"));
@@ -73,11 +73,39 @@ test1(void)
     close(fd);
 }
 
+
+static void
+usage(const char *progname)
+{
+    printf("Usage: %s [ -f d0 | -f d1 | -f d2 ]\n", progname);
+}
+
+
 int
 main(int argc, char **argv)
 {
+    int ch;
     array_t modules;
     mrklkit_module_t **m;
+
+    while ((ch = getopt(argc, argv, "f:")) != -1) {
+        switch (ch) {
+        case 'f':
+            if (strcmp(optarg, "d0") == 0) {
+                flags |= MRKLKIT_COMPILE_DUMP0;
+            } else if (strcmp(optarg, "d1") == 0) {
+                flags |= MRKLKIT_COMPILE_DUMP1;
+            } else if (strcmp(optarg, "d2") == 0) {
+                flags |= MRKLKIT_COMPILE_DUMP2;
+            } else {
+                usage(argv[0]);
+                exit(1);
+            }
+            break;
+        }
+    }
+    argc -= (optind - 1);
+    argv += (optind - 1);
 
     array_init(&modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
     m = array_incr(&modules);

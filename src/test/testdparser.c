@@ -57,7 +57,7 @@ test_int(void)
         FAIL("open");
     }
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -106,7 +106,7 @@ test_float(void)
         FAIL("open");
     }
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -155,7 +155,7 @@ test_qstr(void)
         FAIL("open");
     }
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -186,7 +186,7 @@ test_qstr(void)
         if (delim == '\n') {
             TRACE("EOL");
         }
-        bytes_destroy(&value);
+        mrklkit_bytes_destroy(&value);
     }
     bytestream_fini(&bs);
 
@@ -205,7 +205,7 @@ test_str(void)
         FAIL("open");
     }
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -236,7 +236,7 @@ test_str(void)
         if (delim == '\n') {
             TRACE("EOL");
         }
-        bytes_destroy(&value);
+        mrklkit_bytes_destroy(&value);
     }
     bytestream_fini(&bs);
 
@@ -316,7 +316,7 @@ test_array_int(void)
     fty = array_incr(&arty->fields);
     *fty = lkit_type_get(LKIT_INT);
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -330,12 +330,11 @@ test_array_int(void)
             continue;
         }
 
-        value = mrklkit_rt_array_new(*fty);
+        value = mrklkit_rt_array_new(arty);
 
         if ((res = dparse_array(&bs,
                                 FDELIM,
                                 rdelim,
-                                arty,
                                 value,
                                 &delim,
                                 DPFLAGS)) == DPARSE_NEEDMORE) {
@@ -383,7 +382,7 @@ test_array_float(void)
     fty = array_incr(&arty->fields);
     *fty = lkit_type_get(LKIT_FLOAT);
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -397,12 +396,11 @@ test_array_float(void)
             continue;
         }
 
-        value = mrklkit_rt_array_new(*fty);
+        value = mrklkit_rt_array_new(arty);
 
         if ((res = dparse_array(&bs,
                                 FDELIM,
                                 rdelim,
-                                arty,
                                 value,
                                 &delim,
                                 DPFLAGS)) == DPARSE_NEEDMORE) {
@@ -450,7 +448,7 @@ test_array_str(void)
     fty = array_incr(&arty->fields);
     *fty = lkit_type_get(LKIT_STR);
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -464,12 +462,11 @@ test_array_str(void)
             continue;
         }
 
-        value = mrklkit_rt_array_new(*fty);
+        value = mrklkit_rt_array_new(arty);
 
         if ((res = dparse_array(&bs,
                                 FDELIM,
                                 rdelim,
-                                arty,
                                 value,
                                 &delim,
                                 DPFLAGS)) == DPARSE_NEEDMORE) {
@@ -517,7 +514,7 @@ test_array_qstr(void)
     fty = array_incr(&arty->fields);
     *fty = lkit_type_get(LKIT_STR);
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -531,12 +528,11 @@ test_array_qstr(void)
             continue;
         }
 
-        value = mrklkit_rt_array_new(*fty);
+        value = mrklkit_rt_array_new(arty);
 
         if ((res = dparse_array(&bs,
                                 FDELIM,
                                 rdelim,
-                                arty,
                                 value,
                                 &delim,
                                 DPFLAGS)) == DPARSE_NEEDMORE) {
@@ -584,7 +580,7 @@ test_dict_int(void)
     fty = array_incr(&dcty->fields);
     *fty = lkit_type_get(LKIT_INT);
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -598,12 +594,11 @@ test_dict_int(void)
             continue;
         }
 
-        value = mrklkit_rt_dict_new(*fty);
+        value = mrklkit_rt_dict_new(dcty);
 
         if ((res = dparse_dict(&bs,
                                FDELIM,
                                rdelim,
-                               dcty,
                                value,
                                &delim,
                                DPFLAGS)) == DPARSE_NEEDMORE) {
@@ -651,7 +646,7 @@ test_dict_float(void)
     fty = array_incr(&dcty->fields);
     *fty = lkit_type_get(LKIT_FLOAT);
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -665,12 +660,11 @@ test_dict_float(void)
             continue;
         }
 
-        value = mrklkit_rt_dict_new(*fty);
+        value = mrklkit_rt_dict_new(dcty);
 
         if ((res = dparse_dict(&bs,
                                FDELIM,
                                rdelim,
-                               dcty,
                                value,
                                &delim,
                                DPFLAGS)) == DPARSE_NEEDMORE) {
@@ -718,7 +712,7 @@ test_dict_str(void)
     fty = array_incr(&dcty->fields);
     *fty = lkit_type_get(LKIT_STR);
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;
@@ -732,12 +726,11 @@ test_dict_str(void)
             continue;
         }
 
-        value = mrklkit_rt_dict_new(*fty);
+        value = mrklkit_rt_dict_new(dcty);
 
         if ((res = dparse_dict(&bs,
                                FDELIM,
                                rdelim,
-                               dcty,
                                value,
                                &delim,
                                DPFLAGS)) == DPARSE_NEEDMORE) {
@@ -803,7 +796,7 @@ struct_00_fini(void **value)
 {
     bytes_t **fstr;
     fstr = (bytes_t **)(value + 2);
-    bytes_destroy(fstr);
+    mrklkit_bytes_destroy(fstr);
 }
 
 
@@ -844,7 +837,7 @@ test_struct_00(void)
     fty = array_incr(&stty->fields);
     *fty = lkit_type_get(LKIT_STR);
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         int res;

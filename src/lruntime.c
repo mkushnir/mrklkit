@@ -5,6 +5,7 @@
 
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
+#include <mrklkit/util.h>
 
 #include "diag.h"
 
@@ -15,25 +16,16 @@
  * array
  */
 rt_array_t *
-mrklkit_rt_array_new(lkit_type_t *ty)
+mrklkit_rt_array_new(lkit_array_t *ty)
 {
     rt_array_t *res;
 
     if ((res = malloc(sizeof(rt_array_t))) == NULL) {
         FAIL("malloc");
     }
-
     res->nref = 0;
-
-    switch (ty->tag) {
-    case LKIT_INT:
-    case LKIT_FLOAT:
-    case LKIT_STR:
-        array_init(&res->fields, sizeof(void *), 0, NULL, NULL);
-
-    default:
-        FAIL("mrklkit_rt_array_init");
-    }
+    res->type = ty;
+    array_init(&res->fields, sizeof(void *), 0, NULL, ty->fini);
     return res;
 }
 
@@ -50,7 +42,8 @@ mrklkit_rt_get_array_item_int(rt_array_t *value, int64_t idx, int64_t dflt)
 {
     int64_t *res;
 
-    if ((res = array_get(&value->fields, idx)) == NULL) {
+    if ((res = array_get(&value->fields,
+                         idx % value->fields.elnum)) == NULL) {
         return dflt;
     }
     return *res;
@@ -65,7 +58,10 @@ mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, double dflt)
         double *d;
     } res;
 
-    if ((res.v = array_get(&value->fields, idx)) == NULL) {
+    assert(sizeof(void *) == sizeof(double));
+
+    if ((res.v = array_get(&value->fields,
+                           idx % value->fields.elnum)) == NULL) {
         return dflt;
     }
     return *res.d;
@@ -77,7 +73,8 @@ mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
 {
     bytes_t **res;
 
-    if ((res = array_get(&value->fields, idx)) == NULL) {
+    if ((res = array_get(&value->fields,
+                         idx % value->fields.elnum)) == NULL) {
         return dflt;
     }
     return *res;
@@ -87,57 +84,23 @@ mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
 /**
  * dict
  */
-static void
-rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
-{
-    if (key != NULL) {
-        free(key);
-    }
-}
-
-static void
-rt_dict_fini_keyval(bytes_t *key, void *val)
-{
-    if (key != NULL) {
-        free(key);
-    }
-    if (val != NULL) {
-        free(val);
-    }
-}
-
-
 rt_dict_t *
-mrklkit_rt_dict_new(lkit_type_t *ty)
+mrklkit_rt_dict_new(lkit_dict_t *ty)
 {
     rt_dict_t *res;
 
     if ((res = malloc(sizeof(rt_dict_t))) == NULL) {
         FAIL("malloc");
     }
+
     res->nref = 0;
+    res->type = ty;
+    dict_init(&res->fields,
+              17,
+              (dict_hashfn_t)bytes_hash,
+              (dict_item_comparator_t)bytes_cmp,
+              ty->fini);
 
-    switch (ty->tag) {
-    case LKIT_INT:
-    case LKIT_FLOAT:
-        dict_init(&res->fields,
-                  17,
-                  (dict_hashfn_t)bytes_hash,
-                  (dict_item_comparator_t)bytes_cmp,
-                  (dict_item_finalizer_t)rt_dict_fini_keyonly);
-        break;
-
-    case LKIT_STR:
-        dict_init(&res->fields,
-                  17,
-                  (dict_hashfn_t)bytes_hash,
-                  (dict_item_comparator_t)bytes_cmp,
-                  (dict_item_finalizer_t)rt_dict_fini_keyval);
-        break;
-
-    default:
-        FAIL("mrklkit_rt_dict_init");
-    }
     return res;
 }
 
@@ -205,7 +168,7 @@ mrklkit_rt_struct_new(lkit_struct_t *ty)
         FAIL("malloc");
     }
     v->fnum = ty->fields.elnum;
-    v->nref = 1;
+    v->nref = 0;
     v->init = ty->init;
     v->fini = ty->fini;
     v->current = 0;

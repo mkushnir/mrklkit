@@ -647,7 +647,7 @@ fparser_datum_dump_formatted(fparser_datum_t *dat)
 {
     bytestream_t bs;
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     fparser_datum_dump_bytestream(dat, &bs);
     bytestream_write(&bs, 2, bs.eod);
     bytestream_fini(&bs);

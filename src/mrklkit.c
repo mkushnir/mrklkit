@@ -205,7 +205,7 @@ do_analysis(void)
 
 
 int
-mrklkit_compile(int fd)
+mrklkit_compile(int fd, uint64_t flags)
 {
     UNUSED char *error_msg = NULL;
     UNUSED int res = 0;
@@ -259,52 +259,51 @@ mrklkit_compile(int fd)
         }
     }
 
-#if 0
-    TRACEC("-----------------------------------------------\n");
-    LLVMDumpModule(module);
-#endif
+    if (flags & MRKLKIT_COMPILE_DUMP0) {
+        LLVMDumpModule(module);
+    }
 
     /* LLVM analysis */
     do_analysis();
 
-#if 0
-    TRACEC("-----------------------------------------------\n");
-    LLVMDumpModule(module);
-#endif
-
-#if 0
-    TRACEC("-----------------------------------------------\n");
-    tr = LLVMGetFirstTarget();
-    TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",
-          LLVMGetTargetName(tr),
-          LLVMGetTargetDescription(tr),
-          LLVMTargetHasJIT(tr),
-          LLVMTargetHasTargetMachine(tr),
-          LLVMTargetHasAsmBackend(tr),
-          LLVMGetTarget(module));
-
-    TRACEC("-----------------------------------------------\n");
-    tmr = LLVMCreateTargetMachine(tr,
-                                  (char *)LLVMGetTarget(module),
-                                  "x86-64",
-                                  "",
-                                  LLVMCodeGenLevelDefault,
-                                  LLVMRelocDefault,
-                                  LLVMCodeModelDefault);
-
-    res = LLVMTargetMachineEmitToMemoryBuffer(tmr,
-                                              module,
-                                              LLVMAssemblyFile,
-                                              &error_msg,
-                                              &mb);
-    if (res != 0) {
-        TRACE("res=%d %s", res, error_msg);
-        TRRET(MRKLKIT_COMPILE + 6);
+    if (flags & MRKLKIT_COMPILE_DUMP1) {
+        TRACEC("-----------------------------------------------\n");
+        LLVMDumpModule(module);
     }
-    TRACEC("%s", LLVMGetBufferStart(mb));
-    LLVMDisposeMemoryBuffer(mb);
-    LLVMDisposeTargetMachine(tmr);
-#endif
+
+    if (flags & MRKLKIT_COMPILE_DUMP2) {
+        TRACEC("-----------------------------------------------\n");
+        tr = LLVMGetFirstTarget();
+        TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",
+              LLVMGetTargetName(tr),
+              LLVMGetTargetDescription(tr),
+              LLVMTargetHasJIT(tr),
+              LLVMTargetHasTargetMachine(tr),
+              LLVMTargetHasAsmBackend(tr),
+              LLVMGetTarget(module));
+
+        TRACEC("-----------------------------------------------\n");
+        tmr = LLVMCreateTargetMachine(tr,
+                                      (char *)LLVMGetTarget(module),
+                                      "x86-64",
+                                      "",
+                                      LLVMCodeGenLevelDefault,
+                                      LLVMRelocDefault,
+                                      LLVMCodeModelDefault);
+
+        res = LLVMTargetMachineEmitToMemoryBuffer(tmr,
+                                                  module,
+                                                  LLVMAssemblyFile,
+                                                  &error_msg,
+                                                  &mb);
+        if (res != 0) {
+            TRACE("res=%d %s", res, error_msg);
+            TRRET(MRKLKIT_COMPILE + 6);
+        }
+        TRACEC("%s", LLVMGetBufferStart(mb));
+        LLVMDisposeMemoryBuffer(mb);
+        LLVMDisposeTargetMachine(tmr);
+    }
 
     return 0;
 }

@@ -182,7 +182,7 @@ lkit_type_new(lkit_tag_t tag)
             tc->base.name = "str";
             tc->base.rtsz = sizeof(bytes_t *);
             LKIT_ERROR(tc) = 0;
-            tc->base.dtor = (lkit_type_dtor_t)bytes_destroy;
+            tc->base.dtor = (lkit_type_dtor_t)mrklkit_bytes_destroy;
             ty = (lkit_type_t *)tc;
         }
         break;
@@ -672,6 +672,36 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
  *
  */
 
+static int
+rt_array_bytes_fini(bytes_t **value, UNUSED void *udata)
+{
+    BYTES_DECREF(value);
+    return 0;
+}
+
+
+static int
+rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
+{
+    if (key != NULL) {
+        free(key);
+    }
+    return 0;
+}
+
+static int
+rt_dict_fini_keyval(bytes_t *key, void *val)
+{
+    if (key != NULL) {
+        free(key);
+    }
+    if (val != NULL) {
+        free(val);
+    }
+    return 0;
+}
+
+
 int
 ltype_next_struct(array_t *form, array_iter_t *it, lkit_struct_t **value, int seterror)
 {
@@ -800,7 +830,7 @@ lkit_type_hash(lkit_type_t *ty)
     }
     if (ty->hash == 0) {
         bytestream_t bs;
-        bytestream_init(&bs);
+        bytestream_init(&bs, 4096);
         lkit_type_str(ty, &bs);
         ty->hash = fasthash(0,
             (const unsigned char *)SDATA(&bs, 0), SEOD(&bs));
@@ -871,6 +901,51 @@ parse_array_quals(array_t *form,
 
 
 static int
+parse_dict_quals(array_t *form,
+                 array_iter_t *it,
+                 unsigned char *qual,
+                 lkit_dict_t *td)
+{
+    char *s = (char *)qual;
+
+    td->parser = LKIT_PARSER_NONE;
+    td->kvdelim = NULL;
+    td->fdelim = NULL;
+
+    if (strcmp(s, ":parser") == 0) {
+        unsigned char *parser = NULL;
+
+        if (lparse_next_word(form, it, &parser, 1) == 0) {
+            if (strcmp((char *) parser, "delim") == 0) {
+                td->parser = LKIT_PARSER_DELIM;
+                if (lparse_next_str(form, it, &td->kvdelim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_DICT_QUALS + 1);
+                }
+                if (lparse_next_str(form, it, &td->fdelim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_DICT_QUALS + 2);
+                }
+            } else if (strcmp((char *) parser, "none") == 0) {
+                td->parser = LKIT_PARSER_NONE;
+            } else {
+                /* unknown parser */
+                td->parser = -1;
+                TRRET(PARSE_DICT_QUALS + 3);
+            }
+        } else {
+            /* a WORD expected after :parser */
+            TRRET(PARSE_DICT_QUALS + 4);
+        }
+    } else {
+        /* unknown array qualifier */
+        TRACE("unknown qual: %s", s);
+    }
+    return 0;
+}
+
+
+static int
 parse_struct_quals(array_t *form,
                    array_iter_t *it,
                    unsigned char *qual,
@@ -915,9 +990,9 @@ parse_struct_quals(array_t *form,
  * delim|delim1|delim2 ::= STR
  * simple_type ::= int | str | float | bool
  * fielddef ::= (name type)
- * complex_type ::= (array delim type) |
- *                  (dict delim1 delim2 type) |
- *                  (struct delim *fielddef) |
+ * complex_type ::= (array quals type) |
+ *                  (dict kvdelim fdelim type) |
+ *                  (struct quals *fielddef) |
  *                  (func fielddef *fielddef)
  *
  * type ::= simple_type | complex_type
@@ -1055,6 +1130,19 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                     goto err;
                 }
 
+                switch ((*elemtype)->tag) {
+                case LKIT_STR:
+                    ta->fini = (array_finalizer_t)rt_array_bytes_fini;
+                    break;
+
+                case LKIT_INT:
+                case LKIT_FLOAT:
+                    ta->fini = NULL;
+
+                default:
+                    TR(LKIT_TYPE_PARSE + 4);
+                }
+
             } else if (strcmp((char *)first->data, "dict") == 0) {
                 lkit_dict_t *td;
                 fparser_datum_t **node;
@@ -1063,18 +1151,16 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 ty = lkit_type_get(LKIT_DICT);
                 td = (lkit_dict_t *)ty;
 
-                if (lparse_next_str(form, &it, &td->kvdelim, 1) != 0) {
+                /* quals */
+                if (lparse_quals(form, &it,
+                                 (quals_parser_t)parse_dict_quals,
+                                 td) != 0) {
                     TR(LKIT_TYPE_PARSE + 4);
                     goto err;
                 }
 
-                if (lparse_next_str(form, &it, &td->fdelim, 1) != 0) {
-                    TR(LKIT_TYPE_PARSE + 5);
-                    goto err;
-                }
-
                 if ((node = array_next(form, &it)) == NULL) {
-                    TR(LKIT_TYPE_PARSE + 6);
+                    TR(LKIT_TYPE_PARSE + 5);
                     goto err;
                 }
 
@@ -1083,8 +1169,21 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 }
 
                 if ((*elemtype = lkit_type_parse(*node, 1)) == NULL) {
-                    TR(LKIT_TYPE_PARSE + 7);
+                    TR(LKIT_TYPE_PARSE + 6);
                     goto err;
+                }
+
+                switch ((*elemtype)->tag) {
+                case LKIT_STR:
+                    td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval;
+                    break;
+
+                case LKIT_INT:
+                case LKIT_FLOAT:
+                    td->fini = (dict_item_finalizer_t)rt_dict_fini_keyonly;
+
+                default:
+                    TR(LKIT_TYPE_PARSE + 7);
                 }
 
             } else if (strcmp((char *)first->data, "struct") == 0) {
@@ -1119,6 +1218,10 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                         goto err;
                     }
                 }
+
+                /*
+                 * ctor and dtor to be compiled, see ltypegen.c
+                 */
 
             } else if (strcmp((char *)first->data, "func") == 0) {
                 lkit_func_t *tf;
@@ -1401,21 +1504,8 @@ ltype_init(void)
 
 }
 
-UNUSED static int
-dump_type(lkit_type_t *key, UNUSED lkit_type_t *value)
-{
-    bytestream_t bs;
-    bytestream_init(&bs);
-    lkit_type_str(key, &bs);
-    bytestream_cat(&bs, 1, "\0");
-    TRACE("%s", SDATA(&bs, 0));
-    bytestream_fini(&bs);
-    return 0;
-}
-
 void
 ltype_fini(void)
 {
-    //dict_traverse(&types, (dict_traverser_t)dump_type, NULL);
     dict_fini(&types);
 }

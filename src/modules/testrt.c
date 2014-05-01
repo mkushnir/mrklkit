@@ -128,7 +128,7 @@ testrt_fini(testrt_t *trt)
     (void)lkit_expr_destroy(&trt->doexpr);
     (void)lkit_expr_destroy(&trt->takeexpr);
     array_fini(&trt->otherexpr);
-    bytes_destroy(&trt->name);
+    bytes_decref(&trt->name);
     return 0;
 }
 
@@ -492,7 +492,7 @@ _compile_trt(testrt_t *trt, void *udata)
         res = TESTRT_COMPILE + 200;
         goto end;
     }
-    bytes_destroy(&name);
+    bytes_decref(&name);
 
     if (trt->doexpr != NULL) {
         snprintf(buf, sizeof(buf), "%s.do", trt->name->data);
@@ -503,7 +503,7 @@ _compile_trt(testrt_t *trt, void *udata)
             res = TESTRT_COMPILE + 200;
             goto end;
         }
-        bytes_destroy(&name);
+        bytes_decref(&name);
     }
 
     /* run */
@@ -542,7 +542,7 @@ _compile_trt(testrt_t *trt, void *udata)
         if ((*expr)->type->tag == LKIT_STR) {
             LLVMBuildCall(builder,
                           LLVMGetNamedFunction(module,
-                                               "bytes_incref"),
+                                               "mrklkit_bytes_incref"),
                           &val,
                           1,
                           NEWVAR("call"));
@@ -614,7 +614,7 @@ _compile_trt(testrt_t *trt, void *udata)
             if ((*expr)->type->tag == LKIT_STR) {
                 LLVMBuildCall(builder,
                               LLVMGetNamedFunction(module,
-                                                   "bytes_incref"),
+                                                   "mrklkit_bytes_incref"),
                               &val,
                               1,
                               NEWVAR("call"));
@@ -748,7 +748,7 @@ _link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
         if (ltype_link_methods((lkit_type_t *)trt->takeexpr->type, ee, module, name)) {
             TRRET(TESTRT_LINK + 2);
         }
-        bytes_destroy(&name);
+        bytes_decref(&name);
 
         if (trt->doexpr != NULL) {
             snprintf(buf, sizeof(buf), "%s.do", trt->name->data);
@@ -759,7 +759,7 @@ _link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
                                    name)) {
                 TRRET(TESTRT_LINK + 3);
             }
-            bytes_destroy(&name);
+            bytes_decref(&name);
         }
     }
 
@@ -1129,7 +1129,7 @@ _fini(void)
     dsource_fini_module();
 
     for (i = 0; i < countof(const_bytes); ++i) {
-        bytes_destroy(const_bytes[i].var);
+        bytes_decref(const_bytes[i].var);
     }
 }
 

@@ -38,7 +38,10 @@ typedef struct _query {
 typedef int (*mrklkit_parser_t)(fparser_datum_t *, array_iter_t *, void *);
 int mrklkit_register_parser(const char *, mrklkit_parser_t, void *);
 
-int mrklkit_compile(int);
+#define MRKLKIT_COMPILE_DUMP0 0x01
+#define MRKLKIT_COMPILE_DUMP1 0x02
+#define MRKLKIT_COMPILE_DUMP2 0x04
+int mrklkit_compile(int, uint64_t);
 int mrklkit_init_runtime(void);
 int mrklkit_call_void(const char *);
 void mrklkit_init(array_t *);

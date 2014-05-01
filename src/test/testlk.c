@@ -17,10 +17,8 @@
 const char *_malloc_options = "AJ";
 #endif
 
-LLVMModuleRef module;
-LLVMPassManagerRef pm;
-
-const char *prog, *input;
+static const char *prog, *input;
+static uint64_t flags;
 
 UNUSED static void
 test0(void)
@@ -53,7 +51,7 @@ test1(void)
         FAIL("open");
     }
 
-    if ((res = mrklkit_compile(fd)) != 0) {
+    if ((res = mrklkit_compile(fd, flags)) != 0) {
         FAIL("mrklkit_compile");
     }
 
@@ -75,7 +73,7 @@ test1(void)
         FAIL("open");
     }
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     nread = 0xffffffff;
     while (nread > 0) {
         if (SNEEDMORE(&bs)) {
@@ -100,6 +98,7 @@ test1(void)
     testrt_dump_targets();
 }
 
+
 static void
 run(void)
 {
@@ -118,9 +117,38 @@ run(void)
     array_fini(&modules);
 }
 
+
+static void
+usage(const char *progname)
+{
+    printf("Usage: %s [ -f d0 | -f d1 | -f d2 ]\n", progname);
+}
+
+
 int
 main(int argc, char **argv)
 {
+    int ch;
+
+    while ((ch = getopt(argc, argv, "f:")) != -1) {
+        switch (ch) {
+        case 'f':
+            if (strcmp(optarg, "d0") == 0) {
+                flags |= MRKLKIT_COMPILE_DUMP0;
+            } else if (strcmp(optarg, "d1") == 0) {
+                flags |= MRKLKIT_COMPILE_DUMP1;
+            } else if (strcmp(optarg, "d2") == 0) {
+                flags |= MRKLKIT_COMPILE_DUMP2;
+            } else {
+                usage(argv[0]);
+                exit(1);
+            }
+            break;
+        }
+    }
+    argc -= (optind - 1);
+    argv += (optind - 1);
+
     if (argc > 2) {
         prog = argv[1];
         input = argv[2];

@@ -258,35 +258,56 @@ ltype_compile_methods(lkit_type_t *ty,
                 gep1 = LLVMBuildStructGEP(b1, cast1, it.iter, NEWVAR("gep"));
                 gep2 = LLVMBuildStructGEP(b2, cast2, it.iter, NEWVAR("gep"));
 
-#define CALLDTOR \
-{ \
-    LLVMValueRef pnull, dtor; \
-    pnull = LLVMConstPointerNull((*fty)->backend); \
-    LLVMBuildStore(b1, pnull, gep1); \
-    if ((dtor = LLVMGetNamedFunction(module, \
-                                     dtor_name)) == NULL) { \
-        TRACE("no name: %s", dtor_name); \
-        TRRET(LTYPE_COMPILE_METHODS + 3); \
-    } \
-    LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
-}
+#               define BUILDCODE \
+                    { \
+                        LLVMValueRef pnull, dtor; \
+                        /* ctor, just set NULL */ \
+                        pnull = LLVMConstPointerNull((*fty)->backend); \
+                        LLVMBuildStore(b1, pnull, gep1); \
+                        /* dtor, call mrklkit_rt_NNN_destroy() */ \
+                        if ((dtor = LLVMGetNamedFunction(module, \
+                                                         dtor_name)) == NULL) { \
+                            TRACE("no name: %s", dtor_name); \
+                            TRRET(LTYPE_COMPILE_METHODS + 3); \
+                        } \
+                        LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
+                    }
 
                 switch ((*fty)->tag) {
                 case LKIT_STR:
-                    dtor_name = "bytes_destroy";
-                    CALLDTOR;
+                    dtor_name = "mrklkit_bytes_destroy";
+                    BUILDCODE;
                     break;
+
                 case LKIT_ARRAY:
                     dtor_name = "mrklkit_rt_array_destroy";
-                    CALLDTOR;
+                    BUILDCODE;
                     break;
+
                 case LKIT_DICT:
                     dtor_name = "mrklkit_rt_dict_destroy";
-                    CALLDTOR;
+                    BUILDCODE;
                     break;
+
                 case LKIT_STRUCT:
+                    {
+                        char buf[1024];
+                        bytes_t **nm, *nnm;
+
+                        if ((nm = array_get(&ts->names, it.iter)) == NULL) {
+                            FAIL("array_get");
+                        }
+                        snprintf(buf, sizeof(buf), "%s.%s", name->data, (*nm)->data);
+                        //TRACE("subfield %s", buf);
+                        nnm = bytes_new_from_str(buf);
+                        if (ltype_compile_methods(*fty, module, nnm) != 0) {
+                            TRRET(LTYPE_COMPILE_METHODS + 4);
+                        }
+                        bytes_decref(&nnm);
+                    }
+
                     dtor_name = "mrklkit_rt_struct_destroy";
-                    CALLDTOR;
+                    BUILDCODE;
                     break;
 
                 case LKIT_INT:
@@ -350,9 +371,13 @@ ltype_link_methods(lkit_type_t *ty,
     switch (ty->tag) {
     case LKIT_STRUCT:
         {
+            lkit_type_t **fty;
+            array_iter_t it;
             lkit_struct_t *ts;
             void *p;
             LLVMValueRef g;
+
+            //TRACE("linking: %s", name->data);
 
             if ((buf = malloc(name->sz + 64)) == NULL) {
                 FAIL("malloc");
@@ -379,6 +404,36 @@ ltype_link_methods(lkit_type_t *ty,
             }
             //TRACE("%s:%p", buf, p);
             ts->fini = p;
+
+            for (fty = array_first(&ts->fields, &it);
+                 fty != NULL;
+                 fty = array_next(&ts->fields, &it)) {
+
+                char fbuf[1024];
+                bytes_t **nm, *nnm;
+
+                //lkit_type_dump(*fty);
+
+                if ((nm = array_get(&ts->names, it.iter)) == NULL) {
+                    /* hack ... */
+                    if ((*fty)->tag == LKIT_STRUCT) {
+                        TRACE("!name=%s", name->data);
+                        lkit_type_dump(ty);
+                        FAIL("array_get");
+                    } else {
+                        /* unnamed simple simple structs ... */
+                        continue;
+                    }
+                }
+
+                snprintf(fbuf, sizeof(fbuf), "%s.%s", name->data, (*nm)->data);
+                //TRACE("need link %s", fbuf);
+                nnm = bytes_new_from_str(fbuf);
+                if (ltype_link_methods(*fty, ee, module, nnm) != 0) {
+                    TRRET(LTYPE_LINK_METHODS + 2);
+                }
+                bytes_decref(&nnm);
+            }
 
         }
         break;

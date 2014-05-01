@@ -42,9 +42,9 @@ do { \
 
 bytes_t *bytes_new(size_t);
 bytes_t *bytes_new_from_str(const char *);
-void bytes_incref(bytes_t *);
-void bytes_destroy(bytes_t **);
-#define bytes_decref bytes_destroy
+void mrklkit_bytes_incref(bytes_t *);
+void mrklkit_bytes_destroy(bytes_t **);
+#define bytes_decref mrklkit_bytes_destroy
 uint64_t bytes_hash(bytes_t *);
 int bytes_cmp(bytes_t *, bytes_t *);
 char *newvar(char *, size_t, const char *);

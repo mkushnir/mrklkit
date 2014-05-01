@@ -12,6 +12,7 @@ extern "C" {
 
 typedef struct _rt_array {
     ssize_t nref;
+    lkit_array_t *type;
     array_t fields;
 } rt_array_t;
 
@@ -31,6 +32,7 @@ do { \
 
 typedef struct _rt_dict {
     ssize_t nref;
+    lkit_dict_t *type;
     dict_t fields;
 } rt_dict_t;
 
@@ -58,12 +60,17 @@ typedef struct _rt_struct {
     void *fields[];
 } rt_struct_t;
 
-#define STRUCT_INCREF(st) (++(st)->nref)
+#define STRUCT_INCREF(st) \
+do { \
+    /* TRACE(">>> %ld %p", (st)->nref, (st)); */ \
+    (++(st)->nref); \
+} while (0)
 
 #define STRUCT_DECREF(st) \
 do { \
     if (*(st) != NULL) { \
         --(*(st))->nref; \
+        /* TRACE("<<< %ld %p", (*(st))->nref, *(st)); */ \
         if ((*(st))->nref <= 0) { \
             if ((*(st))->fini != NULL) { \
                 (*(st))->fini((*(st))->fields); \
@@ -74,14 +81,14 @@ do { \
     } \
 } while (0)
 
-rt_array_t *mrklkit_rt_array_new(lkit_type_t *);
+rt_array_t *mrklkit_rt_array_new(lkit_array_t *);
 void mrklkit_rt_array_destroy(rt_array_t **);
 void mrklkit_rt_array_dump(rt_array_t *, lkit_type_t *);
 int64_t mrklkit_rt_get_array_item_int(rt_array_t *, int64_t, int64_t);
 double mrklkit_rt_get_array_item_float(rt_array_t *, int64_t, double);
 bytes_t *mrklkit_rt_get_array_item_str(rt_array_t *, int64_t, bytes_t *);
 
-rt_dict_t *mrklkit_rt_dict_new(lkit_type_t *);
+rt_dict_t *mrklkit_rt_dict_new(lkit_dict_t *);
 void mrklkit_rt_dict_destroy(rt_dict_t **);
 void mrklkit_rt_dict_dump(rt_dict_t *, lkit_type_t *);
 int64_t mrklkit_rt_get_dict_item_int(rt_dict_t *, bytes_t *, int64_t);

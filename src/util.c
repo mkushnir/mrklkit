@@ -78,14 +78,14 @@ bytes_new_from_str(const char *s)
 
 
 void
-bytes_destroy(bytes_t **value)
+mrklkit_bytes_destroy(bytes_t **value)
 {
     BYTES_DECREF(value);
 }
 
 
 void
-bytes_incref(bytes_t *value)
+mrklkit_bytes_incref(bytes_t *value)
 {
     BYTES_INCREF(value);
 }

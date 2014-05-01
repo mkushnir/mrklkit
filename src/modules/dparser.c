@@ -157,7 +157,7 @@ err: \
 needmore: \
     return DPARSE_NEEDMORE; \
 err: \
-    bytes_destroy(&key); \
+    mrklkit_bytes_destroy(&key); \
     if (flags & DPARSE_RESETONERROR) { \
         SPOS(bs) = spos; \
     } \
@@ -306,8 +306,8 @@ dparse_str(bytestream_t *bs,
             br.end = SPOS(bs);
             *value = bytes_new(br.end - br.start + 1);
             BYTES_INCREF(*value);
-            memcpy((*value)->data, SDATA(bs, br.start), br.end - br.start); \
-            (*value)->data[br.end - br.start] = '\0'; \
+            memcpy((*value)->data, SDATA(bs, br.start), br.end - br.start);
+            (*value)->data[br.end - br.start] = '\0';
             if (flags & DPARSE_MERGEDELIM) {
                 reach_value(bs, fdelim);
             } else {
@@ -391,8 +391,8 @@ dparse_kv_str_bytes(bytestream_t *bs,
 needmore:
     return DPARSE_NEEDMORE;
 err:
-    bytes_destroy(&key);
-    bytes_destroy(&val);
+    mrklkit_bytes_destroy(&key);
+    mrklkit_bytes_destroy(&val);
     if (flags & DPARSE_RESETONERROR) {
         SPOS(bs) = spos;
     }
@@ -404,7 +404,6 @@ int
 dparse_array(bytestream_t *bs,
              char fdelim,
              char rdelim[2],
-             lkit_array_t *arty,
              OUT rt_array_t *value,
              char *ch,
              unsigned int flags)
@@ -414,8 +413,9 @@ dparse_array(bytestream_t *bs,
     char ardelim[2] = {fdelim, rdelim[0]};
     lkit_type_t *afty;
 
-    afdelim = arty->delim[0];
-    if ((afty = lkit_array_get_element_type(arty)) == NULL) {
+    afdelim = value->type->delim[0];
+    //TRACE("afdelim=%c ardelim='%c' '%c'", afdelim, ardelim[0], ardelim[1]);
+    if ((afty = lkit_array_get_element_type(value->type)) == NULL) {
         FAIL("lkit_array_get_element_type");
     }
 
@@ -478,7 +478,6 @@ int
 dparse_dict(bytestream_t *bs,
             char fdelim,
             char rdelim[2],
-            lkit_dict_t *dcty,
             OUT rt_dict_t *value,
             char *ch,
             unsigned int flags)
@@ -488,8 +487,8 @@ dparse_dict(bytestream_t *bs,
     char drdelim[2] = {fdelim, rdelim[0]};
     lkit_type_t *dfty;
 
-    dfdelim = dcty->fdelim[0];
-    if ((dfty = lkit_dict_get_element_type(dcty)) == NULL) {
+    dfdelim = value->type->fdelim[0];
+    if ((dfty = lkit_dict_get_element_type(value->type)) == NULL) {
         FAIL("lkit_dict_get_element_type");
     }
 
@@ -497,7 +496,7 @@ dparse_dict(bytestream_t *bs,
         while (!SNEEDMORE(bs)) { \
             int res; \
             if ((res = fn(bs, \
-                          dcty->kvdelim[0], \
+                          value->type->kvdelim[0], \
                           dfdelim, \
                           drdelim, \
                           value, \
@@ -568,7 +567,12 @@ dparse_struct(bytestream_t *bs,
 
         switch ((*fty)->tag) {
         case LKIT_INT:
-            if (dparse_int(bs, fdelim, rdelim, (int64_t *)val, ch, flags) != 0) {
+            if (dparse_int(bs,
+                           fdelim,
+                           rdelim,
+                           (int64_t *)val,
+                           ch,
+                           flags) != 0) {
                 goto err;
             }
             break;
@@ -588,8 +592,65 @@ dparse_struct(bytestream_t *bs,
             break;
 
         case LKIT_STR:
-            if (dparse_str(bs, fdelim, rdelim, (bytes_t **)val, ch, flags) != 0) {
+            if (dparse_str(bs,
+                           fdelim,
+                           rdelim,
+                           (bytes_t **)val,
+                           ch,
+                           flags) != 0) {
                 goto err;
+            }
+            break;
+
+        case LKIT_ARRAY:
+            {
+                lkit_array_t *arty = (lkit_array_t *)*fty;
+                *val = mrklkit_rt_array_new(arty);
+                if (dparse_array(bs,
+                                 fdelim,
+                                 rdelim,
+                                 (rt_array_t *)*val,
+                                 ch,
+                                 flags) != 0) {
+                    goto err;
+                }
+            }
+            break;
+
+        case LKIT_DICT:
+            {
+                lkit_dict_t *dcty = (lkit_dict_t *)*fty;
+                *val = mrklkit_rt_dict_new(dcty);
+                if (dparse_dict(bs,
+                                fdelim,
+                                rdelim,
+                                (rt_dict_t *)*val,
+                                ch,
+                                flags) != 0) {
+                    goto err;
+                }
+            }
+            break;
+
+        case LKIT_STRUCT:
+            {
+                lkit_struct_t *sstty;
+                char srdelim[2];
+
+                sstty = (lkit_struct_t *)*fty;
+                *val = mrklkit_rt_struct_new(sstty);
+                STRUCT_INCREF((rt_struct_t *)*val);
+                srdelim[0] = fdelim;
+                srdelim[1] = rdelim[0];
+                if (dparse_struct(bs,
+                               sstty->delim[0],
+                               srdelim,
+                               sstty,
+                               (rt_struct_t *)(*val),
+                               ch,
+                               flags) != 0) {
+                    goto err;
+                }
             }
             break;
 

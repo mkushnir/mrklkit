@@ -77,7 +77,7 @@ lkit_expr_dump(lkit_expr_t *expr)
 {
     bytestream_t bs;
 
-    bytestream_init(&bs);
+    bytestream_init(&bs, 4096);
     lexpr_dump(&bs, expr);
     bytestream_cat(&bs, 1, "\0");
     TRACE("%s", SDATA(&bs, 0));
