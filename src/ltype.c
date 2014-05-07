@@ -262,6 +262,7 @@ lkit_type_new(lkit_tag_t tag)
             ta->base.name = "array";
             ta->base.rtsz = 0;
             LKIT_ERROR(ta) = 0;
+            ta->fini = NULL;
             ta->parser = LKIT_PARSER_NONE;
             ta->delim = NULL;
             array_init(&ta->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
@@ -281,6 +282,7 @@ lkit_type_new(lkit_tag_t tag)
             td->base.name = "dict";
             td->base.rtsz = 0;
             LKIT_ERROR(td) = 0;
+            td->fini = NULL;
             td->kvdelim = NULL;
             td->fdelim = NULL;
             td->base.dtor = (lkit_type_dtor_t)mrklkit_rt_dict_destroy;

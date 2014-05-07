@@ -144,564 +144,107 @@ test_qstr(bytestream_t *bs, byterange_t *br)
 }
 
 
+#define TEST_ARRAY(tag) \
+    lkit_array_t *arty; \
+    lkit_type_t **fty; \
+    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY); \
+    arty->delim = (unsigned char *)","; \
+    fty = array_incr(&arty->fields); \
+    *fty = lkit_type_get(tag); \
+    while (SPOS(bs) < br->end) { \
+        rt_array_t *value = NULL; \
+        value = mrklkit_rt_array_new(arty); \
+        if (dparse_array(bs, \
+                         FDELIM, \
+                         br->end, \
+                         value, \
+                         DPFLAGS) == DPARSE_ERRORVALUE) { \
+            TRACE("err"); \
+        } else { \
+            TRACE("ok"); \
+        } \
+        if (value != NULL) { \
+            mrklkit_rt_array_dump(value); \
+            TRACEC("\n"); \
+        } \
+        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS); \
+        mrklkit_rt_array_destroy(&value); \
+    } \
+    lkit_type_destroy((lkit_type_t **)&arty); \
+
 static void
 test_array_int(bytestream_t *bs, byterange_t *br)
 {
-    lkit_array_t *arty;
-    lkit_type_t **fty;
+    TEST_ARRAY(LKIT_INT);
+}
 
-    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
-    arty->delim = (unsigned char *)",";
-    fty = array_incr(&arty->fields);
-    *fty = lkit_type_get(LKIT_INT);
 
-    while (SPOS(bs) < br->end) {
-        rt_array_t *value = NULL;
+static void
+test_array_float(bytestream_t *bs, byterange_t *br)
+{
+    TEST_ARRAY(LKIT_FLOAT);
+}
 
-        value = mrklkit_rt_array_new(arty);
 
-        if (dparse_array(bs,
-                         FDELIM,
-                         br->end,
-                         value,
-                         DPFLAGS) == DPARSE_ERRORVALUE) {
-            TRACE("err");
-        } else {
-            TRACE("ok");
-        }
-        if (value != NULL) {
-            TRACE();
-            mrklkit_rt_array_dump(value);
-            TRACEC("\n");
-        }
-        //D8(SPDATA(bs), br->end - SPOS(bs));
-        //dparser_reach_delim(bs, FDELIM, br->end);
-        D8(SPDATA(bs), br->end - SPOS(bs));
-        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
-        D8(SPDATA(bs), br->end - SPOS(bs));
+static void
+test_array_str(bytestream_t *bs, byterange_t *br)
+{
+    TEST_ARRAY(LKIT_STR);
+}
 
-        //mrklkit_rt_array_destroy(&value);
-    }
 
-    lkit_type_destroy((lkit_type_t **)&arty);
+#define TEST_DICT(tag) \
+    lkit_dict_t *dcty; \
+    lkit_type_t **fty; \
+    dcty = (lkit_dict_t *)lkit_type_get(LKIT_DICT); \
+    dcty->kvdelim = (unsigned char *)":"; \
+    dcty->fdelim = (unsigned char *)","; \
+    fty = array_incr(&dcty->fields); \
+    *fty = lkit_type_get(tag); \
+    while (SPOS(bs) < br->end) { \
+        rt_dict_t *value = NULL; \
+        value = mrklkit_rt_dict_new(dcty); \
+        if (dparse_dict(bs, \
+                        FDELIM, \
+                        br->end, \
+                        value, \
+                        DPFLAGS) == DPARSE_ERRORVALUE) { \
+            TRACE("err"); \
+        } else { \
+            TRACE("ok"); \
+        } \
+        if (value != NULL) { \
+            mrklkit_rt_dict_dump(value); \
+            TRACEC("\n"); \
+        } \
+        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS); \
+        mrklkit_rt_dict_destroy(&value); \
+    } \
+    lkit_type_destroy((lkit_type_t **)&dcty);
+
+
+static void
+test_dict_int(bytestream_t *bs, byterange_t *br)
+{
+    TEST_DICT(LKIT_INT);
+}
+
+
+static void
+test_dict_float(bytestream_t *bs, byterange_t *br)
+{
+    TEST_DICT(LKIT_FLOAT);
+}
+
+
+static void
+test_dict_str(bytestream_t *bs, byterange_t *br)
+{
+    TEST_DICT(LKIT_STR);
 }
 
 
 #if 0
-UNUSED static int
-dump_int_array(int64_t *v, UNUSED void *udata)
-{
-    TRACE("v=%ld", *v);
-    return 0;
-}
-
-
-UNUSED static int
-dump_float_array(double *v, UNUSED void *udata)
-{
-    TRACE("v=%lf", *v);
-    return 0;
-}
-
-
-UNUSED static int
-dump_bytes_array(bytes_t **v, UNUSED void *udata)
-{
-    TRACE("v=%s", (*v)->data);
-    return 0;
-}
-
-
-UNUSED static int
-dump_int_dict(bytes_t *k, int64_t v, UNUSED void *udata)
-{
-    TRACE("%s:%ld", k->data, v);
-    return 0;
-}
-
-
-UNUSED static int
-dump_float_dict(bytes_t *k, void *v, UNUSED void *udata)
-{
-    union {
-        void *p;
-        double d;
-    } vv;
-    vv.p = v;
-    TRACE("%s:%lf", k->data, vv.d);
-    return 0;
-}
-
-
-UNUSED static int
-dump_bytes_dict(bytes_t *k, bytes_t *v, UNUSED void *udata)
-{
-    TRACE("%s:%s", k->data, v->data);
-    return 0;
-}
-
-
-UNUSED static void
-test_array_int(void)
-{
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-    lkit_array_t *arty;
-    lkit_type_t **fty;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
-    //arty->parser = PLIT_PARSER_DELIM;
-    arty->delim = (unsigned char *)",";
-    fty = array_incr(&arty->fields);
-    *fty = lkit_type_get(LKIT_INT);
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        rt_array_t *value;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        value = mrklkit_rt_array_new(arty);
-
-        if ((res = dparse_array(&bs,
-                                FDELIM,
-                                rdelim,
-                                value,
-                                &delim,
-                                DPFLAGS)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_array_destroy(&value);
-            continue;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
-            array_traverse(&value->fields, (array_traverser_t)dump_int_array, NULL);
-
-        } else {
-            TRACE("ok, delim='%c':", delim);
-            array_traverse(&value->fields, (array_traverser_t)dump_int_array, NULL);
-        }
-
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
-
-        mrklkit_rt_array_destroy(&value);
-    }
-    bytestream_fini(&bs);
-    lkit_type_destroy((lkit_type_t **)&arty);
-
-    close(fd);
-}
-
-
-UNUSED static void
-test_array_float(void)
-{
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-    lkit_array_t *arty;
-    lkit_type_t **fty;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
-    //arty->parser = PLIT_PARSER_DELIM;
-    arty->delim = (unsigned char *)",";
-    fty = array_incr(&arty->fields);
-    *fty = lkit_type_get(LKIT_FLOAT);
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        rt_array_t *value;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        value = mrklkit_rt_array_new(arty);
-
-        if ((res = dparse_array(&bs,
-                                FDELIM,
-                                rdelim,
-                                value,
-                                &delim,
-                                DPFLAGS)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_array_destroy(&value);
-            continue;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
-            array_traverse(&value->fields, (array_traverser_t)dump_float_array, NULL);
-
-        } else {
-            TRACE("ok, delim='%c':", delim);
-            array_traverse(&value->fields, (array_traverser_t)dump_float_array, NULL);
-        }
-
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
-
-        mrklkit_rt_array_destroy(&value);
-    }
-    bytestream_fini(&bs);
-    lkit_type_destroy((lkit_type_t **)&arty);
-
-    close(fd);
-}
-
-
-UNUSED static void
-test_array_str(void)
-{
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-    lkit_array_t *arty;
-    lkit_type_t **fty;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
-    //arty->parser = PLIT_PARSER_DELIM;
-    arty->delim = (unsigned char *)",";
-    fty = array_incr(&arty->fields);
-    *fty = lkit_type_get(LKIT_STR);
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        rt_array_t *value;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        value = mrklkit_rt_array_new(arty);
-
-        if ((res = dparse_array(&bs,
-                                FDELIM,
-                                rdelim,
-                                value,
-                                &delim,
-                                DPFLAGS)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_array_destroy(&value);
-            continue;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
-            array_traverse(&value->fields, (array_traverser_t)dump_bytes_array, NULL);
-
-        } else {
-            TRACE("ok, delim='%c':", delim);
-            array_traverse(&value->fields, (array_traverser_t)dump_bytes_array, &bs);
-        }
-
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
-
-        mrklkit_rt_array_destroy(&value);
-    }
-    bytestream_fini(&bs);
-    lkit_type_destroy((lkit_type_t **)&arty);
-
-    close(fd);
-}
-
-
-UNUSED static void
-test_array_qstr(void)
-{
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-    lkit_array_t *arty;
-    lkit_type_t **fty;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
-    //arty->parser = PLIT_PARSER_DELIM;
-    arty->delim = (unsigned char *)",";
-    fty = array_incr(&arty->fields);
-    *fty = lkit_type_get(LKIT_STR);
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        rt_array_t *value;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        value = mrklkit_rt_array_new(arty);
-
-        if ((res = dparse_array(&bs,
-                                FDELIM,
-                                rdelim,
-                                value,
-                                &delim,
-                                DPFLAGS)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_array_destroy(&value);
-            continue;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
-            array_traverse(&value->fields, (array_traverser_t)dump_bytes_array, NULL);
-
-        } else {
-            TRACE("ok, delim='%c':", delim);
-            array_traverse(&value->fields, (array_traverser_t)dump_bytes_array, &bs);
-        }
-
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
-
-        mrklkit_rt_array_destroy(&value);
-    }
-    bytestream_fini(&bs);
-    lkit_type_destroy((lkit_type_t **)&arty);
-
-    close(fd);
-}
-
-
-UNUSED static void
-test_dict_int(void)
-{
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-    lkit_dict_t *dcty;
-    lkit_type_t **fty;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    dcty = (lkit_dict_t *)lkit_type_get(LKIT_DICT);
-    dcty->kvdelim = (unsigned char *)":";
-    dcty->fdelim = (unsigned char *)",";
-    fty = array_incr(&dcty->fields);
-    *fty = lkit_type_get(LKIT_INT);
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        rt_dict_t *value;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        value = mrklkit_rt_dict_new(dcty);
-
-        if ((res = dparse_dict(&bs,
-                               FDELIM,
-                               rdelim,
-                               value,
-                               &delim,
-                               DPFLAGS)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_dict_destroy(&value);
-            continue;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
-            dict_traverse(&value->fields, (dict_traverser_t)dump_int_dict, NULL);
-
-        } else {
-            TRACE("ok, delim='%c':", delim);
-            dict_traverse(&value->fields, (dict_traverser_t)dump_int_dict, NULL);
-        }
-
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
-
-        mrklkit_rt_dict_destroy(&value);
-    }
-    bytestream_fini(&bs);
-    lkit_type_destroy((lkit_type_t **)&dcty);
-
-    close(fd);
-}
-
-
-UNUSED static void
-test_dict_float(void)
-{
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-    lkit_dict_t *dcty;
-    lkit_type_t **fty;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    dcty = (lkit_dict_t *)lkit_type_get(LKIT_DICT);
-    dcty->kvdelim = (unsigned char *)":";
-    dcty->fdelim = (unsigned char *)",";
-    fty = array_incr(&dcty->fields);
-    *fty = lkit_type_get(LKIT_FLOAT);
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        rt_dict_t *value;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        value = mrklkit_rt_dict_new(dcty);
-
-        if ((res = dparse_dict(&bs,
-                               FDELIM,
-                               rdelim,
-                               value,
-                               &delim,
-                               DPFLAGS)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_dict_destroy(&value);
-            continue;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
-            dict_traverse(&value->fields, (dict_traverser_t)dump_float_dict, NULL);
-
-        } else {
-            TRACE("ok, delim='%c':", delim);
-            dict_traverse(&value->fields, (dict_traverser_t)dump_float_dict, NULL);
-        }
-
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
-
-        mrklkit_rt_dict_destroy(&value);
-    }
-    bytestream_fini(&bs);
-    lkit_type_destroy((lkit_type_t **)&dcty);
-
-    close(fd);
-}
-
-
-UNUSED static void
-test_dict_str(void)
-{
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-    lkit_dict_t *dcty;
-    lkit_type_t **fty;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    dcty = (lkit_dict_t *)lkit_type_get(LKIT_DICT);
-    dcty->kvdelim = (unsigned char *)":";
-    dcty->fdelim = (unsigned char *)",";
-    fty = array_incr(&dcty->fields);
-    *fty = lkit_type_get(LKIT_STR);
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        rt_dict_t *value;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        value = mrklkit_rt_dict_new(dcty);
-
-        if ((res = dparse_dict(&bs,
-                               FDELIM,
-                               rdelim,
-                               value,
-                               &delim,
-                               DPFLAGS)) == DPARSE_NEEDMORE) {
-            mrklkit_rt_dict_destroy(&value);
-            continue;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
-            dict_traverse(&value->fields, (dict_traverser_t)dump_bytes_dict, NULL);
-
-        } else {
-            TRACE("ok, delim='%c':", delim);
-            dict_traverse(&value->fields, (dict_traverser_t)dump_bytes_dict, NULL);
-        }
-
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
-
-        mrklkit_rt_dict_destroy(&value);
-    }
-    bytestream_fini(&bs);
-    lkit_type_destroy((lkit_type_t **)&dcty);
-
-    close(fd);
-}
-
 UNUSED static void
 struct_00_dump(rt_struct_t *value)
 {
@@ -856,18 +399,16 @@ main(int argc, char *argv[])
             dparser_read_lines(fd, test_str);
         } else if (strcmp(dtype, "aint") == 0) {
             dparser_read_lines(fd, test_array_int);
-        //} else if (strcmp(dtype, "afloat") == 0) {
-        //    test_array_float();
-        //} else if (strcmp(dtype, "astr") == 0) {
-        //    test_array_str();
-        //} else if (strcmp(dtype, "aqstr") == 0) {
-        //    test_array_qstr();
-        //} else if (strcmp(dtype, "dint") == 0) {
-        //    test_dict_int();
-        //} else if (strcmp(dtype, "dfloat") == 0) {
-        //    test_dict_float();
-        //} else if (strcmp(dtype, "dstr") == 0) {
-        //    test_dict_str();
+        } else if (strcmp(dtype, "afloat") == 0) {
+            dparser_read_lines(fd, test_array_float);
+        } else if (strcmp(dtype, "astr") == 0) {
+            dparser_read_lines(fd, test_array_str);
+        } else if (strcmp(dtype, "dint") == 0) {
+            dparser_read_lines(fd, test_dict_int);
+        } else if (strcmp(dtype, "dfloat") == 0) {
+            dparser_read_lines(fd, test_dict_float);
+        } else if (strcmp(dtype, "dstr") == 0) {
+            dparser_read_lines(fd, test_dict_str);
         //} else if (strcmp(dtype, "st00") == 0) {
         //    test_struct_00();
         } else {
