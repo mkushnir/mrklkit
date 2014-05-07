@@ -25,7 +25,7 @@ const char *dtype;
 //#define DPFLAGS 0
 
 
-static void
+UNUSED static void
 test0(void)
 {
     struct {
@@ -47,204 +47,148 @@ test0(void)
 
 
 static void
-test_int(void)
+test_int(bytestream_t *bs, byterange_t *br)
 {
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
+    while (SPOS(bs) < br->end) {
+        int64_t value;
 
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        int64_t value = 0;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        //sleep(1);
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        if ((res = dparse_int(&bs,
-                              FDELIM,
-                              rdelim,
-                              &value,
-                              &delim,
-                              DPFLAGS)) == DPARSE_NEEDMORE) {
-            continue;
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
+        if (dparse_int(bs,
+                       FDELIM,
+                       br->end,
+                       &value,
+                       DPFLAGS) == DPARSE_ERRORVALUE) {
+            //TRACE("err %ld", value);
         } else {
-            TRACE("ok, delim='%c' %ld", delim, value);
+            //TRACE("ok %ld", value);
         }
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        //dparser_reach_delim(bs, FDELIM, br->end);
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        //D8(SPDATA(bs), br->end - SPOS(bs));
     }
-    bytestream_fini(&bs);
-
-    close(fd);
 }
 
 
 static void
-test_float(void)
+test_float(bytestream_t *bs, byterange_t *br)
 {
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
+    while (SPOS(bs) < br->end) {
+        double value;
 
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
-        double value = 0.0;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
-
-        //sleep(1);
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        if ((res = dparse_float(&bs,
-                                FDELIM,
-                                rdelim,
-                                &value,
-                                &delim,
-                                DPFLAGS)) == DPARSE_NEEDMORE) {
-            continue;
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
+        if (dparse_float(bs,
+                         FDELIM,
+                         br->end,
+                         &value,
+                         DPFLAGS) == DPARSE_ERRORVALUE) {
+            TRACE("err %lf", value);
         } else {
-            TRACE("ok, delim='%c' %lf", delim, value);
+            TRACE("ok %lf", value);
         }
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        //dparser_reach_delim(bs, FDELIM, br->end);
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        //D8(SPDATA(bs), br->end - SPOS(bs));
     }
-    bytestream_fini(&bs);
-
-    close(fd);
 }
 
 
 static void
-test_qstr(void)
+test_str(bytestream_t *bs, byterange_t *br)
 {
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
+    while (SPOS(bs) < br->end) {
         bytes_t *value = NULL;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
 
-        //sleep(1);
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        if ((res = dparse_qstr(&bs,
-                               FDELIM,
-                               rdelim,
-                               &value,
-                               &delim,
-                               DPFLAGS)) == DPARSE_NEEDMORE) {
-            continue;
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
+        if (dparse_str(bs,
+                         FDELIM,
+                         br->end,
+                         &value,
+                         DPFLAGS) == DPARSE_ERRORVALUE) {
+            TRACE("err %s", value->data);
         } else {
             TRACE("ok %s", value->data);
         }
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        //dparser_reach_delim(bs, FDELIM, br->end);
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        //D8(SPDATA(bs), br->end - SPOS(bs));
         mrklkit_bytes_destroy(&value);
     }
-    bytestream_fini(&bs);
-
-    close(fd);
 }
 
 
 static void
-test_str(void)
+test_qstr(bytestream_t *bs, byterange_t *br)
 {
-    int fd;
-    bytestream_t bs;
-    ssize_t nread;
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        FAIL("open");
-    }
-
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        int res;
+    while (SPOS(bs) < br->end) {
         bytes_t *value = NULL;
-        char delim = 0;
-        char rdelim[2] = {'\n', '\0'};
 
-        //sleep(1);
-
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        if ((res = dparse_str(&bs,
-                              FDELIM,
-                              rdelim,
-                              &value,
-                              &delim,
-                              DPFLAGS)) == DPARSE_NEEDMORE) {
-            continue;
-        } else if (res == DPARSE_ERRORVALUE) {
-            TRACE("error, delim='%c'", delim);
+        if (dparse_qstr(bs,
+                         FDELIM,
+                         br->end,
+                         &value,
+                         DPFLAGS) == DPARSE_ERRORVALUE) {
+            TRACE("err %s", value != NULL ? value->data : NULL);
         } else {
-            TRACE("ok '%s'", value->data);
+            TRACE("ok %s", value->data);
         }
-        if (delim == '\n') {
-            TRACE("EOL");
-        }
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        //dparser_reach_delim(bs, FDELIM, br->end);
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        //D8(SPDATA(bs), br->end - SPOS(bs));
         mrklkit_bytes_destroy(&value);
     }
-    bytestream_fini(&bs);
-
-    close(fd);
 }
 
 
-static int
+static void
+test_array_int(bytestream_t *bs, byterange_t *br)
+{
+    lkit_array_t *arty;
+    lkit_type_t **fty;
+
+    arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY);
+    arty->delim = (unsigned char *)",";
+    fty = array_incr(&arty->fields);
+    *fty = lkit_type_get(LKIT_INT);
+
+    while (SPOS(bs) < br->end) {
+        rt_array_t *value = NULL;
+
+        value = mrklkit_rt_array_new(arty);
+
+        if (dparse_array(bs,
+                         FDELIM,
+                         br->end,
+                         value,
+                         DPFLAGS) == DPARSE_ERRORVALUE) {
+            TRACE("err");
+        } else {
+            TRACE("ok");
+        }
+        if (value != NULL) {
+            TRACE();
+            mrklkit_rt_array_dump(value);
+            TRACEC("\n");
+        }
+        //D8(SPDATA(bs), br->end - SPOS(bs));
+        //dparser_reach_delim(bs, FDELIM, br->end);
+        D8(SPDATA(bs), br->end - SPOS(bs));
+        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        D8(SPDATA(bs), br->end - SPOS(bs));
+
+        //mrklkit_rt_array_destroy(&value);
+    }
+
+    lkit_type_destroy((lkit_type_t **)&arty);
+}
+
+
+#if 0
+UNUSED static int
 dump_int_array(int64_t *v, UNUSED void *udata)
 {
     TRACE("v=%ld", *v);
@@ -252,7 +196,7 @@ dump_int_array(int64_t *v, UNUSED void *udata)
 }
 
 
-static int
+UNUSED static int
 dump_float_array(double *v, UNUSED void *udata)
 {
     TRACE("v=%lf", *v);
@@ -260,7 +204,7 @@ dump_float_array(double *v, UNUSED void *udata)
 }
 
 
-static int
+UNUSED static int
 dump_bytes_array(bytes_t **v, UNUSED void *udata)
 {
     TRACE("v=%s", (*v)->data);
@@ -268,7 +212,7 @@ dump_bytes_array(bytes_t **v, UNUSED void *udata)
 }
 
 
-static int
+UNUSED static int
 dump_int_dict(bytes_t *k, int64_t v, UNUSED void *udata)
 {
     TRACE("%s:%ld", k->data, v);
@@ -276,7 +220,7 @@ dump_int_dict(bytes_t *k, int64_t v, UNUSED void *udata)
 }
 
 
-static int
+UNUSED static int
 dump_float_dict(bytes_t *k, void *v, UNUSED void *udata)
 {
     union {
@@ -289,7 +233,7 @@ dump_float_dict(bytes_t *k, void *v, UNUSED void *udata)
 }
 
 
-static int
+UNUSED static int
 dump_bytes_dict(bytes_t *k, bytes_t *v, UNUSED void *udata)
 {
     TRACE("%s:%s", k->data, v->data);
@@ -297,7 +241,7 @@ dump_bytes_dict(bytes_t *k, bytes_t *v, UNUSED void *udata)
 }
 
 
-static void
+UNUSED static void
 test_array_int(void)
 {
     int fd;
@@ -363,7 +307,7 @@ test_array_int(void)
 }
 
 
-static void
+UNUSED static void
 test_array_float(void)
 {
     int fd;
@@ -429,7 +373,7 @@ test_array_float(void)
 }
 
 
-static void
+UNUSED static void
 test_array_str(void)
 {
     int fd;
@@ -495,7 +439,7 @@ test_array_str(void)
 }
 
 
-static void
+UNUSED static void
 test_array_qstr(void)
 {
     int fd;
@@ -561,7 +505,7 @@ test_array_qstr(void)
 }
 
 
-static void
+UNUSED static void
 test_dict_int(void)
 {
     int fd;
@@ -627,7 +571,7 @@ test_dict_int(void)
 }
 
 
-static void
+UNUSED static void
 test_dict_float(void)
 {
     int fd;
@@ -693,7 +637,7 @@ test_dict_float(void)
 }
 
 
-static void
+UNUSED static void
 test_dict_str(void)
 {
     int fd;
@@ -758,7 +702,7 @@ test_dict_str(void)
     close(fd);
 }
 
-static void
+UNUSED static void
 struct_00_dump(rt_struct_t *value)
 {
     int64_t fint;
@@ -773,7 +717,7 @@ struct_00_dump(rt_struct_t *value)
     TRACE("val=%s", fstr->data);
 }
 
-static void
+UNUSED static void
 struct_00_init(void **value)
 {
     int64_t *fint;
@@ -791,7 +735,7 @@ struct_00_init(void **value)
     *fstr = NULL;
 }
 
-static void
+UNUSED static void
 struct_00_fini(void **value)
 {
     bytes_t **fstr;
@@ -800,7 +744,7 @@ struct_00_fini(void **value)
 }
 
 
-static void
+UNUSED static void
 test_struct_00(void)
 {
     int fd;
@@ -884,42 +828,54 @@ test_struct_00(void)
     close(fd);
 }
 
+#endif
 
 int
 main(int argc, char *argv[])
 {
     mrklkit_init(NULL);
-    test0();
+    //test0();
     if (argc > 2) {
+        int fd;
+
         dtype = argv[1];
         fname = argv[2];
+
+        if ((fd = open(fname, O_RDONLY)) == -1) {
+            FAIL("open");
+        }
+
+
         if (strcmp(dtype, "int") == 0) {
-            test_int();
+            dparser_read_lines(fd, test_int);
         } else if (strcmp(dtype, "float") == 0) {
-            test_float();
+            dparser_read_lines(fd, test_float);
         } else if (strcmp(dtype, "qstr") == 0) {
-            test_qstr();
+            dparser_read_lines(fd, test_qstr);
         } else if (strcmp(dtype, "str") == 0) {
-            test_str();
-        } else if (strcmp(dtype, "array_int") == 0) {
-            test_array_int();
-        } else if (strcmp(dtype, "array_float") == 0) {
-            test_array_float();
-        } else if (strcmp(dtype, "array_str") == 0) {
-            test_array_str();
-        } else if (strcmp(dtype, "array_qstr") == 0) {
-            test_array_qstr();
-        } else if (strcmp(dtype, "dict_int") == 0) {
-            test_dict_int();
-        } else if (strcmp(dtype, "dict_float") == 0) {
-            test_dict_float();
-        } else if (strcmp(dtype, "dict_str") == 0) {
-            test_dict_str();
-        } else if (strcmp(dtype, "struct_00") == 0) {
-            test_struct_00();
+            dparser_read_lines(fd, test_str);
+        } else if (strcmp(dtype, "aint") == 0) {
+            dparser_read_lines(fd, test_array_int);
+        //} else if (strcmp(dtype, "afloat") == 0) {
+        //    test_array_float();
+        //} else if (strcmp(dtype, "astr") == 0) {
+        //    test_array_str();
+        //} else if (strcmp(dtype, "aqstr") == 0) {
+        //    test_array_qstr();
+        //} else if (strcmp(dtype, "dint") == 0) {
+        //    test_dict_int();
+        //} else if (strcmp(dtype, "dfloat") == 0) {
+        //    test_dict_float();
+        //} else if (strcmp(dtype, "dstr") == 0) {
+        //    test_dict_str();
+        //} else if (strcmp(dtype, "st00") == 0) {
+        //    test_struct_00();
         } else {
             assert(0);
         }
+
+        close(fd);
+
     } else {
         assert(0);
     }

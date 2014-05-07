@@ -63,7 +63,6 @@ test1(void)
     }
     ds->rdelim[0] = '\n';
     ds->rdelim[1] = '\0';
-    ds->fdelim = ds->_struct->delim[0];
 
     if (mrklkit_init_runtime() != 0) {
         FAIL("mrklkit_init_runtime");
@@ -77,12 +76,12 @@ test1(void)
     nread = 0xffffffff;
     while (nread > 0) {
         if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 1024);
+            nread = bytestream_read_more(&bs, fd, 4096);
             //TRACE("nread=%ld", nread);
             continue;
         }
 
-        if (testrt_run(&bs, ds) == DPARSE_NEEDMORE) {
+        if ((res = testrt_run(&bs, ds)) == DPARSE_NEEDMORE) {
             continue;
 
         } else if (res == DPARSE_ERRORVALUE) {

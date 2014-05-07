@@ -15,6 +15,47 @@
 /**
  * array
  */
+void
+mrklkit_rt_array_dump(rt_array_t *value)
+{
+    void **val;
+    array_iter_t it;
+    lkit_type_t *fty;
+
+    fty = lkit_array_get_element_type(value->type);
+
+    for (val = array_first(&value->fields, &it);
+         val != NULL;
+         val = array_next(&value->fields, &it)) {
+
+        switch (fty->tag) {
+        case LKIT_INT:
+            TRACEC("%ld ",
+                   mrklkit_rt_get_array_item_int(value, it.iter, 0));
+            break;
+
+        case LKIT_FLOAT:
+            TRACEC("%lf ",
+                   mrklkit_rt_get_array_item_float(value, it.iter, 0.0));
+            break;
+
+        case LKIT_STR:
+            {
+                bytes_t *val;
+
+                val = mrklkit_rt_get_array_item_str(value, it.iter, NULL);
+                TRACEC("%s ", val != NULL ? val->data : NULL);
+            }
+            break;
+
+        default:
+            FAIL("mrklkit_rt_array_dump");
+
+        }
+    }
+}
+
+
 rt_array_t *
 mrklkit_rt_array_new(lkit_array_t *ty)
 {
@@ -84,6 +125,67 @@ mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
 /**
  * dict
  */
+static int
+dump_int_dict(bytes_t *k, int64_t v, UNUSED void *udata)
+{
+    TRACEC("%s:%ld ", k->data, v);
+    return 0;
+}
+
+
+static int
+dump_float_dict(bytes_t *k, void *v, UNUSED void *udata)
+{
+    union {
+        void *p;
+        double d;
+    } vv;
+    vv.p = v;
+    TRACEC("%s:%lf ", k->data, vv.d);
+    return 0;
+}
+
+
+static int
+dump_bytes_dict(bytes_t *k, bytes_t *v, UNUSED void *udata)
+{
+    TRACEC("%s:%s ", k->data, v->data);
+    return 0;
+}
+
+
+void
+mrklkit_rt_dict_dump(rt_dict_t *value)
+{
+    lkit_type_t *fty;
+
+    fty = lkit_dict_get_element_type(value->type);
+
+    switch (fty->tag) {
+    case LKIT_INT:
+        dict_traverse(&value->fields,
+                      (dict_traverser_t)dump_int_dict,
+                      NULL);
+        break;
+
+    case LKIT_FLOAT:
+        dict_traverse(&value->fields,
+                      (dict_traverser_t)dump_float_dict,
+                      NULL);
+        break;
+
+    case LKIT_STR:
+        dict_traverse(&value->fields,
+                      (dict_traverser_t)dump_bytes_dict,
+                      NULL);
+        break;
+
+    default:
+        FAIL("mrklkit_rt_dict_dump");
+    }
+}
+
+
 rt_dict_t *
 mrklkit_rt_dict_new(lkit_dict_t *ty)
 {
@@ -167,13 +269,14 @@ mrklkit_rt_struct_new(lkit_struct_t *ty)
     if ((v = malloc(sizeof(rt_struct_t) + sz)) == NULL) {
         FAIL("malloc");
     }
-    v->fnum = ty->fields.elnum;
     v->nref = 0;
-    v->init = ty->init;
-    v->fini = ty->fini;
+    v->type = ty;
+    //v->init = ty->init;
+    //v->fini = ty->fini;
+    //v->fnum = ty->fields.elnum;
     v->current = 0;
-    if (v->init != NULL) {
-        v->init(v->fields);
+    if (ty->init != NULL) {
+        ty->init(v->fields);
     }
     return v;
 }
@@ -187,15 +290,15 @@ mrklkit_rt_struct_destroy(rt_struct_t **value)
 
 
 void
-mrklkit_rt_struct_dump(rt_struct_t *value, lkit_struct_t *ty)
+mrklkit_rt_struct_dump(rt_struct_t *value)
 {
     lkit_type_t **fty;
     array_iter_t it;
 
     //TRACE("ty=%p", ty);
-    for (fty = array_first(&ty->fields, &it);
+    for (fty = array_first(&value->type->fields, &it);
          fty != NULL;
-         fty = array_next(&ty->fields, &it)) {
+         fty = array_next(&value->type->fields, &it)) {
 
         switch ((*fty)->tag) {
         case LKIT_INT:
@@ -210,6 +313,21 @@ mrklkit_rt_struct_dump(rt_struct_t *value, lkit_struct_t *ty)
             TRACEC("%s ", mrklkit_rt_get_struct_item_str(value, it.iter)->data);
             break;
 
+        case LKIT_ARRAY:
+            mrklkit_rt_array_dump(
+                mrklkit_rt_get_struct_item_array(value, it.iter));
+            break;
+
+        case LKIT_DICT:
+            mrklkit_rt_dict_dump(
+                mrklkit_rt_get_struct_item_dict(value, it.iter));
+            break;
+
+        case LKIT_STRUCT:
+            mrklkit_rt_struct_dump(
+                mrklkit_rt_get_struct_item_struct(value, it.iter));
+            break;
+
         default:
             FAIL("mrklkit_rt_struct_dump");
         }
@@ -220,7 +338,7 @@ mrklkit_rt_struct_dump(rt_struct_t *value, lkit_struct_t *ty)
 void **
 mrklkit_rt_get_struct_item_addr(rt_struct_t *value, int64_t idx)
 {
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     return value->fields + idx;
 }
 
@@ -228,10 +346,9 @@ mrklkit_rt_get_struct_item_addr(rt_struct_t *value, int64_t idx)
 int64_t
 mrklkit_rt_get_struct_item_int(rt_struct_t *value, int64_t idx)
 {
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     return *(int64_t *)(value->fields + idx);
 }
-
 
 double
 mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)
@@ -241,7 +358,7 @@ mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)
         double *d;
     } res;
 
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     res.v = value->fields + idx;
     return *res.d;
 }
@@ -250,7 +367,7 @@ mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)
 int64_t
 mrklkit_rt_get_struct_item_bool(rt_struct_t *value, int64_t idx)
 {
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     return *(int64_t *)(value->fields + idx);
 }
 
@@ -260,30 +377,30 @@ mrklkit_rt_get_struct_item_str(rt_struct_t *value, int64_t idx)
 {
     bytes_t **res;
 
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     res = (bytes_t **)(value->fields + idx);
     return *res;
 }
 
 
-array_t *
+rt_array_t *
 mrklkit_rt_get_struct_item_array(rt_struct_t *value, int64_t idx)
 {
-    array_t **res;
+    rt_array_t **res;
 
-    assert(idx < value->fnum);
-    res = (array_t **)(value->fields + idx);
+    assert(idx < (ssize_t)value->type->fields.elnum);
+    res = (rt_array_t **)(value->fields + idx);
     return *res;
 }
 
 
-dict_t *
+rt_dict_t *
 mrklkit_rt_get_struct_item_dict(rt_struct_t *value, int64_t idx)
 {
-    dict_t **res;
+    rt_dict_t **res;
 
-    assert(idx < value->fnum);
-    res = (dict_t **)(value->fields + idx);
+    assert(idx < (ssize_t)value->type->fields.elnum);
+    res = (rt_dict_t **)(value->fields + idx);
     return *res;
 }
 
@@ -293,7 +410,7 @@ mrklkit_rt_get_struct_item_struct(rt_struct_t *value, int64_t idx)
 {
     rt_struct_t **res;
 
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     res = (rt_struct_t **)(value->fields + idx);
     return *res;
 }
@@ -304,7 +421,7 @@ mrklkit_rt_set_struct_item_int(rt_struct_t *value, int64_t idx, int64_t val)
 {
     int64_t *p;
 
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     p = (int64_t *)(value->fields + idx);
     *p = val;
 }
@@ -318,7 +435,7 @@ mrklkit_rt_set_struct_item_float(rt_struct_t *value, int64_t idx, double val)
         double *d;
     } p;
 
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     p.v = (value->fields + idx);
     *p.d = val;
 }
@@ -329,7 +446,7 @@ mrklkit_rt_set_struct_item_bool(rt_struct_t *value, int64_t idx, int64_t val)
 {
     int64_t *p;
 
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     p = (int64_t *)(value->fields + idx);
     *p = val;
 }
@@ -340,7 +457,7 @@ mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 {
     bytes_t **p;
 
-    assert(idx < value->fnum);
+    assert(idx < (ssize_t)value->type->fields.elnum);
     p = (bytes_t **)(value->fields + idx);
     *p = val;
 }
@@ -348,18 +465,19 @@ mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 
 void
 mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
-                               rt_struct_t *src,
-                               UNUSED lkit_struct_t *ty)
+                               rt_struct_t *src)
 {
-    UNUSED lkit_type_t **fty;
-    UNUSED array_iter_t it;
+    lkit_type_t **fty;
+    array_iter_t it;
 
-    assert(dst->fnum == src->fnum);
+    assert(dst->type->fields.elnum == src->type->fields.elnum);
 
-#if 1
-    for (fty = array_first(&ty->fields, &it);
+#define MRKLKIT_RT_STRUCT_SHALLOW_COPY_SLOW
+
+#ifdef MRKLKIT_RT_STRUCT_SHALLOW_COPY_SLOW
+    for (fty = array_first(&dst->type->fields, &it);
          fty != NULL;
-         fty = array_next(&ty->fields, &it)) {
+         fty = array_next(&dst->type->fields, &it)) {
 
         *(dst->fields + it.iter) = *(src->fields + it.iter);
 
@@ -384,10 +502,8 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
             break;
         }
     }
-#endif
-
-#if 0
-    memcpy(dst->fields, src->fields, dst->fnum * sizeof(void *));
+#else
+    memcpy(dst->fields, src->fields, dst->type->fields.elnum * sizeof(void *));
 #endif
 
 }

@@ -129,6 +129,7 @@ dsource_parse(array_t *form, array_iter_t *it)
         (*dsource)->error = 1;
         return 1;
     }
+    (*dsource)->fdelim = (*dsource)->_struct->delim[0];
 
     return 0;
 }

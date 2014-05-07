@@ -50,6 +50,7 @@ void *testrt_acquire_take_key(testrt_t *);
 void *testrt_get_do(testrt_t *);
 int testrt_run(bytestream_t *, dsource_t *);
 void testrt_dump_targets(void);
+void testrt_dump_source(rt_struct_t *);
 
 
 #ifdef __cplusplus

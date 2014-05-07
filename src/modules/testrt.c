@@ -987,9 +987,7 @@ testrt_get_do(testrt_t *trt)
         take = testrt_target_new(trt->id,
                                  (lkit_struct_t *)trt->takeexpr->type);
         d0 = testrt_target_new(trt->id, (lkit_struct_t *)trt->doexpr->type);
-        mrklkit_rt_struct_shallow_copy(take->value,
-                                       trt->key.value,
-                                       (lkit_struct_t *)trt->takeexpr->type);
+        mrklkit_rt_struct_shallow_copy(take->value, trt->key.value);
         dict_set_item(&targets, take, d0);
     }
     testrt_target_fini(&trt->key);
@@ -1007,9 +1005,7 @@ testrt_get_do_empty(testrt_t *trt)
         take = testrt_target_new(trt->id,
                                  (lkit_struct_t *)trt->takeexpr->type);
         d0 = testrt_target_new(trt->id, null_struct);
-        mrklkit_rt_struct_shallow_copy(take->value,
-                                       trt->key.value,
-                                       (lkit_struct_t *)trt->takeexpr->type);
+        mrklkit_rt_struct_shallow_copy(take->value, trt->key.value);
         dict_set_item(&targets, take, d0);
     }
     testrt_target_fini(&trt->key);
@@ -1024,34 +1020,47 @@ testrt_run(bytestream_t *bs, dsource_t *ds)
 
     testrt_source = mrklkit_rt_struct_new(ds->_struct);
 
+    /*
+     * This should become a call into an llvm-generated parser with only
+     * bs and test_source params.
+     */
     if ((res = dparse_struct(bs,
                              ds->fdelim,
-                             ds->rdelim,
-                             ds->_struct,
+                             0x7fffffffffffffff,
                              testrt_source,
                              &enddelim,
                              ds->parse_flags)) == DPARSE_NEEDMORE) {
         goto end;
 
     } else if (res == DPARSE_ERRORVALUE) {
-        TRACE("error, delim='%c'", enddelim);
+        TRACE("error, delim='%02hhx'", enddelim);
+        D32(SPDATA(bs), SEOD(bs) - SPOS(bs));
         goto end;
 
     } else {
-        if (enddelim != '\n') {
+        if (enddelim != ds->rdelim[0] ||
+            enddelim == ds->rdelim[1]) {
+
             /* truncated input? */
-            res = 1;
+            TRACE("TRUNC, delim=%02hhx", enddelim);
+            res = DPARSE_ERRORVALUE;
             goto end;
         }
 
-        if (enddelim == '\n') {
-            //TRACE("EOL");
+        if (enddelim == ds->rdelim[0]) {
+            TRACE("EOL");
         }
 
-        //TRACE("ok, delim='%c':", enddelim);
+        TRACE("ok, delim=%02hhx:", enddelim);
+        //testrt_dump_source(testrt_source);
 
-        if (mrklkit_call_void(TESTRT_START) != 0) {
-            FAIL("mrklkit_call_void");
+        //if (mrklkit_call_void(TESTRT_START) != 0) {
+        //    FAIL("mrklkit_call_void");
+        //}
+
+        if (ds->parse_flags & DPARSE_MERGEDELIM) {
+        } else {
+            SINCR(bs);
         }
     }
 
@@ -1069,8 +1078,8 @@ dump_tgt(testrt_target_t *k, testrt_target_t *v, UNUSED void *udata)
     //D8(v, sizeof(*v));
     //lkit_type_dump((lkit_type_t *)k->type);
     //lkit_type_dump((lkit_type_t *)v->type);
-    mrklkit_rt_struct_dump(k->value, k->type);
-    mrklkit_rt_struct_dump(v->value, v->type);
+    mrklkit_rt_struct_dump(k->value);
+    mrklkit_rt_struct_dump(v->value);
     TRACEC("\n");
     return 0;
 }
@@ -1091,6 +1100,13 @@ testrt_dump_targets(void)
     dict_traverse(&targets, (dict_traverser_t)dump_tgt, NULL);
 }
 
+
+void
+testrt_dump_source(rt_struct_t *source)
+{
+    mrklkit_rt_struct_dump(source);
+    TRACEC("\n");
+}
 
 static void
 _init(void)
