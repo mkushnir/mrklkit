@@ -1,13 +1,14 @@
 AC_INIT(mrklkit, 0.1, markiyan.kushnir@gmail.com)
 if test -n "$USE_GCC"
 then
-    if test "$USE_GCC" = "46" && which gcc46
+    probe="gcc${USE_GCC}"
+    if which $probe >/dev/null
     then
-        CC="gcc46"
-        CXX="c++46"
+        CC="gcc${USE_GCC}"
+        CXX="c++${USE_GCC}"
         CPP="cpp"
     else
-        if which gcc
+        if which gcc >/dev/null
         then
             CC="gcc"
             CXX="g++"
@@ -30,8 +31,8 @@ else
         then
             AC_SUBST(CLANG_DEBUG, ['-ftrapv -fcatch-undefined-behavior'])
         else
-            # we assume all others are 3.3+
-            AC_SUBST(CLANG_DEBUG, ['-fsanitize=undefined-trap -fsanitize-undefined-trap-on-error'])
+            # we assume all others are 3.3+, add here options if needed
+            AC_SUBST(CLANG_DEBUG, ['-ftrapv -fcatch-undefined-behavior'])
         fi
     else
         CC="cc"

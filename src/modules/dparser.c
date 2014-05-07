@@ -17,6 +17,7 @@
 
 #include "diag.h"
 
+
 void
 qstr_unescape(char *dst, const char *src, size_t sz)
 {
@@ -87,7 +88,9 @@ dparser_reach_value(bytestream_t *bs, char delim, off_t epos, int flags)
 
 
 int
-dparser_read_lines(int fd, void (*cb)(bytestream_t *, byterange_t *))
+dparser_read_lines(int fd,
+                   void (*cb)(bytestream_t *, byterange_t *, void *),
+                   void *udata)
 {
     bytestream_t bs;
     ssize_t nread;
@@ -116,7 +119,7 @@ dparser_read_lines(int fd, void (*cb)(bytestream_t *, byterange_t *))
         TRACE("start=%ld end=%ld", br.start, br.end);
         //D32(SPDATA(&bs), br.end - br.start);
 
-        cb(&bs, &br);
+        cb(&bs, &br, udata);
         dparser_reach_value(&bs, '\n', SEOD(&bs), 0);
         br.end = SEOD(&bs);
     }
@@ -282,7 +285,6 @@ end:
 }
 
 
-
 int
 dparse_str(bytestream_t *bs,
            char delim,
@@ -300,6 +302,7 @@ dparse_str(bytestream_t *bs,
     *val = bytes_new(br.end - br.start);
     memcpy((*val)->data, SDATA(bs, br.start), (*val)->sz);
     *((*val)->data + (*val)->sz) = '\0';
+    BYTES_INCREF(*val);
 
     return 0;
 }
@@ -528,6 +531,7 @@ dparse_dict(bytestream_t *bs,
     return 0;
 }
 
+
 int
 dparse_struct(bytestream_t *bs,
               char delim,
@@ -538,131 +542,135 @@ dparse_struct(bytestream_t *bs,
 {
     char sdelim;
     byterange_t br;
+    lkit_type_t **fty;
+    void **val;
+
 
     sdelim = value->type->delim[0];
-    /* save */
     br.start = SPOS(bs);
     dparser_reach_delim(bs, delim, epos);
-    /* adjust epos */
     br.end = SPOS(bs);
+    SPOS(bs) = br.start;
 
-    if (!SNEEDMORE(bs)) {
-        lkit_type_t **fty;
-        void **val;
+    //D32(SPDATA(bs), epos - SPOS(bs));
 
-        /* rewind bs */
-        SPOS(bs) = br.start;
+    for (fty = array_get(&value->type->fields, value->current);
+         fty != NULL;
+         fty = array_get(&value->type->fields, ++(value->current))) {
 
-        //D32(SPDATA(bs), epos - SPOS(bs));
+        val = mrklkit_rt_get_struct_item_addr(value, value->current);
 
-        for (fty = array_get(&value->type->fields, value->current);
-             fty != NULL;
-             fty = array_get(&value->type->fields, ++(value->current))) {
-
-            val = mrklkit_rt_get_struct_item_addr(value, value->current);
-
-            switch ((*fty)->tag) {
-            case LKIT_INT:
-                assert(sizeof(int64_t) == sizeof(void *));
-                if (dparse_int(bs,
-                               sdelim,
-                               br.end,
-                               (int64_t *)val,
-                               flags) != 0) {
-                    goto err;
-                }
-                break;
-
-            case LKIT_FLOAT:
-                {
-                    union {
-                        double d;
-                        void *v;
-                    } v;
-                    assert(sizeof(double) == sizeof(void *));
-                    if (dparse_float(bs,
-                                     sdelim,
-                                     br.end,
-                                     &v.d,
-                                     flags) != 0) {
-                        goto err;
-                    }
-                    *val = v.v;
-                }
-                break;
-
-            case LKIT_STR:
-                if (dparse_str(bs,
-                               sdelim,
-                               br.end,
-                               (bytes_t **)val,
-                               flags) != 0) {
-                    goto err;
-                }
-                break;
-
-            case LKIT_ARRAY:
-                {
-                    lkit_array_t *arty = (lkit_array_t *)*fty;
-                    *val = mrklkit_rt_array_new(arty);
-                    if (dparse_array(bs,
-                                     sdelim,
-                                     br.end,
-                                     (rt_array_t *)*val,
-                                     flags) != 0) {
-                        goto err;
-                    }
-                }
-                break;
-
-            case LKIT_DICT:
-                {
-                    lkit_dict_t *dcty = (lkit_dict_t *)*fty;
-                    *val = mrklkit_rt_dict_new(dcty);
-                    if (dparse_dict(bs,
-                                    sdelim,
-                                    br.end,
-                                    (rt_dict_t *)*val,
-                                    flags) != 0) {
-                        goto err;
-                    }
-                }
-                break;
-
-            case LKIT_STRUCT:
-                {
-                    lkit_struct_t *ts;
-                    char sch;
-
-                    ts = (lkit_struct_t *)*fty;
-                    *val = mrklkit_rt_struct_new(ts);
-                    STRUCT_INCREF((rt_struct_t *)*val);
-                    if (dparse_struct(bs,
-                                      ts->delim[0],
-                                      br.end,
-                                      (rt_struct_t *)(*val),
-                                      &sch,
-                                      flags) != 0) {
-                        goto err;
-                    }
-                }
-                break;
-
-            default:
-                FAIL("dparse_struct: need more types to handle in dparse");
+        switch ((*fty)->tag) {
+        case LKIT_INT:
+            assert(sizeof(int64_t) == sizeof(void *));
+            if (dparse_int(bs,
+                           sdelim,
+                           br.end,
+                           (int64_t *)val,
+                           flags) != 0) {
+                //goto err;
+                TRACE("E:%ld", *((int64_t *)val));
             }
+            break;
+
+        case LKIT_FLOAT:
+            {
+                union {
+                    double d;
+                    void *v;
+                } v;
+                assert(sizeof(double) == sizeof(void *));
+                if (dparse_float(bs,
+                                 sdelim,
+                                 br.end,
+                                 &v.d,
+                                 flags) != 0) {
+                    //goto err;
+                    TRACE("E:%lf", v.d);
+                }
+                *val = v.v;
+            }
+            break;
+
+        case LKIT_STR:
+            if (dparse_str(bs,
+                           sdelim,
+                           br.end,
+                           (bytes_t **)val,
+                           flags) != 0) {
+                //goto err;
+                TRACE("E:<str>");
+            }
+            break;
+
+        case LKIT_ARRAY:
+            {
+                lkit_array_t *arty = (lkit_array_t *)*fty;
+                *val = mrklkit_rt_array_new(arty);
+                ARRAY_INCREF((rt_array_t *)*val);
+                if (dparse_array(bs,
+                                 sdelim,
+                                 br.end,
+                                 (rt_array_t *)*val,
+                                 flags) != 0) {
+                    //goto err;
+                    TRACE("E:<arr>");
+                }
+            }
+            break;
+
+        case LKIT_DICT:
+            {
+                lkit_dict_t *dcty = (lkit_dict_t *)*fty;
+                *val = mrklkit_rt_dict_new(dcty);
+                DICT_INCREF((rt_dict_t *)*val);
+                if (dparse_dict(bs,
+                                sdelim,
+                                br.end,
+                                (rt_dict_t *)*val,
+                                flags) != 0) {
+                    //goto err;
+                    TRACE("E:<dict>");
+                }
+            }
+            break;
+
+        case LKIT_STRUCT:
+            {
+                lkit_struct_t *ts;
+                char sch;
+
+                ts = (lkit_struct_t *)*fty;
+                *val = mrklkit_rt_struct_new(ts);
+                STRUCT_INCREF((rt_struct_t *)*val);
+                if (dparse_struct(bs,
+                                  sdelim,
+                                  br.end,
+                                  (rt_struct_t *)(*val),
+                                  &sch,
+                                  flags) != 0) {
+                    //goto err;
+                    TRACE("E:<struct>");
+                }
+            }
+            break;
+
+        default:
+            FAIL("dparse_struct: need more types to handle in dparse");
         }
 
-        /* set end position at the delim */
-        SPOS(bs) = br.end;
-        *ch = SPCHR(bs);
-        return 0;
+        //TRACE("SPCHR='%c' sdelim='%c'", SPCHR(bs), sdelim);
+        dparser_reach_value(bs, sdelim, epos, flags);
+
+        ///* set end position at the delim */
+        //SPOS(bs) = br.end;
     }
 
-    return DPARSE_NEEDMORE;
+    SPOS(bs) = br.end;
+    *ch = SPCHR(bs);
+    return 0;
 
-err:
-    return DPARSE_ERRORVALUE;
+//err:
+//    return DPARSE_ERRORVALUE;
 }
-
 

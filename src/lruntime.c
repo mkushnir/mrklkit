@@ -24,6 +24,7 @@ mrklkit_rt_array_dump(rt_array_t *value)
 
     fty = lkit_array_get_element_type(value->type);
 
+    TRACEC("[ ");
     for (val = array_first(&value->fields, &it);
          val != NULL;
          val = array_next(&value->fields, &it)) {
@@ -53,6 +54,7 @@ mrklkit_rt_array_dump(rt_array_t *value)
 
         }
     }
+    TRACEC("] ");
 }
 
 
@@ -161,6 +163,7 @@ mrklkit_rt_dict_dump(rt_dict_t *value)
 
     fty = lkit_dict_get_element_type(value->type);
 
+    TRACEC("{ ");
     switch (fty->tag) {
     case LKIT_INT:
         dict_traverse(&value->fields,
@@ -183,6 +186,7 @@ mrklkit_rt_dict_dump(rt_dict_t *value)
     default:
         FAIL("mrklkit_rt_dict_dump");
     }
+    TRACEC("} ");
 }
 
 
@@ -295,6 +299,7 @@ mrklkit_rt_struct_dump(rt_struct_t *value)
     lkit_type_t **fty;
     array_iter_t it;
 
+    TRACEC("< ");
     //TRACE("ty=%p", ty);
     for (fty = array_first(&value->type->fields, &it);
          fty != NULL;
@@ -310,7 +315,12 @@ mrklkit_rt_struct_dump(rt_struct_t *value)
             break;
 
         case LKIT_STR:
-            TRACEC("%s ", mrklkit_rt_get_struct_item_str(value, it.iter)->data);
+            {
+                bytes_t *v;
+
+                v = mrklkit_rt_get_struct_item_str(value, it.iter);
+                TRACEC("'%s' ", v != NULL ? v->data : NULL);
+            }
             break;
 
         case LKIT_ARRAY:
@@ -332,6 +342,7 @@ mrklkit_rt_struct_dump(rt_struct_t *value)
             FAIL("mrklkit_rt_struct_dump");
         }
     }
+    TRACEC("> ");
 }
 
 

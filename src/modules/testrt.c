@@ -1013,7 +1013,7 @@ testrt_get_do_empty(testrt_t *trt)
 
 
 int
-testrt_run(bytestream_t *bs, dsource_t *ds)
+testrt_run(bytestream_t *bs, byterange_t *br, dsource_t *ds)
 {
     int res = 0;
     char enddelim = '\0';
@@ -1025,16 +1025,16 @@ testrt_run(bytestream_t *bs, dsource_t *ds)
      * bs and test_source params.
      */
     if ((res = dparse_struct(bs,
-                             ds->fdelim,
-                             0x7fffffffffffffff,
+                             ds->rdelim[0],
+                             br->end,
                              testrt_source,
                              &enddelim,
                              ds->parse_flags)) == DPARSE_NEEDMORE) {
         goto end;
 
     } else if (res == DPARSE_ERRORVALUE) {
-        TRACE("error, delim='%02hhx'", enddelim);
-        D32(SPDATA(bs), SEOD(bs) - SPOS(bs));
+        TRACE("ERROR, delim='%02hhx'", enddelim);
+        D32(SDATA(bs, br->start), br->end - br->start);
         goto end;
 
     } else {
@@ -1051,20 +1051,15 @@ testrt_run(bytestream_t *bs, dsource_t *ds)
             TRACE("EOL");
         }
 
-        TRACE("ok, delim=%02hhx:", enddelim);
-        //testrt_dump_source(testrt_source);
+        TRACE("OK, delim=%02hhx:", enddelim);
 
-        //if (mrklkit_call_void(TESTRT_START) != 0) {
-        //    FAIL("mrklkit_call_void");
-        //}
-
-        if (ds->parse_flags & DPARSE_MERGEDELIM) {
-        } else {
-            SINCR(bs);
+        if (mrklkit_call_void(TESTRT_START) != 0) {
+            FAIL("mrklkit_call_void");
         }
     }
 
 end:
+    testrt_dump_source(testrt_source);
     mrklkit_rt_struct_destroy(&testrt_source);
     return res;
 }

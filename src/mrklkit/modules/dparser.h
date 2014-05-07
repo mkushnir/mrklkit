@@ -28,7 +28,10 @@ void qstr_unescape(char *, const char *, size_t);
 //void dparser_reach_delim(bytestream_t *, char, off_t);
 //int dparser_reach_delim_readmore(bytestream_t *, int, char, off_t);
 void dparser_reach_value(bytestream_t *, char, off_t, int);
-int dparser_read_lines(int, void (*)(bytestream_t *, byterange_t *));
+typedef void (*dparser_read_lines_cb_t)(bytestream_t *, byterange_t *, void *);
+int dparser_read_lines(int,
+                       dparser_read_lines_cb_t,
+                       void *);
 
 int dparse_int(bytestream_t *,
                char,

@@ -38,14 +38,13 @@ test0(void)
     }
 }
 
+
 UNUSED static void
 test1(void)
 {
     int fd;
     int res;
     dsource_t *ds;
-    bytestream_t bs;
-    ssize_t nread;
 
     if ((fd = open(prog, O_RDONLY)) == -1) {
         FAIL("open");
@@ -72,25 +71,10 @@ test1(void)
         FAIL("open");
     }
 
-    bytestream_init(&bs, 4096);
-    nread = 0xffffffff;
-    while (nread > 0) {
-        if (SNEEDMORE(&bs)) {
-            nread = bytestream_read_more(&bs, fd, 4096);
-            //TRACE("nread=%ld", nread);
-            continue;
-        }
-
-        if ((res = testrt_run(&bs, ds)) == DPARSE_NEEDMORE) {
-            continue;
-
-        } else if (res == DPARSE_ERRORVALUE) {
-            break;
-        } else {
-            ;
-        }
+    if (dparser_read_lines(fd, (dparser_read_lines_cb_t)testrt_run, ds) != 0) {
+        TRACE("error");
     }
-    bytestream_fini(&bs);
+
     close(fd);
 
     /**/
