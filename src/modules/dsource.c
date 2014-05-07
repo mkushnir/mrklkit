@@ -15,6 +15,7 @@
 #include <mrklkit/ltypegen.h>
 
 #include <mrklkit/modules/dsource.h>
+#include <mrklkit/modules/dparser.h>
 
 #include "diag.h"
 
@@ -35,6 +36,7 @@ dsource_init(dsource_t *dsource)
     /* weak ref */
     dsource->kind = NULL;
     dsource->_struct = NULL;
+    dsource->parse_flags = 0;
 }
 
 static void
@@ -130,6 +132,10 @@ dsource_parse(array_t *form, array_iter_t *it)
         return 1;
     }
     (*dsource)->fdelim = (*dsource)->_struct->delim[0];
+
+    if ((*dsource)->_struct->parser == LKIT_PARSER_MDELIM) {
+        (*dsource)->parse_flags |= DPARSE_MERGEDELIM;
+    }
 
     return 0;
 }

@@ -89,9 +89,10 @@ dparser_reach_value(bytestream_t *bs, char delim, off_t epos, int flags)
 
 int
 dparser_read_lines(int fd,
-                   void (*cb)(bytestream_t *, byterange_t *, void *),
+                   dparser_read_lines_cb_t cb,
                    void *udata)
 {
+    int res = 0;
     bytestream_t bs;
     ssize_t nread;
     byterange_t br;
@@ -116,16 +117,19 @@ dparser_read_lines(int fd,
         br.end = SPOS(&bs);
         SPOS(&bs) = br.start;
 
-        TRACE("start=%ld end=%ld", br.start, br.end);
+        //TRACE("start=%ld end=%ld", br.start, br.end);
         //D32(SPDATA(&bs), br.end - br.start);
 
-        cb(&bs, &br, udata);
+        if ((res = cb(&bs, &br, udata)) != 0) {
+            break;
+        }
+
         dparser_reach_value(&bs, '\n', SEOD(&bs), 0);
         br.end = SEOD(&bs);
     }
 
     bytestream_fini(&bs);
-    return 0;
+    return res;
 }
 
 
@@ -569,7 +573,7 @@ dparse_struct(bytestream_t *bs,
                            (int64_t *)val,
                            flags) != 0) {
                 //goto err;
-                TRACE("E:%ld", *((int64_t *)val));
+                //TRACE("E:%ld", *((int64_t *)val));
             }
             break;
 
@@ -586,7 +590,7 @@ dparse_struct(bytestream_t *bs,
                                  &v.d,
                                  flags) != 0) {
                     //goto err;
-                    TRACE("E:%lf", v.d);
+                    //TRACE("E:%lf", v.d);
                 }
                 *val = v.v;
             }
@@ -599,7 +603,7 @@ dparse_struct(bytestream_t *bs,
                            (bytes_t **)val,
                            flags) != 0) {
                 //goto err;
-                TRACE("E:<str>");
+                //TRACE("E:<str>");
             }
             break;
 
@@ -614,7 +618,7 @@ dparse_struct(bytestream_t *bs,
                                  (rt_array_t *)*val,
                                  flags) != 0) {
                     //goto err;
-                    TRACE("E:<arr>");
+                    //TRACE("E:<arr>");
                 }
             }
             break;
@@ -630,7 +634,7 @@ dparse_struct(bytestream_t *bs,
                                 (rt_dict_t *)*val,
                                 flags) != 0) {
                     //goto err;
-                    TRACE("E:<dict>");
+                    //TRACE("E:<dict>");
                 }
             }
             break;
@@ -650,7 +654,7 @@ dparse_struct(bytestream_t *bs,
                                   &sch,
                                   flags) != 0) {
                     //goto err;
-                    TRACE("E:<struct>");
+                    //TRACE("E:<struct>");
                 }
             }
             break;
@@ -661,16 +665,11 @@ dparse_struct(bytestream_t *bs,
 
         //TRACE("SPCHR='%c' sdelim='%c'", SPCHR(bs), sdelim);
         dparser_reach_value(bs, sdelim, epos, flags);
-
-        ///* set end position at the delim */
-        //SPOS(bs) = br.end;
     }
 
     SPOS(bs) = br.end;
     *ch = SPCHR(bs);
-    return 0;
 
-//err:
-//    return DPARSE_ERRORVALUE;
+    return 0;
 }
 

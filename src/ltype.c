@@ -881,6 +881,12 @@ parse_array_quals(array_t *form,
                     /* delim requires a string argument */
                     TRRET(PARSE_ARRAY_QUALS + 1);
                 }
+            } else if (strcmp((char *) parser, "delim*") == 0) {
+                ta->parser = LKIT_PARSER_MDELIM;
+                if (lparse_next_str(form, it, &ta->delim, 1) != 0) {
+                    /* delim* requires a string argument */
+                    TRRET(PARSE_ARRAY_QUALS + 1);
+                }
             } else if (strcmp((char *) parser, "w3c") == 0) {
                 ta->parser = LKIT_PARSER_W3C;
             } else if (strcmp((char *) parser, "none") == 0) {

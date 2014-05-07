@@ -33,6 +33,7 @@ typedef enum _lkit_tag {
 } lkit_tag_t;
 
 #define LKIT_TAG_STR(tag) ( \
+    (tag) == LKIT_UNDEF ? "UNDEF" : \
     (tag) == LKIT_VOID ? "VOID" : \
     (tag) == LKIT_INT ? "INT" : \
     (tag) == LKIT_STR ? "STR" : \
@@ -44,13 +45,13 @@ typedef enum _lkit_tag {
     (tag) == LKIT_DICT ? "DICT" : \
     (tag) == LKIT_STRUCT ? "STRUCT" : \
     (tag) == LKIT_FUNC ? "FUNC" : \
-    (tag) == LKIT_UNDEF ? "UNDEF" : \
     "<unknown>" \
 )
 
 typedef enum _lkit_parser {
     LKIT_PARSER_NONE,
     LKIT_PARSER_DELIM,
+    LKIT_PARSER_MDELIM,
     LKIT_PARSER_W3C,
 } lkit_parser_t;
 

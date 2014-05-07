@@ -46,7 +46,7 @@ test0(void)
 }
 
 
-static void
+static int
 test_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     while (SPOS(bs) < br->end) {
@@ -67,10 +67,11 @@ test_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
         //D8(SPDATA(bs), br->end - SPOS(bs));
     }
+    return 0;
 }
 
 
-static void
+static int
 test_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     while (SPOS(bs) < br->end) {
@@ -91,10 +92,11 @@ test_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
         //D8(SPDATA(bs), br->end - SPOS(bs));
     }
+    return 0;
 }
 
 
-static void
+static int
 test_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     while (SPOS(bs) < br->end) {
@@ -116,10 +118,11 @@ test_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         //D8(SPDATA(bs), br->end - SPOS(bs));
         mrklkit_bytes_destroy(&value);
     }
+    return 0;
 }
 
 
-static void
+static int
 test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     while (SPOS(bs) < br->end) {
@@ -141,6 +144,7 @@ test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         //D8(SPDATA(bs), br->end - SPOS(bs));
         mrklkit_bytes_destroy(&value);
     }
+    return 0;
 }
 
 
@@ -172,24 +176,27 @@ test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
     } \
     lkit_type_destroy((lkit_type_t **)&arty); \
 
-static void
+static int
 test_array_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     TEST_ARRAY(LKIT_INT);
+    return 0;
 }
 
 
-static void
+static int
 test_array_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     TEST_ARRAY(LKIT_FLOAT);
+    return 0;
 }
 
 
-static void
+static int
 test_array_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     TEST_ARRAY(LKIT_STR);
+    return 0;
 }
 
 
@@ -223,24 +230,27 @@ test_array_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
     lkit_type_destroy((lkit_type_t **)&dcty);
 
 
-static void
+static int
 test_dict_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     TEST_DICT(LKIT_INT);
+    return 0;
 }
 
 
-static void
+static int
 test_dict_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     TEST_DICT(LKIT_FLOAT);
+    return 0;
 }
 
 
-static void
+static int
 test_dict_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 {
     TEST_DICT(LKIT_STR);
+    return 0;
 }
 
 

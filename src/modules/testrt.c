@@ -500,7 +500,7 @@ _compile_trt(testrt_t *trt, void *udata)
         if (ltype_compile_methods((lkit_type_t *)trt->doexpr->type,
                                   module,
                                   name) != 0) {
-            res = TESTRT_COMPILE + 200;
+            res = TESTRT_COMPILE + 201;
             goto end;
         }
         bytes_decref(&name);
@@ -580,7 +580,7 @@ _compile_trt(testrt_t *trt, void *udata)
                 lkit_expr_t **arg;
 
                 if ((arg = array_get(&(*expr)->subs, 0)) == NULL) {
-                    res = TESTRT_COMPILE + 201;
+                    res = TESTRT_COMPILE + 202;
                     goto end;
                 }
 
@@ -604,9 +604,13 @@ _compile_trt(testrt_t *trt, void *udata)
                     break;
 
                 default:
-                    res = TESTRT_COMPILE + 202;
+                    res = TESTRT_COMPILE + 203;
                     goto end;
                 }
+            } else if (strcmp((char *)(*expr)->name->data, "SPLIT") == 0) {
+            } else {
+                res = TESTRT_COMPILE + 204;
+                goto end;
             }
 
             LLVMBuildStore(builder, val, gep);
@@ -671,7 +675,7 @@ _compile_trt(testrt_t *trt, void *udata)
          expr != NULL;
          expr = array_next(&trt->otherexpr, &it)) {
         if (builtin_compile_expr(module, builder, *expr) == NULL) {
-            res = TESTRT_COMPILE + 203;
+            res = TESTRT_COMPILE + 205;
             goto end;
         }
     }
@@ -745,7 +749,10 @@ _link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
 
         snprintf(buf, sizeof(buf), "%s.take", trt->name->data);
         name = bytes_new_from_str(buf);
-        if (ltype_link_methods((lkit_type_t *)trt->takeexpr->type, ee, module, name)) {
+        if (ltype_link_methods((lkit_type_t *)trt->takeexpr->type,
+                               ee,
+                               module,
+                               name)) {
             TRRET(TESTRT_LINK + 2);
         }
         bytes_decref(&name);
@@ -804,7 +811,8 @@ testrt_target_hash(testrt_target_t *tgt)
              ty != NULL;
              ty = array_next(&tgt->type->fields, &it)) {
 
-            //TRACE("tag=%s rtsz=%ld iter=%u", LKIT_TAG_STR((*ty)->tag), (*ty)->rtsz, it.iter);
+            //TRACE("tag=%s rtsz=%ld iter=%u",
+            //      LKIT_TAG_STR((*ty)->tag), (*ty)->rtsz, it.iter);
 
             switch ((*ty)->tag) {
             case LKIT_INT:
@@ -1042,16 +1050,16 @@ testrt_run(bytestream_t *bs, byterange_t *br, dsource_t *ds)
             enddelim == ds->rdelim[1]) {
 
             /* truncated input? */
-            TRACE("TRUNC, delim=%02hhx", enddelim);
+            //TRACE("TRUNC, delim=%02hhx", enddelim);
             res = DPARSE_ERRORVALUE;
             goto end;
         }
 
         if (enddelim == ds->rdelim[0]) {
-            TRACE("EOL");
+            //TRACE("EOL");
         }
 
-        TRACE("OK, delim=%02hhx:", enddelim);
+        //TRACE("OK, delim=%02hhx:", enddelim);
 
         if (mrklkit_call_void(TESTRT_START) != 0) {
             FAIL("mrklkit_call_void");
@@ -1059,7 +1067,7 @@ testrt_run(bytestream_t *bs, byterange_t *br, dsource_t *ds)
     }
 
 end:
-    testrt_dump_source(testrt_source);
+    //testrt_dump_source(testrt_source);
     mrklkit_rt_struct_destroy(&testrt_source);
     return res;
 }
