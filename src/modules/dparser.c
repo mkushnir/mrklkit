@@ -303,7 +303,7 @@ dparse_str(bytestream_t *bs,
     dparser_reach_delim(bs, delim, epos);
     br.end = SPOS(bs);
 
-    *val = bytes_new(br.end - br.start);
+    *val = bytes_new(br.end - br.start + 1);
     memcpy((*val)->data, SDATA(bs, br.start), (*val)->sz);
     *((*val)->data + (*val)->sz) = '\0';
     BYTES_INCREF(*val);
@@ -488,30 +488,43 @@ dparse_dict(bytestream_t *bs,
 
 #define DPARSE_DICT_CASE(ty, fn) \
         while (SPOS(bs) < br.end && SPCHR(bs) != delim) { \
+            dict_item_t *it; \
             bytes_t *key = NULL; \
             union { \
                 void *v; \
                 ty x; \
             } val; \
             if (dparse_str(bs, kvdelim, br.end, &key, flags) != 0) { \
+                BYTES_DECREF(&key); \
                 dparser_reach_value(bs, fdelim, br.end, flags); \
                 continue; \
-            } \
-            dparser_reach_value(bs, kvdelim, br.end, flags); \
-            if (fn(bs, fdelim, br.end, &val.x, flags) != 0) { \
+            } else { \
                 /* \
-                 * error parsing value would indicate end of array: \
-                 * SPCHR(bs) can be either delim, or any higher level \
-                 * delimiter \
-                 */ \
-                /* TRACE("SPCHR='%c' delim='%c' fdelim='%c'", SPCHR(bs), delim, fdelim); */ \
-                if (SPCHR(bs) != fdelim) { \
-                    dict_set_item(&value->fields, key, val.v); \
-                    break; \
+                if (dfty->tag == LKIT_INT) { \
+                    TRACE("intkey=%s", key->data); \
                 } \
+                */ \
+                dparser_reach_value(bs, kvdelim, br.end, flags); \
+                if ((it = dict_get_item(&value->fields, key)) == NULL) { \
+                    if (fn(bs, fdelim, br.end, &val.x, flags) != 0) { \
+                        /* \
+                         * error parsing value would indicate end of dict: \
+                         * SPCHR(bs) can be either fdelim, or any higher level \
+                         * delimiter \
+                         */ \
+                        /* TRACE("SPCHR='%c' delim='%c' fdelim='%c'", SPCHR(bs), delim, fdelim); */ \
+                        if (SPCHR(bs) != fdelim) { \
+                            dict_set_item(&value->fields, key, val.v); \
+                            break; \
+                        } \
+                    } else { \
+                        dict_set_item(&value->fields, key, val.v); \
+                    } \
+                } else { \
+                    BYTES_DECREF(&key); \
+                } \
+                dparser_reach_value(bs, fdelim, br.end, flags); \
             } \
-            dict_set_item(&value->fields, key, val.v); \
-            dparser_reach_value(bs, fdelim, br.end, flags); \
         }
 
     switch (dfty->tag) {

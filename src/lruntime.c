@@ -221,13 +221,16 @@ mrklkit_rt_dict_destroy(rt_dict_t **value)
 int64_t
 mrklkit_rt_get_dict_item_int(rt_dict_t *value, bytes_t *key, int64_t dflt)
 {
+    dict_item_t *it;
     union {
         void *v;
         int64_t i;
     } res;
 
-    if ((res.v = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = dict_get_item(&value->fields, key)) == NULL) {
         res.i = dflt;
+    } else {
+        res.v = it->value;
     }
     return res.i;
 }
@@ -236,13 +239,16 @@ mrklkit_rt_get_dict_item_int(rt_dict_t *value, bytes_t *key, int64_t dflt)
 double
 mrklkit_rt_get_dict_item_float(rt_dict_t *value, bytes_t *key, double dflt)
 {
+    dict_item_t *it;
     union {
         void *v;
         double d;
     } res;
 
-    if ((res.v = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = dict_get_item(&value->fields, key)) == NULL) {
         res.d = dflt;
+    } else {
+        res.v = it->value;
     }
     return res.d;
 }
@@ -251,10 +257,13 @@ mrklkit_rt_get_dict_item_float(rt_dict_t *value, bytes_t *key, double dflt)
 bytes_t *
 mrklkit_rt_get_dict_item_str(rt_dict_t *value, bytes_t *key, bytes_t *dflt)
 {
+    dict_item_t *it;
     bytes_t *res;
 
-    if ((res = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = dict_get_item(&value->fields, key)) == NULL) {
         res = dflt;
+    } else {
+        res = it->value;
     }
     return res;
 }

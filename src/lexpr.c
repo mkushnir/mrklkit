@@ -143,11 +143,14 @@ lkit_expr_type_of(lkit_expr_t *expr)
 lkit_expr_t *
 lkit_expr_find(lkit_expr_t *ctx, bytes_t *name)
 {
-    lkit_expr_t *expr = NULL;
+    dict_item_t *it;
     lkit_expr_t *cctx;
 
     for (cctx = ctx; cctx!= NULL; cctx = cctx->parent) {
-        if ((expr = dict_get_item(&cctx->ctx, name)) != NULL) {
+        if ((it = dict_get_item(&cctx->ctx, name)) != NULL) {
+            lkit_expr_t *expr;
+
+            expr = it->value;
             return expr;
         }
     }

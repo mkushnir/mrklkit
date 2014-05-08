@@ -27,6 +27,7 @@ const char *_malloc_options = "AJ";
 static const char *fname;
 static uint64_t flags;
 
+static mrklkit_ctx_t ctx;
 
 UNUSED static void
 test0(void)
@@ -56,15 +57,15 @@ test1(void)
         FAIL("open");
     }
 
-    if ((res = mrklkit_compile(fd, flags)) != 0) {
+    if ((res = mrklkit_compile(&ctx, fd, flags, NULL)) != 0) {
         perror("mrklkit_compile");
     } else {
         TRACE(FGREEN("running qwe"));
-        if ((res = mrklkit_call_void(".mrklkit.init.qwe")) != 0) {
+        if ((res = mrklkit_call_void(&ctx, ".mrklkit.init.qwe")) != 0) {
             perror("mrklkit_call_void");
         }
         TRACE(FGREEN("running asd"));
-        if ((res = mrklkit_call_void(".mrklkit.init.asd")) != 0) {
+        if ((res = mrklkit_call_void(&ctx, ".mrklkit.init.asd")) != 0) {
             perror("mrklkit_call_void");
         }
     }
@@ -114,8 +115,10 @@ main(int argc, char **argv)
     if (argc > 1) {
         fname = argv[1];
     }
-    mrklkit_init(&modules);
+    mrklkit_init();
+    mrklkit_ctx_init(&ctx, "test", &modules, NULL);
     test1();
+    mrklkit_ctx_fini(&ctx, NULL);
     mrklkit_fini();
     array_fini(&modules);
     return 0;

@@ -11,6 +11,7 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
+#include <mrklkit/mrklkit.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/ltypegen.h>
 
@@ -23,14 +24,16 @@
  */
 
 int
-ltype_compile(lkit_type_t *ty,
-                          UNUSED void *udata)
+ltype_compile(lkit_type_t *ty, void *udata)
 {
+    mrklkit_ctx_t *ctx;
     lkit_struct_t *ts;
     lkit_func_t *tf;
     LLVMTypeRef retty, *bfields = NULL;
     lkit_type_t **field;
     array_iter_t it;
+
+    ctx = udata;
 
     if (ty->backend != NULL) {
         return 0;
@@ -38,52 +41,61 @@ ltype_compile(lkit_type_t *ty,
 
     switch (ty->tag) {
     case LKIT_VOID:
-        ty->backend = LLVMVoidType();
+        ty->backend = LLVMVoidTypeInContext(ctx->lctx);
         break;
 
     case LKIT_INT:
-        ty->backend = LLVMInt64Type();
+        ty->backend = LLVMInt64TypeInContext(ctx->lctx);
         break;
 
     case LKIT_STR:
         {
+            lkit_str_t *tc;
             LLVMTypeRef fields[4];
 
             /*
              * bytes_t *
              */
-            fields[0] = LLVMInt64Type();
-            fields[1] = LLVMInt64Type();
-            fields[2] = LLVMInt64Type();
-            fields[3] = LLVMArrayType(LLVMInt8Type(), 0);
-            ty->backend = LLVMPointerType(
-                LLVMStructType(fields, countof(fields), 0), 0);
+            fields[0] = LLVMInt64TypeInContext(ctx->lctx);
+            fields[1] = LLVMInt64TypeInContext(ctx->lctx);
+            fields[2] = LLVMInt64TypeInContext(ctx->lctx);
+            fields[3] = LLVMArrayType(LLVMInt8TypeInContext(ctx->lctx), 0);
+            tc = (lkit_str_t *)ty;
+            tc->deref_backend = LLVMStructTypeInContext(ctx->lctx,
+                                                        fields,
+                                                        countof(fields), 0);
+            ty->backend = LLVMPointerType(tc->deref_backend, 0);
         }
         break;
 
     case LKIT_FLOAT:
-        ty->backend = LLVMDoubleType();
+        ty->backend = LLVMDoubleTypeInContext(ctx->lctx);
         break;
 
     case LKIT_BOOL:
-        ty->backend = LLVMInt1Type();
+        ty->backend = LLVMInt1TypeInContext(ctx->lctx);
         break;
 
     case LKIT_ANY:
-        ty->backend = LLVMPointerType(LLVMVoidType(), 0);
+        ty->backend = LLVMPointerType(LLVMInt8TypeInContext(ctx->lctx), 0);
         break;
 
     case LKIT_UNDEF:
-        //ty->backend = LLVMPointerType(LLVMInt8Type(), 0);
-        ty->backend = LLVMPointerType(LLVMVoidType(), 0);
+        ty->backend = LLVMPointerType(LLVMInt8TypeInContext(ctx->lctx), 0);
         break;
 
     case LKIT_ARRAY:
-        ty->backend = LLVMPointerType(LLVMStructType(NULL, 0, 0), 0);
+        ty->backend = LLVMPointerType(LLVMStructTypeInContext(ctx->lctx,
+                                                              NULL,
+                                                              0,
+                                                              0), 0);
         break;
 
     case LKIT_DICT:
-        ty->backend = LLVMPointerType(LLVMStructType(NULL, 0, 0), 0);
+        ty->backend = LLVMPointerType(LLVMStructTypeInContext(ctx->lctx,
+                                                              NULL,
+                                                              0,
+                                                              0), 0);
         break;
 
     case LKIT_STRUCT:
@@ -107,7 +119,10 @@ ltype_compile(lkit_type_t *ty,
             ts->base.rtsz += (*field)->rtsz;
         }
 
-        ts->deref_backend = LLVMStructType(bfields, ts->fields.elnum, 0);
+        ts->deref_backend = LLVMStructTypeInContext(ctx->lctx,
+                                                    bfields,
+                                                    ts->fields.elnum,
+                                                    0);
         ty->backend = LLVMPointerType(ts->deref_backend, 0);
 
 end_struct:
@@ -185,6 +200,9 @@ ltype_compile_methods(lkit_type_t *ty,
                       bytes_t *name)
 {
     char *buf1 = NULL, *buf2 = NULL;
+    LLVMContextRef lctx;
+
+    lctx = LLVMGetModuleContext(module);
 
     switch (ty->tag) {
     case LKIT_STRUCT:
@@ -206,8 +224,8 @@ ltype_compile_methods(lkit_type_t *ty,
 
             ts = (lkit_struct_t *)ty;
 
-            b1 = LLVMCreateBuilder();
-            b2 = LLVMCreateBuilder();
+            b1 = LLVMCreateBuilderInContext(lctx);
+            b2 = LLVMCreateBuilderInContext(lctx);
 
             snprintf(buf1, name->sz + 64, ".mrklkit.init.%s", name->data);
             snprintf(buf2, name->sz + 64, ".mrklkit.fini.%s", name->data);
@@ -219,24 +237,24 @@ ltype_compile_methods(lkit_type_t *ty,
                 TRRET(LTYPE_COMPILE_METHODS + 2);
             }
 
-            argty = LLVMPointerType(LLVMVoidType(), 0);
+            argty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
 
             fn1 = LLVMAddFunction(module,
                                   buf1,
-                                  LLVMFunctionType(LLVMVoidType(),
+                                  LLVMFunctionType(LLVMInt64TypeInContext(lctx),
                                                    &argty,
                                                    1,
                                                    0));
             fn2 = LLVMAddFunction(module,
                                   buf2,
-                                  LLVMFunctionType(LLVMVoidType(),
+                                  LLVMFunctionType(LLVMInt64TypeInContext(lctx),
                                                    &argty,
                                                    1,
                                                    0));
 
-            bb = LLVMAppendBasicBlock(fn1, NEWVAR(".BB"));
+            bb = LLVMAppendBasicBlockInContext(lctx, fn1, NEWVAR(".BB"));
             LLVMPositionBuilderAtEnd(b1, bb);
-            bb = LLVMAppendBasicBlock(fn2, NEWVAR(".BB"));
+            bb = LLVMAppendBasicBlockInContext(lctx, fn2, NEWVAR(".BB"));
             LLVMPositionBuilderAtEnd(b2, bb);
 
             cast1 = LLVMBuildPointerCast(b1,
@@ -260,16 +278,21 @@ ltype_compile_methods(lkit_type_t *ty,
 
 #               define BUILDCODE \
                     { \
-                        LLVMValueRef pnull, dtor; \
+                        LLVMValueRef pnull, dtor, dparam; \
                         /* ctor, just set NULL */ \
                         pnull = LLVMConstPointerNull((*fty)->backend); \
                         LLVMBuildStore(b1, pnull, gep1); \
                         /* dtor, call mrklkit_rt_NNN_destroy() */ \
                         if ((dtor = LLVMGetNamedFunction(module, \
-                                                         dtor_name)) == NULL) { \
+                                dtor_name)) == NULL) { \
                             TRACE("no name: %s", dtor_name); \
                             TRRET(LTYPE_COMPILE_METHODS + 3); \
                         } \
+                        dparam = LLVMGetFirstParam(dtor); \
+                        gep2 = LLVMBuildPointerCast(b2, \
+                                                    gep2, \
+                                                    LLVMTypeOf(dparam), \
+                                                    NEWVAR("cast")); \
                         LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
                     }
 
@@ -337,8 +360,8 @@ ltype_compile_methods(lkit_type_t *ty,
 
             }
 
-            LLVMBuildRetVoid(b1);
-            LLVMBuildRetVoid(b2);
+            LLVMBuildRet(b1, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
+            LLVMBuildRet(b2, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
 
             LLVMDisposeBuilder(b1);
             LLVMDisposeBuilder(b2);
@@ -375,7 +398,7 @@ ltype_link_methods(lkit_type_t *ty,
             array_iter_t it;
             lkit_struct_t *ts;
             void *p;
-            LLVMValueRef g;
+            LLVMValueRef g = NULL;
 
             //TRACE("linking: %s", name->data);
 
@@ -386,7 +409,7 @@ ltype_link_methods(lkit_type_t *ty,
             ts = (lkit_struct_t *)ty;
 
             snprintf(buf, name->sz + 64, ".mrklkit.init.%s", name->data);
-            if ((g = LLVMGetNamedFunction(module, buf)) == NULL) {
+            if (LLVMFindFunction(ee, buf, &g) != 0) {
                 TRRET(LTYPE_LINK_METHODS + 1);
             }
             if ((p = LLVMGetPointerToGlobal(ee, g)) == NULL) {
@@ -396,11 +419,11 @@ ltype_link_methods(lkit_type_t *ty,
             ts->init = p;
 
             snprintf(buf, name->sz + 64, ".mrklkit.fini.%s", name->data);
-            if ((g = LLVMGetNamedFunction(module, buf)) == NULL) {
-                TRRET(LTYPE_LINK_METHODS + 1);
+            if (LLVMFindFunction(ee, buf, &g) != 0) {
+                TRRET(LTYPE_LINK_METHODS + 3);
             }
             if ((p = LLVMGetPointerToGlobal(ee, g)) == NULL) {
-                TRRET(LTYPE_LINK_METHODS + 2);
+                TRRET(LTYPE_LINK_METHODS + 4);
             }
             //TRACE("%s:%p", buf, p);
             ts->fini = p;
@@ -430,7 +453,7 @@ ltype_link_methods(lkit_type_t *ty,
                 //TRACE("need link %s", fbuf);
                 nnm = bytes_new_from_str(fbuf);
                 if (ltype_link_methods(*fty, ee, module, nnm) != 0) {
-                    TRRET(LTYPE_LINK_METHODS + 2);
+                    TRRET(LTYPE_LINK_METHODS + 5);
                 }
                 bytes_decref(&nnm);
             }

@@ -3,8 +3,10 @@
 
 #include <llvm-c/Core.h>
 
+#include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
 
+#include <mrklkit/mrklkit.h>
 #include <mrklkit/module.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lexpr.h>
@@ -42,13 +44,20 @@ typedef struct _testrt {
     testrt_target_t key;
 } testrt_t;
 
+typedef struct _testrt_ctx {
+    mrklkit_ctx_t mctx;
+    lkit_expr_t root;
+    array_t testrts;
+    dsource_t *ds;
+} testrt_ctx_t;
+
 #define TESTRT_START "testrt.start"
 extern mrklkit_module_t testrt_module;
 extern rt_struct_t *testrt_source;
 
 void *testrt_acquire_take_key(testrt_t *);
 void *testrt_get_do(testrt_t *);
-int testrt_run(bytestream_t *, byterange_t *, dsource_t *);
+int testrt_run(bytestream_t *, byterange_t *, testrt_ctx_t *);
 void testrt_dump_targets(void);
 void testrt_dump_source(rt_struct_t *);
 

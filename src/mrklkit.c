@@ -28,17 +28,7 @@
 #include <mrklkit/builtin.h>
 #include <mrklkit/lruntime.h>
 
-#include <mrklkit/modules/testrt.h>
-#include <mrklkit/modules/dsource.h>
-
 #include "diag.h"
-
-LLVMModuleRef module = NULL;
-LLVMExecutionEngineRef ee = NULL;
-
-/* mrklkit ctx */
-static fparser_datum_t *root;
-static array_t *modules = NULL;
 
 /**
  * Generic form parser
@@ -55,25 +45,25 @@ int mrklkit_register_parser(UNUSED const char *keyword,
 }
 
 static int
-mrklkit_parse(int fd)
+mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
 {
     int res = 0;
     array_t *form;
     array_iter_t it;
     fparser_datum_t **fnode;
 
-    if ((root = fparser_parse(fd, NULL, NULL)) == NULL) {
+    if ((ctx->datum_root = fparser_parse(fd, NULL, NULL)) == NULL) {
         FAIL("fparser_parse");
     }
 
 
-    if (FPARSER_DATUM_TAG(root) != FPARSER_SEQ) {
-        root->error = 1;
+    if (FPARSER_DATUM_TAG(ctx->datum_root) != FPARSER_SEQ) {
+        ctx->datum_root->error = 1;
         TR(MRKLKIT_PARSE + 1);
         goto err;
     }
 
-    form = (array_t *)root->body;
+    form = (array_t *)ctx->datum_root->body;
     for (fnode = array_first(form, &it);
          fnode != NULL;
          fnode = array_next(form, &it)) {
@@ -98,7 +88,7 @@ mrklkit_parse(int fd)
                     }
 
                 } else if (strcmp((char *)first, "sym") == 0) {
-                    if (builtin_sym_parse(nform, &nit) != 0) {
+                    if (builtin_sym_parse(ctx, nform, &nit) != 0) {
                         (*fnode)->error = 1;
                         TR(MRKLKIT_PARSE + 3);
                         goto err;
@@ -108,9 +98,9 @@ mrklkit_parse(int fd)
                     mrklkit_module_t **mod;
                     array_iter_t it;
 
-                    for (mod = array_first(modules, &it);
+                    for (mod = array_first(ctx->modules, &it);
                          mod != NULL;
-                         mod = array_next(modules, &it)) {
+                         mod = array_next(ctx->modules, &it)) {
 
                         if ((*mod)->parsers != NULL) {
                             mrklkit_parser_info_t *pi;
@@ -120,7 +110,7 @@ mrklkit_parse(int fd)
                                  ++pi) {
 
                                 if (strcmp((char *)first, pi->keyword) == 0) {
-                                    if (pi->parser(nform, &nit) != 0) {
+                                    if (pi->parser(udata, nform, &nit) != 0) {
                                         (*fnode)->error = 1;
                                         TR(MRKLKIT_PARSE + 2);
                                         goto err;
@@ -146,14 +136,14 @@ end:
     return res;
 
 err:
-    fparser_datum_dump_formatted(root);
+    fparser_datum_dump_formatted(ctx->datum_root);
     res = 1;
     goto end;
 }
 
 
 static void
-do_analysis(void)
+do_analysis(mrklkit_ctx_t *ctx)
 {
     LLVMPassManagerBuilderRef pmb;
     LLVMPassManagerRef fpm;
@@ -161,7 +151,7 @@ do_analysis(void)
     UNUSED int res = 0;
     LLVMValueRef fn = NULL;
 
-    if ((fpm = LLVMCreateFunctionPassManagerForModule(module)) == NULL) {
+    if ((fpm = LLVMCreateFunctionPassManagerForModule(ctx->module)) == NULL) {
         FAIL("LLVMCreateFunctionPassManagerForModule");
     }
 
@@ -179,7 +169,7 @@ do_analysis(void)
         TRACE("LLVMInitializeFunctionPassManager ...");
     }
 
-    for (fn = LLVMGetFirstFunction(module);
+    for (fn = LLVMGetFirstFunction(ctx->module);
          fn != NULL;
          fn = LLVMGetNextFunction(fn)) {
 
@@ -191,7 +181,7 @@ do_analysis(void)
         }
     }
 
-    res = LLVMRunPassManager(pm, module);
+    res = LLVMRunPassManager(pm, ctx->module);
     //TRACE("res=%d", res);
     //if (res != 0) {
     //    TRACE("module was modified");
@@ -204,71 +194,78 @@ do_analysis(void)
 }
 
 
-int
-mrklkit_compile(int fd, uint64_t flags)
+static int
+ltype_compile_cb(lkit_type_t *kty, UNUSED lkit_type_t *vty, void *udata)
 {
-    UNUSED char *error_msg = NULL;
-    UNUSED int res = 0;
-    UNUSED LLVMTargetRef tr;
-    UNUSED LLVMTargetMachineRef tmr;
-    UNUSED LLVMMemoryBufferRef mb = NULL;
+    return ltype_compile(kty, udata);
+}
+
+
+int
+mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
+{
+    char *error_msg = NULL;
+    int res = 0;
+    LLVMTargetRef tr;
+    LLVMTargetMachineRef tmr;
+    LLVMMemoryBufferRef mb = NULL;
     mrklkit_module_t **mod;
     array_iter_t it;
 
     /* parse */
-    if (mrklkit_parse(fd) != 0) {
+    if (mrklkit_parse(ctx, fd, udata) != 0) {
         TRRET(MRKLKIT_COMPILE + 1);
     }
 
     /* precompile */
 
-    for (mod = array_first(modules, &it);
+    for (mod = array_first(ctx->modules, &it);
          mod != NULL;
-         mod = array_next(modules, &it)) {
+         mod = array_next(ctx->modules, &it)) {
 
         if ((*mod)->precompile != NULL) {
-            if ((*mod)->precompile()) {
+            if ((*mod)->precompile(udata)) {
                 TRRET(MRKLKIT_COMPILE + 2);
             }
         }
     }
 
 
-    if (ltype_transform((dict_traverser_t)ltype_compile,
-                        NULL) != 0) {
+    if (ltype_transform((dict_traverser_t)ltype_compile_cb,
+                        ctx) != 0) {
         TRRET(MRKLKIT_COMPILE + 3);
     }
 
     /* compile */
 
     /* builtin */
-    if (builtin_sym_compile(module) != 0) {
+    if (builtin_sym_compile(ctx, ctx->module) != 0) {
         TRRET(MRKLKIT_COMPILE + 4);
     }
 
     /* modules */
 
-    for (mod = array_first(modules, &it);
+    for (mod = array_first(ctx->modules, &it);
          mod != NULL;
-         mod = array_next(modules, &it)) {
+         mod = array_next(ctx->modules, &it)) {
 
         if ((*mod)->compile != NULL) {
-            if ((*mod)->compile(module)) {
+            if ((*mod)->compile(udata, ctx->module)) {
                 TRRET(MRKLKIT_COMPILE + 5);
             }
         }
     }
 
     if (flags & MRKLKIT_COMPILE_DUMP0) {
-        LLVMDumpModule(module);
+        LLVMDumpModule(ctx->module);
     }
 
     /* LLVM analysis */
-    do_analysis();
+    do_analysis(ctx);
 
     if (flags & MRKLKIT_COMPILE_DUMP1) {
         TRACEC("-----------------------------------------------\n");
-        LLVMDumpModule(module);
+        LLVMDumpModule(ctx->module);
     }
 
     if (flags & MRKLKIT_COMPILE_DUMP2) {
@@ -280,11 +277,11 @@ mrklkit_compile(int fd, uint64_t flags)
               LLVMTargetHasJIT(tr),
               LLVMTargetHasTargetMachine(tr),
               LLVMTargetHasAsmBackend(tr),
-              LLVMGetTarget(module));
+              LLVMGetTarget(ctx->module));
 
         TRACEC("-----------------------------------------------\n");
         tmr = LLVMCreateTargetMachine(tr,
-                                      (char *)LLVMGetTarget(module),
+                                      (char *)LLVMGetTarget(ctx->module),
                                       "x86-64",
                                       "",
                                       LLVMCodeGenLevelDefault,
@@ -292,7 +289,7 @@ mrklkit_compile(int fd, uint64_t flags)
                                       LLVMCodeModelDefault);
 
         res = LLVMTargetMachineEmitToMemoryBuffer(tmr,
-                                                  module,
+                                                  ctx->module,
                                                   LLVMAssemblyFile,
                                                   &error_msg,
                                                   &mb);
@@ -310,25 +307,25 @@ mrklkit_compile(int fd, uint64_t flags)
 
 
 int
-mrklkit_init_runtime(void)
+mrklkit_init_runtime(mrklkit_ctx_t *ctx, void *udata)
 {
     char *error_msg = NULL;
     mrklkit_module_t **mod;
     array_iter_t it;
 
     LLVMLinkInJIT();
-    assert(module != NULL);
-    if (LLVMCreateJITCompilerForModule(&ee,
-                                       module,
+    assert(ctx->module != NULL);
+    if (LLVMCreateJITCompilerForModule(&ctx->ee,
+                                       ctx->module,
                                        0,
                                        &error_msg) != 0) {
         TRACE("%s", error_msg);
         FAIL("LLVMCreateExecutionEngineForModule");
     }
     //LLVMLinkInInterpreter();
-    //if (LLVMCreateInterpreterForModule(&ee,
-    //if (LLVMCreateExecutionEngineForModule(&ee,
-    //                                       module,
+    //if (LLVMCreateInterpreterForModule(&ctx->ee,
+    //if (LLVMCreateExecutionEngineForModule(&ctx->ee,
+    //                                       ctx->module,
     //                                       &error_msg) != 0) {
     //    TRACE("%s", error_msg);
     //    FAIL("LLVMCreateExecutionEngineForModule");
@@ -338,55 +335,118 @@ mrklkit_init_runtime(void)
     //LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
     //opts.NoFramePointerElim = 1;
     //opts.EnableFastISel = 1;
-    //if (LLVMCreateMCJITCompilerForModule(&ee,
-    //                                     module,
+    //if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
+    //                                     ctx->module,
     //                                     &opts, sizeof(opts),
     //                                     &error_msg) != 0) {
     //    TRACE("%s", error_msg);
     //    FAIL("LLVMCreateMCJITCompilerForModule");
     //}
 
-    if (modules != NULL) {
-        for (mod = array_last(modules, &it);
+    LLVMRunStaticConstructors(ctx->ee);
+
+    if (ctx->modules != NULL) {
+        for (mod = array_last(ctx->modules, &it);
              mod != NULL;
-             mod = array_prev(modules, &it)) {
+             mod = array_prev(ctx->modules, &it)) {
             if ((*mod)->link != NULL) {
-                (*mod)->link(ee, module);
+                (*mod)->link(udata, ctx->ee, ctx->module);
             }
         }
     }
+
     return 0;
 }
 
 
 int
-mrklkit_call_void(const char *name)
+mrklkit_call_void(mrklkit_ctx_t *ctx, const char *name)
 {
     int res;
     LLVMValueRef fn;
     LLVMGenericValueRef rv;
 
-    LLVMRunStaticConstructors(ee);
-
-    res = LLVMFindFunction(ee, name, &fn);
+    res = LLVMFindFunction(ctx->ee, name, &fn);
     //TRACE("res=%d", res);
     if (res == 0) {
-        rv = LLVMRunFunction(ee, fn, 0, NULL);
+        rv = LLVMRunFunction(ctx->ee, fn, 0, NULL);
         //TRACE("rv=%p", rv);
         //TRACE("rv=%llu", LLVMGenericValueToInt(rv, 0));
         LLVMDisposeGenericValue(rv);
     }
-    LLVMRunStaticDestructors(ee);
     return res;
 }
 
-int64_t LTEST
-(char *arg)
+
+void
+mrklkit_ctx_init(mrklkit_ctx_t *ctx,
+                 const char *name,
+                 array_t *mod,
+                 void *udata)
 {
-    TRACE("arg %p", arg);
-    TRACE("argval: '%s'", arg);
-    return 123;
+    array_iter_t it;
+    mrklkit_module_t **m;
+
+    ctx->modules = mod;
+    if (ctx->modules != NULL) {
+        for (m = array_first(ctx->modules, &it);
+             m != NULL;
+             m = array_next(ctx->modules, &it)) {
+            if ((*m)->init != NULL) {
+                (*m)->init(udata);
+            }
+        }
+    }
+
+    ctx->datum_root = NULL;
+
+    lkit_expr_init(&ctx->builtin_root, NULL);
+
+    ctx->lctx = LLVMContextCreate();
+    if ((ctx->module = LLVMModuleCreateWithNameInContext(name,
+            ctx->lctx)) == NULL) {
+        FAIL("LLVMModuleCreateWithNameInContext");
+    }
+    ctx->ee = NULL;
 }
+
+
+void
+mrklkit_ctx_fini(mrklkit_ctx_t *ctx, void *udata)
+{
+    array_iter_t it;
+    mrklkit_module_t **mod;
+
+    if (ctx->ee != NULL) {
+        LLVMRunStaticDestructors(ctx->ee);
+        //LLVMDisposeExecutionEngine(ctx->ee);
+        ctx->ee = NULL;
+    }
+    if (ctx->module != NULL) {
+        LLVMDisposeModule(ctx->module);
+        ctx->module = NULL;
+    }
+    LLVMContextDispose(ctx->lctx);
+    ctx->lctx = NULL;
+
+    lkit_expr_fini(&ctx->builtin_root);
+
+    if (ctx->datum_root != NULL) {
+        fparser_datum_destroy(&ctx->datum_root);
+    }
+
+    if (ctx->modules != NULL) {
+        for (mod = array_last(ctx->modules, &it);
+             mod != NULL;
+             mod = array_prev(ctx->modules, &it)) {
+            if ((*mod)->fini != NULL) {
+                (*mod)->fini(udata);
+            }
+        }
+    }
+}
+
+
 
 /*
  * Module
@@ -424,74 +484,32 @@ llvm_init(void)
 
     LLVMInitializeTarget(pr);
 
-    if ((module = LLVMModuleCreateWithName("test")) == NULL) {
-        FAIL("LLVMModuleCreateWithName");
-    }
-
 }
 
 static void
 llvm_fini(void)
 {
-    if (ee != NULL) {
-        LLVMDisposeExecutionEngine(ee);
-        ee = NULL;
-    }
+    LLVMContextDispose(LLVMGetGlobalContext());
 }
 
 void
-mrklkit_init(array_t *mod)
+mrklkit_init(void)
 {
-    array_iter_t it;
-    mrklkit_module_t **m;
-
     llvm_init();
-    root = NULL;
     ltype_init();
     lexpr_init();
     builtin_init();
     lruntime_init();
-
-    modules = mod;
-    if (modules != NULL) {
-        for (m = array_first(modules, &it);
-             m != NULL;
-             m = array_next(modules, &it)) {
-            if ((*m)->init != NULL) {
-                (*m)->init();
-            }
-        }
-    }
-
 }
 
 
 void
 mrklkit_fini(void)
 {
-    array_iter_t it;
-    mrklkit_module_t **mod;
-
-    if (modules != NULL) {
-        for (mod = array_last(modules, &it);
-             mod != NULL;
-             mod = array_prev(modules, &it)) {
-            if ((*mod)->fini != NULL) {
-                (*mod)->fini();
-            }
-        }
-    }
-
     lruntime_fini();
     builtin_fini();
     lexpr_fini();
     ltype_fini();
-
-    /* reverse to mrklkit_parse */
-    if (root != NULL) {
-        fparser_datum_destroy(&root);
-    }
-
     llvm_fini();
 }
 

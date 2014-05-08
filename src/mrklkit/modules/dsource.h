@@ -27,7 +27,7 @@ typedef struct _dsource {
     uint64_t parse_flags;
 } dsource_t;
 
-int dsource_parse(array_t *, array_iter_t *);
+int dsource_parse(void *, array_t *, array_iter_t *);
 dsource_t *dsource_get(const char *);
 int dsource_compile(LLVMModuleRef);
 int dsource_link(LLVMExecutionEngineRef, LLVMModuleRef);

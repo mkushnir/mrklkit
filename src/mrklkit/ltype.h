@@ -98,6 +98,7 @@ typedef struct _lkit_vararg {
 
 typedef struct _lkit_str {
     struct _lkit_type base;
+    LLVMTypeRef deref_backend;
 } lkit_str_t;
 
 typedef struct _lkit_array {

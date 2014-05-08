@@ -19,7 +19,7 @@ then
         fi
     fi
 else
-    if which clang33 >/dev/null
+    if which clang34 >/dev/null
     then
         CC="clang -Qunused-arguments -fcolor-diagnostics"
         CXX="clang++ -Qunused-arguments -fcolor-diagnostics"
@@ -92,10 +92,10 @@ then
     AC_SUBST(LLVM_LDFLAGS, ["`llvm-config --ldflags` $cxxlib"])
     #AC_SUBST(LLVM_LIBS, ["`llvm-config --libs engine interpreter all-targets ipo`"])
 else
-    AC_SUBST(LLVM_CFLAGS, ["`llvm-config33 --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
-    AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs`"])
-    AC_SUBST(LLVM_LDFLAGS, ["`llvm-config33 --ldflags` $cxxlib"])
-    #AC_SUBST(LLVM_LIBS, ["`llvm-config33 --libs engine interpreter all-targets ipo`"])
+    AC_SUBST(LLVM_CFLAGS, ["`llvm-config34 --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
+    AC_SUBST(LLVM_LIBS, ["`llvm-config34 --libs`"])
+    AC_SUBST(LLVM_LDFLAGS, ["`llvm-config34 --ldflags` $cxxlib"])
+    #AC_SUBST(LLVM_LIBS, ["`llvm-config34 --libs engine interpreter all-targets ipo`"])
 fi
 
 AC_PRESERVE_HELP_ORDER

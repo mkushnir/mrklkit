@@ -183,6 +183,7 @@ lkit_type_new(lkit_tag_t tag)
             tc->base.rtsz = sizeof(bytes_t *);
             LKIT_ERROR(tc) = 0;
             tc->base.dtor = (lkit_type_dtor_t)mrklkit_bytes_destroy;
+            tc->deref_backend = NULL;
             ty = (lkit_type_t *)tc;
         }
         break;
@@ -309,6 +310,7 @@ lkit_type_new(lkit_tag_t tag)
             ts->base.dtor = (lkit_type_dtor_t)mrklkit_rt_struct_destroy;
             array_init(&ts->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             array_init(&ts->names, sizeof(bytes_t *), 0, NULL, NULL);
+            ts->deref_backend = NULL;
             ty = (lkit_type_t *)ts;
         }
         break;
@@ -367,13 +369,16 @@ lkit_type_get(lkit_tag_t tag)
 lkit_type_t *
 lkit_type_finalize(lkit_type_t *ty)
 {
-    lkit_type_t *probe;
+    dict_item_t *probe;
 
     if ((probe = dict_get_item(&types, ty)) == NULL) {
         /* this is new one */
         dict_set_item(&types, ty, ty);
     } else {
-        if (probe != ty) {
+        lkit_type_t *pty;
+
+        pty = probe->value;
+        if (pty != ty) {
             /* make ty singleton */
             if (ty->tag >= _LKIT_END_OF_BUILTIN_TYPES) {
                 lkit_type_destroy(&ty);
@@ -382,7 +387,7 @@ lkit_type_finalize(lkit_type_t *ty)
                 lkit_type_dump(ty);
                 FAIL("dict_get_item");
             }
-            ty = probe;
+            ty = pty;
         }
     }
     return ty;
@@ -685,8 +690,9 @@ rt_array_bytes_fini(bytes_t **value, UNUSED void *udata)
 static int
 rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
 {
+    //TRACE("%ld %s", key != NULL ? key->nref : -2, key != NULL ? key->data : NULL);
     if (key != NULL) {
-        free(key);
+        BYTES_DECREF(&key);
     }
     return 0;
 }
@@ -695,10 +701,10 @@ static int
 rt_dict_fini_keyval(bytes_t *key, void *val)
 {
     if (key != NULL) {
-        free(key);
+        BYTES_DECREF(&key);
     }
     if (val != NULL) {
-        free(val);
+        BYTES_DECREF((bytes_t **)&val);
     }
     return 0;
 }
@@ -974,6 +980,12 @@ parse_struct_quals(array_t *form,
                     /* delim requires a string argument */
                     TRRET(PARSE_STRUCT_QUALS + 1);
                 }
+            } else if (strcmp((char *) parser, "mdelim") == 0) {
+                ts->parser = LKIT_PARSER_MDELIM;
+                if (lparse_next_str(form, it, &ts->delim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_STRUCT_QUALS + 2);
+                }
             } else if (strcmp((char *) parser, "w3c") == 0) {
                 ts->parser = LKIT_PARSER_W3C;
             } else if (strcmp((char *) parser, "none") == 0) {
@@ -981,11 +993,11 @@ parse_struct_quals(array_t *form,
             } else {
                 /* unknown parser */
                 ts->parser = -1;
-                TRRET(PARSE_STRUCT_QUALS + 2);
+                TRRET(PARSE_STRUCT_QUALS + 3);
             }
         } else {
             /* a WORD expected after :parser */
-            TRRET(PARSE_STRUCT_QUALS + 3);
+            TRRET(PARSE_STRUCT_QUALS + 4);
         }
     } else {
         /* unknown array qualifier */
@@ -1084,13 +1096,16 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
         } else if (strcmp(typename, "...") == 0) {
             ty = lkit_type_get(LKIT_VARARG);
         } else {
-            lkit_type_t *probe = NULL;
+            dict_item_t *probe = NULL;
 
             /*
              * XXX handle typedefs here, or unknown type ...
              */
             if ((probe = dict_get_item(&typedefs, (bytes_t *)(dat->body))) != NULL) {
-                ty = probe;
+                lkit_type_t *pty;
+
+                pty = probe->value;
+                ty = pty;
             }
             /*
              * either already registered type, or NULL, skip type
@@ -1163,12 +1178,12 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 if (lparse_quals(form, &it,
                                  (quals_parser_t)parse_dict_quals,
                                  td) != 0) {
-                    TR(LKIT_TYPE_PARSE + 4);
+                    TR(LKIT_TYPE_PARSE + 5);
                     goto err;
                 }
 
                 if ((node = array_next(form, &it)) == NULL) {
-                    TR(LKIT_TYPE_PARSE + 5);
+                    TR(LKIT_TYPE_PARSE + 6);
                     goto err;
                 }
 
@@ -1177,7 +1192,7 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 }
 
                 if ((*elemtype = lkit_type_parse(*node, 1)) == NULL) {
-                    TR(LKIT_TYPE_PARSE + 6);
+                    TR(LKIT_TYPE_PARSE + 7);
                     goto err;
                 }
 
@@ -1191,7 +1206,7 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                     td->fini = (dict_item_finalizer_t)rt_dict_fini_keyonly;
 
                 default:
-                    TR(LKIT_TYPE_PARSE + 7);
+                    TR(LKIT_TYPE_PARSE + 8);
                 }
 
             } else if (strcmp((char *)first->data, "struct") == 0) {
@@ -1205,7 +1220,7 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                 if (lparse_quals(form, &it,
                                  (quals_parser_t)parse_struct_quals,
                                  ts) != 0) {
-                    TR(LKIT_TYPE_PARSE + 8);
+                    TR(LKIT_TYPE_PARSE + 9);
                     goto err;
                 }
 
@@ -1218,11 +1233,11 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                     if (FPARSER_DATUM_TAG(*node) == FPARSER_SEQ) {
                         //if (parse_fielddef_struct(*node, ts) != 0) {
                         if (parse_fielddef(*node, ty) != 0) {
-                            TR(LKIT_TYPE_PARSE + 9);
+                            TR(LKIT_TYPE_PARSE + 10);
                             goto err;
                         }
                     } else {
-                        TR(LKIT_TYPE_PARSE + 10);
+                        TR(LKIT_TYPE_PARSE + 11);
                         goto err;
                     }
                 }
@@ -1250,26 +1265,26 @@ lkit_type_parse(fparser_datum_t *dat, int seterror)
                     }
 
                     if ((*paramtype = lkit_type_parse(*node, 1)) == NULL) {
-                        TR(LKIT_TYPE_PARSE + 11);
+                        TR(LKIT_TYPE_PARSE + 12);
                         goto err;
                     }
                     /* no function params or return values */
                     if ((*paramtype)->tag == LKIT_FUNC) {
                         (*node)->error = 1;
-                        TR(LKIT_TYPE_PARSE + 12);
+                        TR(LKIT_TYPE_PARSE + 13);
                         goto err;
                     }
                 }
 
                 /* no void functions */
                 if (tf->fields.elnum < 1) {
-                    TR(LKIT_TYPE_PARSE + 13);
+                    TR(LKIT_TYPE_PARSE + 14);
                     goto err;
                 }
 
             } else {
                 /* unknown */
-                TR(LKIT_TYPE_PARSE + 14);
+                TR(LKIT_TYPE_PARSE + 15);
                 goto err;
             }
         }
@@ -1302,7 +1317,8 @@ lkit_parse_typedef(array_t *form, array_iter_t *it)
     int res = 0;
     fparser_datum_t **node;
     bytes_t *typename = NULL;
-    lkit_type_t *type, *probe;
+    dict_item_t *probe;
+    lkit_type_t *type;
 
     /* (type WORD int|float|str|bool|undef|(array )|(dict )|(struct )|(func )) */
     if (lparse_next_word_bytes(form, it, &typename, 1) != 0) {
@@ -1323,7 +1339,10 @@ lkit_parse_typedef(array_t *form, array_iter_t *it)
 
     /* have it unique */
     if ((probe = dict_get_item(&typedefs, typename)) != NULL) {
-        if (lkit_type_cmp(probe, type) != 0) {
+        lkit_type_t *pty;
+
+        pty = probe->value;
+        if (lkit_type_cmp(pty, type) != 0) {
             (*node)->error = 1;
             TR(LKIT_PARSE_TYPEDEF + 4);
             goto err;

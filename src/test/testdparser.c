@@ -386,8 +386,7 @@ test_struct_00(void)
 int
 main(int argc, char *argv[])
 {
-    mrklkit_init(NULL);
-    //test0();
+    mrklkit_init();
     if (argc > 2) {
         int fd;
 

@@ -44,9 +44,17 @@ bytes_cmp(bytes_t *a, bytes_t *b)
 bytes_t *
 bytes_new(size_t sz)
 {
+    size_t mod, msz;
     bytes_t *res;
 
-    if ((res = malloc(sizeof(bytes_t) + sz)) == NULL) {
+    msz = sz;
+    mod = sz % 8;
+    if (mod) {
+        msz += (8 - mod);
+    } else {
+        msz += 8;
+    }
+    if ((res = malloc(sizeof(bytes_t) + msz)) == NULL) {
         FAIL("malloc");
     }
     res->nref = 0;
@@ -61,11 +69,19 @@ bytes_t *
 bytes_new_from_str(const char *s)
 {
     bytes_t *res;
+    size_t mod, msz;
     size_t sz;
 
     sz = strlen(s) + 1;
 
-    if ((res = malloc(sizeof(bytes_t) + sz)) == NULL) {
+    msz = sz;
+    mod = sz % 8;
+    if (mod) {
+        msz += (8 - mod);
+    } else {
+        msz += 8;
+    }
+    if ((res = malloc(sizeof(bytes_t) + msz)) == NULL) {
         FAIL("malloc");
     }
     memcpy(res->data, s, sz);

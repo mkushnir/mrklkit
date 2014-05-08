@@ -109,7 +109,7 @@ parse_dsource_quals(array_t *form,
 }
 
 int
-dsource_parse(array_t *form, array_iter_t *it)
+dsource_parse(UNUSED void *ctx, array_t *form, array_iter_t *it)
 {
     dsource_t **dsource;
 

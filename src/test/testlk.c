@@ -20,6 +20,8 @@ const char *_malloc_options = "AJ";
 static const char *prog, *input;
 static uint64_t flags;
 
+testrt_ctx_t tctx;
+
 UNUSED static void
 test0(void)
 {
@@ -44,26 +46,25 @@ test1(void)
 {
     int fd;
     int res;
-    dsource_t *ds;
 
     if ((fd = open(prog, O_RDONLY)) == -1) {
         FAIL("open");
     }
 
-    if ((res = mrklkit_compile(fd, flags)) != 0) {
+    if ((res = mrklkit_compile(&tctx.mctx, fd, flags, &tctx)) != 0) {
         FAIL("mrklkit_compile");
     }
 
     close(fd);
 
     /* post-init, need to integrate it better */
-    if ((ds = dsource_get("qwe")) == NULL) {
+    if ((tctx.ds = dsource_get("qwe")) == NULL) {
         FAIL("dsource_get");
     }
-    ds->rdelim[0] = '\n';
-    ds->rdelim[1] = '\0';
+    tctx.ds->rdelim[0] = '\n';
+    tctx.ds->rdelim[1] = '\0';
 
-    if (mrklkit_init_runtime() != 0) {
+    if (mrklkit_init_runtime(&tctx.mctx, &tctx) != 0) {
         FAIL("mrklkit_init_runtime");
     }
 
@@ -71,7 +72,7 @@ test1(void)
         FAIL("open");
     }
 
-    if (dparser_read_lines(fd, (dparser_read_lines_cb_t)testrt_run, ds) != 0) {
+    if (dparser_read_lines(fd, (dparser_read_lines_cb_t)testrt_run, &tctx) != 0) {
         TRACE("error");
     }
 
@@ -92,10 +93,12 @@ run(void)
     m = array_incr(&modules);
     *m = &testrt_module;
 
-    mrklkit_init(&modules);
+    mrklkit_init();
+    mrklkit_ctx_init(&tctx.mctx, "test", &modules, &tctx);
 
     test1();
 
+    mrklkit_ctx_fini(&tctx.mctx, &tctx);
     mrklkit_fini();
     array_fini(&modules);
 }

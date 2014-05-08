@@ -9,14 +9,13 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
+#include <mrklkit/mrklkit.h>
 #include <mrklkit/builtin.h>
 #include <mrklkit/util.h>
 
 #include "builtin_private.h"
 
 #include "diag.h"
-
-static lkit_expr_t root;
 
 /*
  * libc decls:
@@ -62,14 +61,14 @@ static lkit_expr_t root;
  */
 
 int
-builtin_sym_parse(array_t *form, array_iter_t *it)
+builtin_sym_parse(mrklkit_ctx_t *ctx, array_t *form, array_iter_t *it)
 {
-    return lkit_parse_exprdef(&root, form, it);
+    return lkit_parse_exprdef(&ctx->builtin_root, form, it);
 }
 
 
 int
-builtin_remove_undef(lkit_expr_t *expr)
+builtin_remove_undef(mrklkit_ctx_t *ctx, lkit_expr_t *expr)
 {
     char *name = (expr->name != NULL) ? (char *)expr->name->data : ")(";
 
@@ -90,7 +89,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             cond = array_get(&expr->subs, 0);
             assert(cond != NULL);
 
-            if (builtin_remove_undef(*cond) != 0) {
+            if (builtin_remove_undef(ctx, *cond) != 0) {
                 TRRET(REMOVE_UNDEF + 1);
             }
 
@@ -103,14 +102,14 @@ builtin_remove_undef(lkit_expr_t *expr)
             texp = array_get(&expr->subs, 1);
             assert(texp != NULL);
 
-            if (builtin_remove_undef(*texp) != 0) {
+            if (builtin_remove_undef(ctx, *texp) != 0) {
                 TRRET(REMOVE_UNDEF + 3);
             }
 
             fexp = array_get(&expr->subs, 2);
             assert(fexp != NULL);
 
-            if (builtin_remove_undef(*fexp) != 0) {
+            if (builtin_remove_undef(ctx, *fexp) != 0) {
                 TRRET(REMOVE_UNDEF + 4);
             }
 
@@ -135,7 +134,7 @@ builtin_remove_undef(lkit_expr_t *expr)
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                if (builtin_remove_undef(*arg) != 0) {
+                if (builtin_remove_undef(ctx, *arg) != 0) {
                     TRRET(REMOVE_UNDEF + 6);
                 }
             }
@@ -158,7 +157,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
-                if (builtin_remove_undef(*arg) != 0) {
+                if (builtin_remove_undef(ctx, *arg) != 0) {
                     TRRET(REMOVE_UNDEF + 8);
                 }
             }
@@ -186,7 +185,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             aarg = array_first(&expr->subs, &it);
             assert(aarg != NULL);
 
-            if (builtin_remove_undef(*aarg) != 0) {
+            if (builtin_remove_undef(ctx, *aarg) != 0) {
                 TRRET(REMOVE_UNDEF + 9);
             }
 
@@ -194,7 +193,7 @@ builtin_remove_undef(lkit_expr_t *expr)
                  barg != NULL;
                  barg = array_next(&expr->subs, &it)) {
 
-                if (builtin_remove_undef(*barg) != 0) {
+                if (builtin_remove_undef(ctx, *barg) != 0) {
                     TRRET(REMOVE_UNDEF + 10);
                 }
 
@@ -221,7 +220,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (builtin_remove_undef(*cont) != 0) {
+            if (builtin_remove_undef(ctx, *cont) != 0) {
                 TRRET(REMOVE_UNDEF + 12);
             }
 
@@ -321,7 +320,7 @@ builtin_remove_undef(lkit_expr_t *expr)
                 dflt = array_get(&expr->subs, 2);
                 assert(dflt != NULL);
 
-                if (builtin_remove_undef(*dflt) != 0) {
+                if (builtin_remove_undef(ctx, *dflt) != 0) {
                     TRRET(REMOVE_UNDEF + 20);
                 }
 
@@ -346,7 +345,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (builtin_remove_undef(*cont) != 0) {
+            if (builtin_remove_undef(ctx, *cont) != 0) {
                 TRRET(REMOVE_UNDEF + 22);
             }
 
@@ -439,7 +438,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             setv = array_get(&expr->subs, 2);
             assert(setv != NULL);
 
-            if (builtin_remove_undef(*setv) != 0) {
+            if (builtin_remove_undef(ctx, *setv) != 0) {
                 TRRET(REMOVE_UNDEF + 30);
             }
 
@@ -462,7 +461,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (builtin_remove_undef(*cont) != 0) {
+            if (builtin_remove_undef(ctx, *cont) != 0) {
                 TRRET(REMOVE_UNDEF + 32);
             }
 
@@ -529,14 +528,17 @@ builtin_remove_undef(lkit_expr_t *expr)
             expr->type = ty;
 
         } else {
-            lkit_expr_t *ref;
+            dict_item_t *it;
+            lkit_expr_t *ref = NULL;
 
             /* not builtin */
-            if ((ref = dict_get_item(&root.ctx, expr->name)) == NULL) {
+            if ((it = dict_get_item(&ctx->builtin_root.ctx, expr->name)) == NULL) {
                 lkit_expr_dump(expr);
                 TRRET(REMOVE_UNDEF + 37);
+            } else {
+                ref = it->value;
             }
-            if (builtin_remove_undef(ref) != 0) {
+            if (builtin_remove_undef(ctx, ref) != 0) {
                 TRRET(REMOVE_UNDEF + 38);
             }
             expr->type = ref->type;
@@ -559,7 +561,7 @@ builtin_remove_undef(lkit_expr_t *expr)
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                if (builtin_remove_undef(*arg) != 0) {
+                if (builtin_remove_undef(ctx, *arg) != 0) {
                     TRRET(REMOVE_UNDEF + 39);
                 }
             }
@@ -575,7 +577,7 @@ builtin_remove_undef(lkit_expr_t *expr)
             arg = array_get(&expr->subs, 0);
             assert(arg != NULL);
 
-            if (builtin_remove_undef(*arg) != 0) {
+            if (builtin_remove_undef(ctx, *arg) != 0) {
                 TRRET(REMOVE_UNDEF + 40);
             }
 
@@ -599,22 +601,29 @@ builtin_remove_undef(lkit_expr_t *expr)
 static int
 _acb(lkit_gitem_t **gitem, void *udata)
 {
-    int (*cb)(lkit_expr_t *) = udata;
-    return cb((*gitem)->expr);
+    struct {
+        int (*cb)(mrklkit_ctx_t *, lkit_expr_t *);
+        mrklkit_ctx_t *ctx;
+    } *params = udata;
+    return params->cb(params->ctx, (*gitem)->expr);
 }
 
 
 int
-builtin_sym_compile(LLVMModuleRef module)
+builtin_sym_compile(mrklkit_ctx_t *ctx, LLVMModuleRef module)
 {
-    //array_traverse(&root.glist, (array_traverser_t)_acb, lkit_expr_dump);
-    if (array_traverse(&root.glist,
+    struct {
+        int (*cb)(mrklkit_ctx_t *, lkit_expr_t *);
+        mrklkit_ctx_t *ctx;
+    } params = { builtin_remove_undef, ctx };
+
+    if (array_traverse(&ctx->builtin_root.glist,
                        (array_traverser_t)_acb,
-                       builtin_remove_undef) != 0) {
+                       &params) != 0) {
         TRRET(BUILTIN_SYM_COMPILE + 1);
     }
 
-    if (array_traverse(&root.glist,
+    if (array_traverse(&ctx->builtin_root.glist,
                        (array_traverser_t)builtin_compile,
                        module) != 0) {
         TRRET(BUILTIN_SYM_COMPILE + 2);
@@ -623,13 +632,15 @@ builtin_sym_compile(LLVMModuleRef module)
 }
 
 int
-builtin_call_eager_initializers(LLVMModuleRef module, LLVMBuilderRef builder)
+builtin_call_eager_initializers(mrklkit_ctx_t *ctx,
+                                LLVMModuleRef module,
+                                LLVMBuilderRef builder)
 {
     struct {
         LLVMModuleRef module;
         LLVMBuilderRef builder;
     } params = {module, builder};
-    if (array_traverse(&root.glist,
+    if (array_traverse(&ctx->builtin_root.glist,
                        (array_traverser_t)builtingen_call_eager_initializer,
                        &params) != 0) {
         TRRET(BUILTIN_SYM_COMPILE + 2);
@@ -639,20 +650,18 @@ builtin_call_eager_initializers(LLVMModuleRef module, LLVMBuilderRef builder)
 
 
 lkit_expr_t *
-builtin_get_root_ctx(void)
+builtin_get_root_ctx(mrklkit_ctx_t *ctx)
 {
-    return &root;
+    return &ctx->builtin_root;
 }
 
 void
 builtin_init(void)
 {
-    lkit_expr_init(&root, NULL);
 }
 
 void
 builtin_fini(void)
 {
-    lkit_expr_fini(&root);
 }
 
