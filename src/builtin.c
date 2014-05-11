@@ -63,7 +63,7 @@
 int
 builtin_sym_parse(mrklkit_ctx_t *ctx, array_t *form, array_iter_t *it)
 {
-    return lkit_parse_exprdef(&ctx->builtin_root, form, it);
+    return lkit_parse_exprdef(ctx, &ctx->builtin_root, form, it);
 }
 
 
@@ -532,7 +532,8 @@ builtin_remove_undef(mrklkit_ctx_t *ctx, lkit_expr_t *expr)
             lkit_expr_t *ref = NULL;
 
             /* not builtin */
-            if ((it = dict_get_item(&ctx->builtin_root.ctx, expr->name)) == NULL) {
+            if ((it = dict_get_item(
+                    &ctx->builtin_root.ctx, expr->name)) == NULL) {
                 lkit_expr_dump(expr);
                 TRRET(REMOVE_UNDEF + 37);
             } else {

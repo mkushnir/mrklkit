@@ -21,7 +21,6 @@
 
 #include <mrklkit/modules/testrt.h>
 #include <mrklkit/modules/dparser.h>
-#include <mrklkit/modules/dsource.h>
 
 #include "diag.h"
 
@@ -40,12 +39,197 @@ struct {
 static lkit_struct_t *null_struct;
 
 /* shared context */
+static array_t dsources;
 static dict_t targets;
 rt_struct_t *testrt_source = NULL;
 
 
+/**
+ * data source example
+ *
+ */
+
+static void
+dsource_init(dsource_t *dsource)
+{
+    dsource->timestamp_index = -1;
+    dsource->date_index = -1;
+    dsource->time_index = -1;
+    dsource->duration_index = -1;
+    dsource->error = 0;
+    /* weak ref */
+    dsource->kind = NULL;
+    dsource->_struct = NULL;
+    dsource->parse_flags = 0;
+}
+
+static void
+dsource_fini(dsource_t *dsource)
+{
+    dsource->timestamp_index = -1;
+    dsource->date_index = -1;
+    dsource->time_index = -1;
+    dsource->duration_index = -1;
+    dsource->error = 0;
+    /* weak ref */
+    dsource->kind = NULL;
+    /* weak ref */
+    dsource->_struct = NULL;
+}
+
+static dsource_t *
+dsource_new(void)
+{
+    dsource_t **dsource;
+
+    if ((dsource = array_incr(&dsources)) == NULL) {
+        FAIL("array_incr");
+    }
+    if ((*dsource = malloc(sizeof(dsource_t))) == NULL) {
+        FAIL("malloc");
+    }
+    dsource_init(*dsource);
+    return *dsource;
+}
+
+static void
+dsource_destroy(dsource_t **dsource)
+{
+    if (*dsource != NULL) {
+        dsource_fini(*dsource);
+        free(*dsource);
+        *dsource = NULL;
+    }
+}
+
+
+dsource_t *
+dsource_get(const char *name)
+{
+    dsource_t **v;
+    array_iter_t it;
+
+    for (v = array_first(&dsources, &it);
+         v != NULL;
+         v = array_next(&dsources, &it)) {
+
+        if (strcmp(name, (const char *)(*v)->kind->data) == 0) {
+            return *v;
+        }
+    }
+
+    return NULL;
+}
+
+
 static int
-remove_undef(mrklkit_ctx_t *ctx, lkit_expr_t *expr)
+dsource_compile(LLVMModuleRef module)
+{
+    array_iter_t it;
+    dsource_t **ds;
+
+    for (ds = array_first(&dsources, &it);
+         ds != NULL;
+         ds = array_next(&dsources, &it)) {
+        if (ltype_compile_methods((lkit_type_t *)(*ds)->_struct,
+                                  module,
+                                  (*ds)->kind)) {
+            TRRET(DSOURCE + 100);
+        }
+    }
+    return 0;
+}
+
+
+static int
+dsource_link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
+{
+    array_iter_t it;
+    dsource_t **ds;
+
+
+    for (ds = array_first(&dsources, &it);
+         ds != NULL;
+         ds = array_next(&dsources, &it)) {
+        if (ltype_link_methods((lkit_type_t *)(*ds)->_struct,
+                               ee,
+                               module,
+                               (*ds)->kind)) {
+            TRRET(DSOURCE + 200);
+        }
+    }
+    return 0;
+}
+
+
+/**
+ * dsource ::= (dsource quals? kind _struct?)
+ *
+ */
+static int
+parse_dsource_quals(array_t *form,
+                   array_iter_t *it,
+                   unsigned char *qual,
+                   dsource_t *dsource)
+{
+    char *s = (char *)qual;
+
+#define DSOURCE_SET_INT(m) \
+    int64_t value; \
+    if (lparse_next_int(form, it, &value, 1) != 0) { \
+        dsource->error = 1; \
+        return 1; \
+    } \
+    dsource->m = (int)value;
+
+    if (strcmp(s, ":tsidx") == 0) {
+        DSOURCE_SET_INT(timestamp_index);
+    } else if (strcmp(s, ":dtidx") == 0) {
+        DSOURCE_SET_INT(date_index);
+    } else if (strcmp(s, ":tmidx") == 0) {
+        DSOURCE_SET_INT(time_index);
+    } else {
+        TRACE("unknown qual: %s", s);
+    }
+    return 0;
+}
+
+static int
+_parse_dsource(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
+{
+    dsource_t *dsource;
+
+
+    dsource = dsource_new();
+
+    /* kind */
+    if (lparse_next_word_bytes(form, it, &dsource->kind, 1) != 0) {
+        dsource->error = 1;
+        return 1;
+    }
+    /* quals */
+    lparse_quals(form, it, (quals_parser_t)parse_dsource_quals, dsource);
+
+    if (ltype_next_struct(&tctx->mctx,
+                          form,
+                          it,
+                          &dsource->_struct,
+                          1) != 0) {
+        dsource->error = 1;
+        return 1;
+    }
+    dsource->fdelim = dsource->_struct->delim[0];
+
+    if (dsource->_struct->parser == LKIT_PARSER_MDELIM) {
+        dsource->parse_flags |= DPARSE_MERGEDELIM;
+    }
+
+    return 0;
+}
+
+
+static int
+remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *expr)
 {
     char *name = (expr->name != NULL) ? (char *)expr->name->data : ")(";
 
@@ -60,7 +244,7 @@ remove_undef(mrklkit_ctx_t *ctx, lkit_expr_t *expr)
 
             //lkit_expr_dump(*arg);
 
-            if (builtin_remove_undef(ctx, *arg) != 0) {
+            if (builtin_remove_undef(mctx, *arg) != 0) {
                 TRRET(TESTRT_PARSE + 500);
             }
 
@@ -68,7 +252,7 @@ remove_undef(mrklkit_ctx_t *ctx, lkit_expr_t *expr)
 
         } else if (strcmp(name, "HANGOVER") == 0) {
         } else {
-            return builtin_remove_undef(ctx, expr);
+            return builtin_remove_undef(mctx, expr);
         }
     }
     return 0;
@@ -131,7 +315,7 @@ testrt_fini(testrt_t *trt)
 
 static int
 _parse_take(testrt_ctx_t *tctx,
-            lkit_expr_t *ctx,
+            lkit_expr_t *ectx,
             testrt_t *trt,
             array_t *form,
             array_iter_t *it,
@@ -162,7 +346,10 @@ _parse_take(testrt_ctx_t *tctx,
             FAIL("array_incr");
         }
 
-        if ((*expr = lkit_expr_parse(ctx, *node, seterror)) == NULL) {
+        if ((*expr = lkit_expr_parse(&tctx->mctx,
+                                     ectx,
+                                     *node,
+                                     seterror)) == NULL) {
             TRRET(TESTRT_PARSE + 401);
         }
 
@@ -184,7 +371,7 @@ _parse_take(testrt_ctx_t *tctx,
 
 static int
 _parse_do(testrt_ctx_t *tctx,
-          lkit_expr_t *ctx,
+          lkit_expr_t *ectx,
           testrt_t *trt,
           array_t *form,
           array_iter_t *it,
@@ -216,7 +403,10 @@ _parse_do(testrt_ctx_t *tctx,
             FAIL("array_incr");
         }
 
-        if ((*expr = lkit_expr_parse(ctx, *node, seterror)) == NULL) {
+        if ((*expr = lkit_expr_parse(&tctx->mctx,
+                                     ectx,
+                                     *node,
+                                     seterror)) == NULL) {
             TRRET(TESTRT_PARSE + 302);
         }
 
@@ -238,7 +428,7 @@ _parse_do(testrt_ctx_t *tctx,
 
 static int
 _parse_see(testrt_ctx_t *tctx,
-           lkit_expr_t *ctx,
+           lkit_expr_t *ectx,
            testrt_t *trt,
            array_t *form,
            array_iter_t *it,
@@ -256,7 +446,7 @@ _parse_see(testrt_ctx_t *tctx,
         ifexpr->name = _if;
         ifexpr->isref = 1;
 
-        if ((ifexpr->value.ref = lkit_expr_find(ctx,
+        if ((ifexpr->value.ref = lkit_expr_find(ectx,
                                               ifexpr->name)) == NULL) {
             TRACE("failed probe '%s'", ifexpr->name->data);
             TRRET(TESTRT_PARSE + 200);
@@ -266,10 +456,10 @@ _parse_see(testrt_ctx_t *tctx,
             TRRET(TESTRT_PARSE + 201);
         }
 
-        andexpr = lkit_expr_new(ctx);
+        andexpr = lkit_expr_new(ectx);
         andexpr->name = _and;
         andexpr->isref = 1;
-        if ((andexpr->value.ref = lkit_expr_find(ctx,
+        if ((andexpr->value.ref = lkit_expr_find(ectx,
                                                  andexpr->name)) == NULL) {
             TRACE("failed probe '%s'", andexpr->name->data);
             TRRET(TESTRT_PARSE + 202);
@@ -285,9 +475,9 @@ _parse_see(testrt_ctx_t *tctx,
         *subexpr = andexpr;
 
         /* texpr */
-        texpr = lkit_expr_new(ctx);
+        texpr = lkit_expr_new(ectx);
         texpr->name = _comma;
-        if ((texpr->value.ref = lkit_expr_find(ctx,
+        if ((texpr->value.ref = lkit_expr_find(ectx,
                                               texpr->name)) == NULL) {
             TRACE("failed probe '%s'", texpr->name->data);
             TRRET(TESTRT_PARSE + 204);
@@ -306,9 +496,9 @@ _parse_see(testrt_ctx_t *tctx,
 
 
         /* fexpr */
-        fexpr = lkit_expr_new(ctx);
+        fexpr = lkit_expr_new(ectx);
         fexpr->name = _comma;
-        if ((fexpr->value.ref = lkit_expr_find(ctx,
+        if ((fexpr->value.ref = lkit_expr_find(ectx,
                                               fexpr->name)) == NULL) {
             TRACE("failed probe '%s'", fexpr->name->data);
             TRRET(TESTRT_PARSE + 206);
@@ -343,7 +533,7 @@ _parse_see(testrt_ctx_t *tctx,
             FAIL("array_incr");
         }
 
-        if ((*arg = lkit_expr_parse(ctx, *node, 1)) == NULL) {
+        if ((*arg = lkit_expr_parse(&tctx->mctx, ectx, *node, 1)) == NULL) {
             TRRET(TESTRT_PARSE + 208);
         }
     }
@@ -360,7 +550,7 @@ _parse_see(testrt_ctx_t *tctx,
 
 static int
 _parse_clause(testrt_ctx_t *tctx,
-              lkit_expr_t *ctx,
+              lkit_expr_t *ectx,
               testrt_t *trt,
               fparser_datum_t *dat,
               int seterror)
@@ -383,28 +573,31 @@ _parse_clause(testrt_ctx_t *tctx,
             if (strcmp((char *)cname->data, "SEE") == 0) {
                 //TRACE("parse see");
                 if (form->elnum > 1) {
-                    if (_parse_see(tctx, ctx, trt, form, &it, seterror) != 0) {
+                    if (_parse_see(tctx, ectx, trt, form, &it, seterror) != 0) {
                         TRRET(TESTRT_PARSE + 101);
                     }
                 }
             } else if (strcmp((char *)cname->data, "DO") == 0) {
                 //TRACE("parse do");
-                if (_parse_do(tctx, ctx, trt, form, &it, seterror) != 0) {
+                if (_parse_do(tctx, ectx, trt, form, &it, seterror) != 0) {
                     TRRET(TESTRT_PARSE + 102);
                 }
             } else if (strcmp((char *)cname->data, "TAKE") == 0) {
                 //TRACE("parse take");
-                if (_parse_take(tctx, ctx, trt, form, &it, seterror) != 0) {
+                if (_parse_take(tctx, ectx, trt, form, &it, seterror) != 0) {
                     TRRET(TESTRT_PARSE + 103);
                 }
             } else {
                 lkit_expr_t **expr, **oexpr;
 
                 //TRACE("parse lkit expr");
-                if ((expr = array_incr(&ctx->subs)) == NULL) {
+                if ((expr = array_incr(&ectx->subs)) == NULL) {
                     FAIL("array_incr");
                 }
-                if ((*expr = lkit_expr_parse(ctx, dat, 1)) == NULL) {
+                if ((*expr = lkit_expr_parse(&tctx->mctx,
+                                             ectx,
+                                             dat,
+                                             1)) == NULL) {
                     dat->error = 1;
                     TRRET(TESTRT_PARSE + 104);
                 }
@@ -1137,7 +1330,11 @@ _init(testrt_ctx_t *tctx)
     null_struct = (lkit_struct_t *)lkit_type_finalize(
             lkit_type_get(LKIT_STRUCT));
 
-    dsource_init_module();
+    if (array_init(&dsources, sizeof(dsource_t *), 0,
+                   NULL,
+                   (array_finalizer_t)dsource_destroy) != 0) {
+        FAIL("array_init");
+    }
 
     lkit_expr_init(&tctx->root, builtin_get_root_ctx(&tctx->mctx));
 
@@ -1158,7 +1355,7 @@ _fini(testrt_ctx_t *tctx)
     size_t i;
     array_fini(&tctx->testrts);
     lkit_expr_fini(&tctx->root);
-    dsource_fini_module();
+    array_fini(&dsources);
 
     for (i = 0; i < countof(const_bytes); ++i) {
         bytes_decref(const_bytes[i].var);
@@ -1166,7 +1363,7 @@ _fini(testrt_ctx_t *tctx)
 }
 
 static mrklkit_parser_info_t _parsers[] = {
-    {"dsource", dsource_parse},
+    {"dsource", (mrklkit_module_parser_t)_parse_dsource},
     {"testrt", (mrklkit_module_parser_t)_parse_trt},
     {NULL, NULL},
 };

@@ -9,7 +9,6 @@
 
 #include <mrklkit/mrklkit.h>
 #include <mrklkit/lruntime.h>
-#include <mrklkit/modules/dsource.h>
 #include <mrklkit/modules/dparser.h>
 #include <mrklkit/modules/testrt.h>
 

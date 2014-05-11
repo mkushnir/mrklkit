@@ -27,9 +27,6 @@ typedef struct _mrklkit_ctx {
 
 const char *mrklkit_diag_str(int);
 
-typedef int (*mrklkit_parser_t)(fparser_datum_t *, array_iter_t *, void *);
-int mrklkit_register_parser(const char *, mrklkit_parser_t, void *);
-
 #define MRKLKIT_COMPILE_DUMP0 0x01
 #define MRKLKIT_COMPILE_DUMP1 0x02
 #define MRKLKIT_COMPILE_DUMP2 0x04

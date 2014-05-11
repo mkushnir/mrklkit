@@ -100,7 +100,8 @@ ltype_compile(lkit_type_t *ty, void *udata)
 
     case LKIT_STRUCT:
         ts = (lkit_struct_t *)ty;
-        if ((bfields = malloc(sizeof(LLVMTypeRef) * ts->fields.elnum)) == NULL) {
+        if ((bfields =
+                malloc(sizeof(LLVMTypeRef) * ts->fields.elnum)) == NULL) {
             FAIL("malloc");
         }
         for (field = array_first(&ts->fields, &it);
@@ -130,7 +131,8 @@ end_struct:
 
     case LKIT_FUNC:
         tf = (lkit_func_t *)ty;
-        if ((bfields = malloc(sizeof(LLVMTypeRef) * tf->fields.elnum - 1)) == NULL) {
+        if ((bfields =
+                malloc(sizeof(LLVMTypeRef) * tf->fields.elnum - 1)) == NULL) {
             FAIL("malloc");
         }
 
@@ -172,9 +174,15 @@ end_struct:
             FAIL("array_first");
         }
         if ((*field)->tag == LKIT_VARARG) {
-            ty->backend = LLVMFunctionType(retty, bfields, tf->fields.elnum - 2, 1);
+            ty->backend = LLVMFunctionType(retty,
+                                           bfields,
+                                           tf->fields.elnum - 2,
+                                           1);
         } else {
-            ty->backend = LLVMFunctionType(retty, bfields, tf->fields.elnum - 1, 0);
+            ty->backend = LLVMFunctionType(retty,
+                                           bfields,
+                                           tf->fields.elnum - 1,
+                                           0);
         }
 
 
@@ -320,7 +328,11 @@ ltype_compile_methods(lkit_type_t *ty,
                         if ((nm = array_get(&ts->names, it.iter)) == NULL) {
                             FAIL("array_get");
                         }
-                        snprintf(buf, sizeof(buf), "%s.%s", name->data, (*nm)->data);
+                        snprintf(buf,
+                                 sizeof(buf),
+                                 "%s.%s",
+                                 name->data,
+                                 (*nm)->data);
                         //TRACE("subfield %s", buf);
                         nnm = bytes_new_from_str(buf);
                         if (ltype_compile_methods(*fty, module, nnm) != 0) {

@@ -839,7 +839,8 @@ compile_function(LLVMModuleRef module,
         }
         args[0] = LLVMBuildPointerCast(builder,
                                        args[0],
-                                       LLVMPointerType(LLVMInt8TypeInContext(lctx), 0),
+                                       LLVMPointerType(
+                                           LLVMInt8TypeInContext(lctx), 0),
                                        NEWVAR("cast"));
         //TRACE("--------");
         //LLVMDumpValue(args[0]);
@@ -975,7 +976,10 @@ compile_function(LLVMModuleRef module,
             TR(COMPILE_FUNCTION + 1400);
             goto err;
         }
-        v = LLVMBuildSIToFP(builder, v, LLVMDoubleTypeInContext(lctx), NEWVAR("itof"));
+        v = LLVMBuildSIToFP(builder,
+                            v,
+                            LLVMDoubleTypeInContext(lctx),
+                            NEWVAR("itof"));
 
     } else if (strcmp(name , "ftoi") == 0) {
         lkit_expr_t **arg;
@@ -987,7 +991,10 @@ compile_function(LLVMModuleRef module,
             TR(COMPILE_FUNCTION + 1500);
             goto err;
         }
-        v = LLVMBuildFPToSI(builder, v, LLVMInt64TypeInContext(lctx), NEWVAR("ftoi"));
+        v = LLVMBuildFPToSI(builder,
+                            v,
+                            LLVMInt64TypeInContext(lctx),
+                            NEWVAR("ftoi"));
 
     } else if (strcmp(name , "tostr") == 0) {
         lkit_expr_t **arg;
@@ -1039,7 +1046,10 @@ compile_dynamic_initializer(LLVMModuleRef module,
 
     fn = LLVMAddFunction(module,
                          buf,
-                         LLVMFunctionType(LLVMInt64TypeInContext(lctx), NULL, 0, 0));
+                         LLVMFunctionType(LLVMInt64TypeInContext(lctx),
+                                          NULL,
+                                          0,
+                                          0));
     builder = LLVMCreateBuilderInContext(lctx);
 
     if (value->lazy_init) {
@@ -1049,9 +1059,12 @@ compile_dynamic_initializer(LLVMModuleRef module,
         snprintf(buf, sizeof(buf), ".mrklkit.init.done.%s", (char *)name->data);
         chkv = LLVMAddGlobal(module, LLVMInt1TypeInContext(lctx), buf);
         LLVMSetLinkage(chkv, LLVMPrivateLinkage);
-        LLVMSetInitializer(chkv, LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0));
+        LLVMSetInitializer(chkv,
+                           LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0));
 
-        currblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.dyninit"));
+        currblock = LLVMAppendBasicBlockInContext(lctx,
+                                                  fn,
+                                                  NEWVAR("L.dyninit"));
         tblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.true"));
         fblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.false"));
         endblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.end"));
@@ -1067,7 +1080,9 @@ compile_dynamic_initializer(LLVMModuleRef module,
         LLVMSetInitializer(v, LLVMGetUndef(LLVMTypeOf(storedv)));
 
         LLVMBuildStore(builder, storedv, v);
-        LLVMBuildStore(builder, LLVMConstInt(LLVMInt1TypeInContext(lctx), 1, 0), chkv);
+        LLVMBuildStore(builder,
+                       LLVMConstInt(LLVMInt1TypeInContext(lctx), 1, 0),
+                       chkv);
         res = LLVMBuildBr(builder, endblock);
 
         LLVMPositionBuilderAtEnd(builder, fblock);
@@ -1255,11 +1270,20 @@ builtin_compile_expr(LLVMModuleRef module,
                     LLVMValueRef binit[4], vv;
 
                     b = (bytes_t *)expr->value.literal->body;
-                    binit[0] = LLVMConstInt(LLVMInt64TypeInContext(lctx), 0xdada, 0);
-                    binit[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx), b->sz, 0);
-                    binit[2] = LLVMConstInt(LLVMInt64TypeInContext(lctx), bytes_hash(b), 0);
-                    binit[3] = LLVMConstStringInContext(lctx, (char *)b->data, b->sz, 1);
-                    vv = LLVMConstStructInContext(lctx, binit, countof(binit), 0);
+                    binit[0] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
+                                            0xdada, 0);
+                    binit[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
+                                            b->sz, 0);
+                    binit[2] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
+                                            bytes_hash(b), 0);
+                    binit[3] = LLVMConstStringInContext(lctx,
+                                                        (char *)b->data,
+                                                        b->sz,
+                                                        1);
+                    vv = LLVMConstStructInContext(lctx,
+                                                  binit,
+                                                  countof(binit),
+                                                  0);
                     v = LLVMAddGlobal(module,
                                       LLVMTypeOf(vv),
                                       NEWVAR(".mrklkit.val"));

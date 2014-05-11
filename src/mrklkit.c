@@ -37,13 +37,6 @@
  *
  */
 
-int mrklkit_register_parser(UNUSED const char *keyword,
-                            UNUSED mrklkit_parser_t cb,
-                            UNUSED void *udata)
-{
-    return 0;
-}
-
 static int
 mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
 {
@@ -81,7 +74,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
             if (lparse_first_word(nform, &nit, &first, 1) == 0) {
                 /* statements */
                 if (strcmp((char *)first, "type") == 0) {
-                    if (lkit_parse_typedef(nform, &nit) != 0) {
+                    if (lkit_parse_typedef(ctx, nform, &nit) != 0) {
                         (*fnode)->error = 1;
                         TR(MRKLKIT_PARSE + 2);
                         goto err;

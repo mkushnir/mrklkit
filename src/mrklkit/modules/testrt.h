@@ -11,11 +11,25 @@
 #include <mrklkit/ltype.h>
 #include <mrklkit/lexpr.h>
 #include <mrklkit/lruntime.h>
-#include <mrklkit/modules/dsource.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct _dsource {
+    int timestamp_index;
+    int date_index;
+    int time_index;
+    int duration_index;
+    int error:1;
+    /* weak ref*/
+    bytes_t *kind;
+    lkit_struct_t *_struct;
+    char rdelim[2];
+    char fdelim;
+    uint64_t parse_flags;
+} dsource_t;
+
 
 typedef struct _testrt_target {
     /* meta */
@@ -55,6 +69,7 @@ typedef struct _testrt_ctx {
 extern mrklkit_module_t testrt_module;
 extern rt_struct_t *testrt_source;
 
+dsource_t *dsource_get(const char *);
 void *testrt_acquire_take_key(testrt_t *);
 void *testrt_get_do(testrt_t *);
 int testrt_run(bytestream_t *, byterange_t *, testrt_ctx_t *);

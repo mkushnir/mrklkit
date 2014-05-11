@@ -149,7 +149,13 @@ typedef struct _lkit_typedef {
     lkit_type_t *type;
 } lkit_typedef_t;
 
-int ltype_next_struct(array_t *, array_iter_t *, lkit_struct_t **, int);
+struct _mrklkit_ctx;
+
+int ltype_next_struct(struct _mrklkit_ctx *,
+                      array_t *,
+                      array_iter_t *,
+                      lkit_struct_t **,
+                      int);
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
 int ltype_transform(dict_traverser_t, void *);
@@ -159,9 +165,9 @@ void lkit_type_str(lkit_type_t *, bytestream_t *);
 int lkit_type_destroy(lkit_type_t **);
 int lkit_type_fini_dict(lkit_type_t *, lkit_type_t *);
 lkit_type_t *lkit_type_get(lkit_tag_t);
-lkit_type_t *lkit_type_parse(fparser_datum_t *, int);
+lkit_type_t *lkit_type_parse(struct _mrklkit_ctx *, fparser_datum_t *, int);
 lkit_type_t *lkit_type_finalize(lkit_type_t *);
-int lkit_parse_typedef(array_t *, array_iter_t *);
+int lkit_parse_typedef(struct _mrklkit_ctx *, array_t *, array_iter_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);
 lkit_type_t *lkit_array_get_element_type(lkit_array_t *);
