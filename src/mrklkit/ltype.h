@@ -9,6 +9,7 @@
 #include <mrkcommon/dict.h>
 #include <mrkcommon/bytestream.h>
 
+#include <mrklkit/mrklkit.h>
 #include <mrklkit/fparser.h>
 
 #ifdef __cplusplus
@@ -30,6 +31,7 @@ typedef enum _lkit_tag {
     LKIT_DICT,
     LKIT_STRUCT,
     LKIT_FUNC,
+    LKIT_USER,
 } lkit_tag_t;
 
 #define LKIT_TAG_STR(tag) ( \
@@ -45,6 +47,7 @@ typedef enum _lkit_tag {
     (tag) == LKIT_DICT ? "DICT" : \
     (tag) == LKIT_STRUCT ? "STRUCT" : \
     (tag) == LKIT_FUNC ? "FUNC" : \
+    (tag) == LKIT_USER ? "USER" : \
     "<unknown>" \
 )
 
@@ -149,27 +152,23 @@ typedef struct _lkit_typedef {
     lkit_type_t *type;
 } lkit_typedef_t;
 
-struct _mrklkit_ctx;
-
-int ltype_next_struct(struct _mrklkit_ctx *,
-                      array_t *,
-                      array_iter_t *,
-                      lkit_struct_t **,
-                      int);
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
-int ltype_transform(dict_traverser_t, void *);
-
 void lkit_type_dump(lkit_type_t *);
 void lkit_type_str(lkit_type_t *, bytestream_t *);
 int lkit_type_destroy(lkit_type_t **);
 int lkit_type_fini_dict(lkit_type_t *, lkit_type_t *);
-lkit_type_t *lkit_type_get(lkit_tag_t);
-lkit_type_t *lkit_type_parse(struct _mrklkit_ctx *, fparser_datum_t *, int);
-lkit_type_t *lkit_type_finalize(lkit_type_t *);
-int lkit_parse_typedef(struct _mrklkit_ctx *, array_t *, array_iter_t *);
+int lkit_parse_typedef(mrklkit_ctx_t *,
+                       array_t *,
+                       array_iter_t *);
+lkit_type_t *lkit_type_parse(mrklkit_ctx_t *,
+                             fparser_datum_t *,
+                             int);
+lkit_type_t *lkit_type_finalize(mrklkit_ctx_t *, lkit_type_t *);
+void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);
+lkit_type_t *lkit_type_get(lkit_tag_t);
 lkit_type_t *lkit_array_get_element_type(lkit_array_t *);
 lkit_type_t *lkit_dict_get_element_type(lkit_dict_t *);
 lkit_type_t *lkit_struct_get_field_type(lkit_struct_t *, bytes_t *);

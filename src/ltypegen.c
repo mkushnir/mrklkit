@@ -24,16 +24,13 @@
  */
 
 int
-ltype_compile(lkit_type_t *ty, void *udata)
+ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
 {
-    mrklkit_ctx_t *ctx;
     lkit_struct_t *ts;
     lkit_func_t *tf;
     LLVMTypeRef retty, *bfields = NULL;
     lkit_type_t **field;
     array_iter_t it;
-
-    ctx = udata;
 
     if (ty->backend != NULL) {
         return 0;
@@ -41,11 +38,11 @@ ltype_compile(lkit_type_t *ty, void *udata)
 
     switch (ty->tag) {
     case LKIT_VOID:
-        ty->backend = LLVMVoidTypeInContext(ctx->lctx);
+        ty->backend = LLVMVoidTypeInContext(lctx);
         break;
 
     case LKIT_INT:
-        ty->backend = LLVMInt64TypeInContext(ctx->lctx);
+        ty->backend = LLVMInt64TypeInContext(lctx);
         break;
 
     case LKIT_STR:
@@ -56,12 +53,12 @@ ltype_compile(lkit_type_t *ty, void *udata)
             /*
              * bytes_t *
              */
-            fields[0] = LLVMInt64TypeInContext(ctx->lctx);
-            fields[1] = LLVMInt64TypeInContext(ctx->lctx);
-            fields[2] = LLVMInt64TypeInContext(ctx->lctx);
-            fields[3] = LLVMArrayType(LLVMInt8TypeInContext(ctx->lctx), 0);
+            fields[0] = LLVMInt64TypeInContext(lctx);
+            fields[1] = LLVMInt64TypeInContext(lctx);
+            fields[2] = LLVMInt64TypeInContext(lctx);
+            fields[3] = LLVMArrayType(LLVMInt8TypeInContext(lctx), 0);
             tc = (lkit_str_t *)ty;
-            tc->deref_backend = LLVMStructTypeInContext(ctx->lctx,
+            tc->deref_backend = LLVMStructTypeInContext(lctx,
                                                         fields,
                                                         countof(fields), 0);
             ty->backend = LLVMPointerType(tc->deref_backend, 0);
@@ -69,30 +66,30 @@ ltype_compile(lkit_type_t *ty, void *udata)
         break;
 
     case LKIT_FLOAT:
-        ty->backend = LLVMDoubleTypeInContext(ctx->lctx);
+        ty->backend = LLVMDoubleTypeInContext(lctx);
         break;
 
     case LKIT_BOOL:
-        ty->backend = LLVMInt1TypeInContext(ctx->lctx);
+        ty->backend = LLVMInt1TypeInContext(lctx);
         break;
 
     case LKIT_ANY:
-        ty->backend = LLVMPointerType(LLVMInt8TypeInContext(ctx->lctx), 0);
+        ty->backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
         break;
 
     case LKIT_UNDEF:
-        ty->backend = LLVMPointerType(LLVMInt8TypeInContext(ctx->lctx), 0);
+        ty->backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
         break;
 
     case LKIT_ARRAY:
-        ty->backend = LLVMPointerType(LLVMStructTypeInContext(ctx->lctx,
+        ty->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
                                                               NULL,
                                                               0,
                                                               0), 0);
         break;
 
     case LKIT_DICT:
-        ty->backend = LLVMPointerType(LLVMStructTypeInContext(ctx->lctx,
+        ty->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
                                                               NULL,
                                                               0,
                                                               0), 0);
@@ -112,7 +109,7 @@ ltype_compile(lkit_type_t *ty, void *udata)
                 goto end_struct;
             }
 
-            if (ltype_compile(*field, udata) != 0) {
+            if (ltype_compile(*field, lctx) != 0) {
                 TRRET(LTYPE_COMPILE + 1);
             }
 
@@ -120,7 +117,7 @@ ltype_compile(lkit_type_t *ty, void *udata)
             ts->base.rtsz += (*field)->rtsz;
         }
 
-        ts->deref_backend = LLVMStructTypeInContext(ctx->lctx,
+        ts->deref_backend = LLVMStructTypeInContext(lctx,
                                                     bfields,
                                                     ts->fields.elnum,
                                                     0);
@@ -145,7 +142,7 @@ end_struct:
         if ((*field)->tag == LKIT_VARARG) {
             TRRET(LTYPE_COMPILE + 2);
         }
-        if (ltype_compile(*field, udata) != 0) {
+        if (ltype_compile(*field, lctx) != 0) {
             TRRET(LTYPE_COMPILE + 3);
         }
 
@@ -155,15 +152,11 @@ end_struct:
              field != NULL;
              field = array_next(&tf->fields, &it)) {
 
-            //if ((*field)->tag == LKIT_UNDEF) {
-            //    goto end_func;
-            //}
-
             if ((*field)->tag == LKIT_VARARG) {
                 break;
             }
 
-            if (ltype_compile(*field, udata) != 0) {
+            if (ltype_compile(*field, lctx) != 0) {
                 TRRET(LTYPE_COMPILE + 4);
             }
 
@@ -186,12 +179,11 @@ end_struct:
         }
 
 
-//end_func:
         break;
 
     default:
-        break;
-
+        //lkit_type_dump(ty);
+        TRRET(LTYPE_COMPILE + 5);
     }
 
     if (bfields != NULL) {

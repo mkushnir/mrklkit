@@ -5,11 +5,12 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/fasthash.h>
 #include <mrkcommon/util.h>
 
+#include <mrklkit/mrklkit.h>
 #include <mrklkit/fparser.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lparse.h>
@@ -20,17 +21,9 @@
 #include "diag.h"
 
 /*
- * lkit_type_t *, lkit_type_t *
- */
-static dict_t types;
-/*
  * array of weak refs to lkit_type_t *
  */
 static array_t builtin_types;
-/*
- * bytes_t *, lkit_type_t *
- */
-static dict_t typedefs;
 
 
 int
@@ -367,13 +360,13 @@ lkit_type_get(lkit_tag_t tag)
 
 
 lkit_type_t *
-lkit_type_finalize(lkit_type_t *ty)
+lkit_type_finalize(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
     dict_item_t *probe;
 
-    if ((probe = dict_get_item(&types, ty)) == NULL) {
+    if ((probe = dict_get_item(&mctx->types, ty)) == NULL) {
         /* this is new one */
-        dict_set_item(&types, ty, ty);
+        dict_set_item(&mctx->types, ty, ty);
     } else {
         lkit_type_t *pty;
 
@@ -391,6 +384,25 @@ lkit_type_finalize(lkit_type_t *ty)
         }
     }
     return ty;
+}
+
+
+void
+lkit_register_typedef(mrklkit_ctx_t *mctx, lkit_type_t *ty, bytes_t *typename)
+{
+    dict_item_t *probe;
+
+    /* have it unique */
+    if ((probe = dict_get_item(&mctx->typedefs, typename)) != NULL) {
+        lkit_type_t *pty;
+
+        pty = probe->value;
+        if (lkit_type_cmp(pty, ty) != 0) {
+            FAIL("lkit_type_cmp");
+        }
+    } else {
+        dict_set_item(&mctx->typedefs, typename, ty);
+    }
 }
 
 
@@ -668,7 +680,7 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
 
 
         default:
-            FAIL("lkit_type_str");
+            bytestream_nprintf(bs, strlen(ty->name) + 2, "%s ", ty->name);
         }
         bytestream_cat(bs, 1, ")");
     }
@@ -707,32 +719,6 @@ rt_dict_fini_keyval(bytes_t *key, void *val)
         BYTES_DECREF((bytes_t **)&val);
     }
     return 0;
-}
-
-
-int
-ltype_next_struct(struct _mrklkit_ctx *ctx,
-                  array_t *form,
-                  array_iter_t *it,
-                  lkit_struct_t **value,
-                  int seterror)
-{
-    lkit_type_t *ty;
-    fparser_datum_t **node;
-
-    if ((node = array_next(form, it)) == NULL) {
-        TRRET(LTYPE_NEXT_STRUCT + 1);
-    }
-
-    if ((ty = lkit_type_parse(ctx, *node, seterror)) != NULL) {
-        if (ty->tag == LKIT_STRUCT) {
-            *value = (lkit_struct_t *)ty;
-            TRRET(0);
-        }
-    }
-    array_prev(form, it);
-    (*node)->error = seterror;
-    TRRET(LTYPE_NEXT_STRUCT + 2);
 }
 
 
@@ -1023,7 +1009,9 @@ parse_struct_quals(array_t *form,
  *
  */
 static int
-parse_fielddef(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, lkit_type_t *ty)
+parse_fielddef(mrklkit_ctx_t *mctx,
+               fparser_datum_t *dat,
+               lkit_type_t *ty)
 {
     array_t *form;
     array_iter_t it;
@@ -1047,7 +1035,7 @@ parse_fielddef(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, lkit_type_t *ty)
         if ((fty = array_incr(&var->fields)) == NULL) { \
             FAIL("array_incr"); \
         } \
-        if ((*fty = lkit_type_parse(ctx, *node, 1)) == NULL) { \
+        if ((*fty = lkit_type_parse(mctx, *node, 1)) == NULL) { \
             LKIT_ERROR(var) = 1; \
             (*node)->error = 1; \
             return 1; \
@@ -1068,7 +1056,9 @@ parse_fielddef(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, lkit_type_t *ty)
 }
 
 lkit_type_t *
-lkit_type_parse(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, int seterror)
+lkit_type_parse(mrklkit_ctx_t *mctx,
+                fparser_datum_t *dat,
+                int seterror)
 {
     lkit_type_t *ty = NULL;
     fparser_tag_t tag;
@@ -1105,11 +1095,13 @@ lkit_type_parse(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, int seterror)
             /*
              * XXX handle typedefs here, or unknown type ...
              */
-            if ((probe = dict_get_item(&typedefs, (bytes_t *)(dat->body))) != NULL) {
+            if ((probe = dict_get_item(&mctx->typedefs,
+                                       (bytes_t *)(dat->body))) != NULL) {
                 lkit_type_t *pty;
 
                 pty = probe->value;
                 ty = pty;
+
             }
             /*
              * either already registered type, or NULL, skip type
@@ -1152,7 +1144,9 @@ lkit_type_parse(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, int seterror)
                     FAIL("array_incr");
                 }
 
-                if ((*elemtype = lkit_type_parse(ctx, *node, 1)) == NULL) {
+                if ((*elemtype = lkit_type_parse(mctx,
+                                                 *node,
+                                                 1)) == NULL) {
                     TR(LKIT_TYPE_PARSE + 3);
                     goto err;
                 }
@@ -1195,7 +1189,9 @@ lkit_type_parse(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, int seterror)
                     FAIL("array_incr");
                 }
 
-                if ((*elemtype = lkit_type_parse(ctx, *node, 1)) == NULL) {
+                if ((*elemtype = lkit_type_parse(mctx,
+                                                 *node,
+                                                 1)) == NULL) {
                     TR(LKIT_TYPE_PARSE + 7);
                     goto err;
                 }
@@ -1208,6 +1204,7 @@ lkit_type_parse(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, int seterror)
                 case LKIT_INT:
                 case LKIT_FLOAT:
                     td->fini = (dict_item_finalizer_t)rt_dict_fini_keyonly;
+                    break;
 
                 default:
                     TR(LKIT_TYPE_PARSE + 8);
@@ -1235,7 +1232,7 @@ lkit_type_parse(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, int seterror)
 
 
                     if (FPARSER_DATUM_TAG(*node) == FPARSER_SEQ) {
-                        if (parse_fielddef(ctx, *node, ty) != 0) {
+                        if (parse_fielddef(mctx, *node, ty) != 0) {
                             TR(LKIT_TYPE_PARSE + 10);
                             goto err;
                         }
@@ -1267,7 +1264,9 @@ lkit_type_parse(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, int seterror)
                         FAIL("array_incr");
                     }
 
-                    if ((*paramtype = lkit_type_parse(ctx, *node, 1)) == NULL) {
+                    if ((*paramtype = lkit_type_parse(mctx,
+                                                      *node,
+                                                      1)) == NULL) {
                         TR(LKIT_TYPE_PARSE + 12);
                         goto err;
                     }
@@ -1295,7 +1294,7 @@ lkit_type_parse(struct _mrklkit_ctx *ctx, fparser_datum_t *dat, int seterror)
         goto end;
     }
 
-    ty = lkit_type_finalize(ty);
+    ty = lkit_type_finalize(mctx, ty);
 
 end:
     return ty;
@@ -1315,12 +1314,13 @@ err:
 
 
 int
-lkit_parse_typedef(struct _mrklkit_ctx *ctx, array_t *form, array_iter_t *it)
+lkit_parse_typedef(mrklkit_ctx_t *mctx,
+                   array_t *form,
+                   array_iter_t *it)
 {
     int res = 0;
     fparser_datum_t **node;
     bytes_t *typename = NULL;
-    dict_item_t *probe;
     lkit_type_t *type;
 
     /* (type WORD int|float|str|bool|undef|(array )|(dict )|(struct )|(func )) */
@@ -1334,25 +1334,14 @@ lkit_parse_typedef(struct _mrklkit_ctx *ctx, array_t *form, array_iter_t *it)
         goto err;
     }
 
-    if ((type = lkit_type_parse(ctx, *node, 1)) == NULL) {
+    if ((type = lkit_type_parse(mctx, *node, 1)) == NULL) {
         (*node)->error = 1;
         TR(LKIT_PARSE_TYPEDEF + 3);
         goto err;
     }
 
-    /* have it unique */
-    if ((probe = dict_get_item(&typedefs, typename)) != NULL) {
-        lkit_type_t *pty;
+    lkit_register_typedef(mctx, type, typename);
 
-        pty = probe->value;
-        if (lkit_type_cmp(pty, type) != 0) {
-            (*node)->error = 1;
-            TR(LKIT_PARSE_TYPEDEF + 4);
-            goto err;
-        }
-    } else {
-        dict_set_item(&typedefs, typename, type);
-    }
 
 end:
     return res;
@@ -1448,11 +1437,6 @@ lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
     return 0;
 }
 
-int
-ltype_transform(dict_traverser_t cb, void *udata)
-{
-    return dict_traverse(&types, cb, udata);
-}
 
 void
 ltype_init(void)
@@ -1465,77 +1449,56 @@ ltype_init(void)
                NULL,
                NULL);
 
-    dict_init(&types, 101,
-             (dict_hashfn_t)lkit_type_hash,
-             (dict_item_comparator_t)lkit_type_cmp,
-             (dict_item_finalizer_t)lkit_type_fini_dict);
-
     ty = lkit_type_new(LKIT_UNDEF);
-    dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_UNDEF)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;
 
     ty = lkit_type_new(LKIT_VOID);
-    dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_VOID)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;
 
     ty = lkit_type_new(LKIT_INT);
-    dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_INT)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;
 
     ty = lkit_type_new(LKIT_STR);
-    dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_STR)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;
 
     ty = lkit_type_new(LKIT_FLOAT);
-    dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_FLOAT)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;
 
     ty = lkit_type_new(LKIT_BOOL);
-    dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_BOOL)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;
 
     ty = lkit_type_new(LKIT_ANY);
-    dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_ANY)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;
 
     ty = lkit_type_new(LKIT_VARARG);
-    dict_set_item(&types, ty, ty);
     if ((pty = array_get(&builtin_types, LKIT_VARARG)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;
-
-
-    dict_init(&typedefs, 101,
-             (dict_hashfn_t)bytes_hash,
-             (dict_item_comparator_t)bytes_cmp,
-             NULL /* key and value weakrefs */);
-
 }
 
 void
 ltype_fini(void)
 {
-    dict_fini(&types);
 }

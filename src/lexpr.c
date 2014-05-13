@@ -290,7 +290,7 @@ parse_expr_quals(array_t *form,
 
 
 lkit_expr_t *
-lkit_expr_parse(struct _mrklkit_ctx *ctx,
+lkit_expr_parse(mrklkit_ctx_t *mctx,
                 lkit_expr_t *ectx,
                 fparser_datum_t *dat,
                 int seterror)
@@ -300,7 +300,7 @@ lkit_expr_parse(struct _mrklkit_ctx *ctx,
     expr = lkit_expr_new(ectx);
 
     /* first probe for type/reference */
-    if ((expr->type = lkit_type_parse(ctx, dat, 0)) == NULL) {
+    if ((expr->type = lkit_type_parse(mctx, dat, 0)) == NULL) {
         /* expr found ? */
         //TRACE("value:");
         //fparser_datum_dump(&dat, NULL);
@@ -405,7 +405,10 @@ lkit_expr_parse(struct _mrklkit_ctx *ctx,
                         FAIL("array_incr");
                     }
 
-                    if ((*arg = lkit_expr_parse(ctx, ectx, *node, 1)) == NULL) {
+                    if ((*arg = lkit_expr_parse(mctx,
+                                                ectx,
+                                                *node,
+                                                1)) == NULL) {
                         TR(LKIT_EXPR_PARSE + 6);
                         goto err;
                     }
@@ -505,62 +508,6 @@ err:
     goto end;
 }
 
-
-
-/*
- * (keyword name value)
- */
-int
-lkit_parse_exprdef(struct _mrklkit_ctx *ctx,
-                   lkit_expr_t *ectx,
-                   array_t *form,
-                   array_iter_t *it)
-{
-    int res = 0;
-    bytes_t *name = NULL;
-    lkit_expr_t *expr = NULL;
-    lkit_gitem_t **gitem;
-    fparser_datum_t **node = NULL;
-
-    /* name */
-    if (lparse_next_word_bytes(form, it, &name, 1) != 0) {
-        TR(LKIT_PARSE_EXPRDEF + 1);
-        goto err;
-    }
-
-    /* must be unique */
-    if (lkit_expr_find(ectx, name) != NULL) {
-        TR(LKIT_PARSE_EXPRDEF + 2);
-        goto err;
-    }
-
-    /* type and value */
-    if ((node = array_next(form, it)) == NULL) {
-        TR(LKIT_PARSE_EXPRDEF + 3);
-        goto err;
-    }
-
-    if ((expr = lkit_expr_parse(ctx, ectx, *node, 1)) == NULL) {
-        (*node)->error = 1;
-        TR(LKIT_PARSE_EXPRDEF + 4);
-        goto err;
-    }
-
-    dict_set_item(&ectx->ctx, name, expr);
-    if ((gitem = array_incr(&ectx->glist)) == NULL) {
-        FAIL("array_incr");
-    }
-    (*gitem)->name = name;
-    (*gitem)->expr = expr;
-
-end:
-    return res;
-
-err:
-    (void)lkit_expr_destroy(&expr);
-    res = 1;
-    goto end;
-}
 
 
 void

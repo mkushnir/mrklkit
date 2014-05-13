@@ -25,7 +25,6 @@
 #include <mrklkit/module.h>
 #include <mrklkit/mrklkit.h>
 
-#include <mrklkit/builtin.h>
 #include <mrklkit/lruntime.h>
 
 #include "diag.h"
@@ -52,7 +51,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
 
     if (FPARSER_DATUM_TAG(ctx->datum_root) != FPARSER_SEQ) {
         ctx->datum_root->error = 1;
-        TR(MRKLKIT_PARSE + 1);
+        res = MRKLKIT_PARSE + 1;
         goto err;
     }
 
@@ -73,18 +72,15 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
 
             if (lparse_first_word(nform, &nit, &first, 1) == 0) {
                 /* statements */
-                if (strcmp((char *)first, "type") == 0) {
-                    if (lkit_parse_typedef(ctx, nform, &nit) != 0) {
-                        (*fnode)->error = 1;
-                        TR(MRKLKIT_PARSE + 2);
-                        goto err;
-                    }
+                if (strcmp((char *)first, "mode") == 0) {
+                    TRACE("mode ...");
+                } else if (strcmp((char *)first, "pragma") == 0) {
+                    unsigned char *arg = NULL;
 
-                } else if (strcmp((char *)first, "sym") == 0) {
-                    if (builtin_sym_parse(ctx, nform, &nit) != 0) {
-                        (*fnode)->error = 1;
-                        TR(MRKLKIT_PARSE + 3);
-                        goto err;
+                    if (lparse_next_word(nform, &nit, &arg, 1) == 0) {
+                        TRACE("pragma arg: %s", arg);
+                    } else {
+                        TRACE("ignoring empty pragma");
                     }
 
                 } else {
@@ -95,42 +91,38 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
                          mod != NULL;
                          mod = array_next(ctx->modules, &it)) {
 
-                        if ((*mod)->parsers != NULL) {
-                            mrklkit_parser_info_t *pi;
-
-                            for (pi = (*mod)->parsers;
-                                 pi->keyword != NULL;
-                                 ++pi) {
-
-                                if (strcmp((char *)first, pi->keyword) == 0) {
-                                    if (pi->parser(udata, nform, &nit) != 0) {
-                                        (*fnode)->error = 1;
-                                        TR(MRKLKIT_PARSE + 2);
-                                        goto err;
-                                    }
-                                }
+                        if ((*mod)->parse_expr != NULL) {
+                            if ((*mod)->parse_expr(udata,
+                                                   (const char *)first,
+                                                   nform,
+                                                   &nit) != 0) {
+                                (*fnode)->error = 1;
+                                res = MRKLKIT_PARSE + 3;
+                                goto err;
                             }
                         }
                     }
                 }
             } else {
-                /* ignore */
+                /* ignore ? */
+                res = MRKLKIT_PARSE + 4;
+                goto err;
             }
 
             break;
 
         default:
-            /* ignore */
-            ;
+            /* ignore ? */
+            res = MRKLKIT_PARSE + 5;
+            goto err;
         }
     }
 
 end:
-    return res;
+    TRRET(res);
 
 err:
     fparser_datum_dump_formatted(ctx->datum_root);
-    res = 1;
     goto end;
 }
 
@@ -187,13 +179,6 @@ do_analysis(mrklkit_ctx_t *ctx)
 }
 
 
-static int
-ltype_compile_cb(lkit_type_t *kty, UNUSED lkit_type_t *vty, void *udata)
-{
-    return ltype_compile(kty, udata);
-}
-
-
 int
 mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 {
@@ -210,33 +195,18 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
         TRRET(MRKLKIT_COMPILE + 1);
     }
 
-    /* precompile */
+    /* compile */
 
     for (mod = array_first(ctx->modules, &it);
          mod != NULL;
          mod = array_next(ctx->modules, &it)) {
 
-        if ((*mod)->precompile != NULL) {
-            if ((*mod)->precompile(udata)) {
-                TRRET(MRKLKIT_COMPILE + 2);
+        if ((*mod)->compile_type != NULL) {
+            if ((*mod)->compile_type(udata, ctx->lctx)) {
+                TRRET(MRKLKIT_COMPILE + 5);
             }
         }
     }
-
-
-    if (ltype_transform((dict_traverser_t)ltype_compile_cb,
-                        ctx) != 0) {
-        TRRET(MRKLKIT_COMPILE + 3);
-    }
-
-    /* compile */
-
-    /* builtin */
-    if (builtin_sym_compile(ctx, ctx->module) != 0) {
-        TRRET(MRKLKIT_COMPILE + 4);
-    }
-
-    /* modules */
 
     for (mod = array_first(ctx->modules, &it);
          mod != NULL;
@@ -379,6 +349,44 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
 {
     array_iter_t it;
     mrklkit_module_t **m;
+    lkit_type_t *ty;
+
+    ctx->datum_root = NULL;
+
+    dict_init(&ctx->types, 101,
+             (dict_hashfn_t)lkit_type_hash,
+             (dict_item_comparator_t)lkit_type_cmp,
+             (dict_item_finalizer_t)lkit_type_fini_dict);
+
+    /* builtin types */
+    ty = lkit_type_get(LKIT_UNDEF);
+    dict_set_item(&ctx->types, ty, ty);
+    ty = lkit_type_get(LKIT_VOID);
+    dict_set_item(&ctx->types, ty, ty);
+    ty = lkit_type_get(LKIT_INT);
+    dict_set_item(&ctx->types, ty, ty);
+    ty = lkit_type_get(LKIT_STR);
+    dict_set_item(&ctx->types, ty, ty);
+    ty = lkit_type_get(LKIT_FLOAT);
+    dict_set_item(&ctx->types, ty, ty);
+    ty = lkit_type_get(LKIT_BOOL);
+    dict_set_item(&ctx->types, ty, ty);
+    ty = lkit_type_get(LKIT_ANY);
+    dict_set_item(&ctx->types, ty, ty);
+    ty = lkit_type_get(LKIT_VARARG);
+    dict_set_item(&ctx->types, ty, ty);
+
+    dict_init(&ctx->typedefs, 101,
+             (dict_hashfn_t)bytes_hash,
+             (dict_item_comparator_t)bytes_cmp,
+             NULL /* key and value weakrefs */);
+
+    ctx->lctx = LLVMContextCreate();
+    if ((ctx->module = LLVMModuleCreateWithNameInContext(name,
+            ctx->lctx)) == NULL) {
+        FAIL("LLVMModuleCreateWithNameInContext");
+    }
+    ctx->ee = NULL;
 
     ctx->modules = mod;
     if (ctx->modules != NULL) {
@@ -391,16 +399,6 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
         }
     }
 
-    ctx->datum_root = NULL;
-
-    lkit_expr_init(&ctx->builtin_root, NULL);
-
-    ctx->lctx = LLVMContextCreate();
-    if ((ctx->module = LLVMModuleCreateWithNameInContext(name,
-            ctx->lctx)) == NULL) {
-        FAIL("LLVMModuleCreateWithNameInContext");
-    }
-    ctx->ee = NULL;
 }
 
 
@@ -409,6 +407,16 @@ mrklkit_ctx_fini(mrklkit_ctx_t *ctx, void *udata)
 {
     array_iter_t it;
     mrklkit_module_t **mod;
+
+    if (ctx->modules != NULL) {
+        for (mod = array_last(ctx->modules, &it);
+             mod != NULL;
+             mod = array_prev(ctx->modules, &it)) {
+            if ((*mod)->fini != NULL) {
+                (*mod)->fini(udata);
+            }
+        }
+    }
 
     if (ctx->ee != NULL) {
         LLVMRunStaticDestructors(ctx->ee);
@@ -422,20 +430,11 @@ mrklkit_ctx_fini(mrklkit_ctx_t *ctx, void *udata)
     LLVMContextDispose(ctx->lctx);
     ctx->lctx = NULL;
 
-    lkit_expr_fini(&ctx->builtin_root);
+    dict_fini(&ctx->typedefs);
+    dict_fini(&ctx->types);
 
     if (ctx->datum_root != NULL) {
         fparser_datum_destroy(&ctx->datum_root);
-    }
-
-    if (ctx->modules != NULL) {
-        for (mod = array_last(ctx->modules, &it);
-             mod != NULL;
-             mod = array_prev(ctx->modules, &it)) {
-            if ((*mod)->fini != NULL) {
-                (*mod)->fini(udata);
-            }
-        }
     }
 }
 
@@ -491,7 +490,6 @@ mrklkit_init(void)
     llvm_init();
     ltype_init();
     lexpr_init();
-    builtin_init();
     lruntime_init();
 }
 
@@ -500,7 +498,6 @@ void
 mrklkit_fini(void)
 {
     lruntime_fini();
-    builtin_fini();
     lexpr_fini();
     ltype_fini();
     llvm_fini();

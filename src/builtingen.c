@@ -6,6 +6,7 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
+#include <mrklkit/ltype.h>
 #include <mrklkit/lexpr.h>
 #include "builtin_private.h"
 

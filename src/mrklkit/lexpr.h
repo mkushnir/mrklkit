@@ -7,7 +7,7 @@
 #include <mrkcommon/dict.h>
 
 #include <mrklkit/fparser.h>
-#include <mrklkit/ltype.h>
+#include <mrklkit/mrklkit.h>
 #include <mrklkit/util.h>
 
 #ifdef __cplusplus
@@ -17,8 +17,9 @@ extern "C" {
 typedef struct _lkit_user_class {
 } lkit_user_class_t;
 
+struct _lkit_type;
 typedef struct _lkit_expr {
-    lkit_type_t *type;
+    struct _lkit_type *type;
     bytes_t *name;
     union {
         fparser_datum_t *literal;   /* !isref */
@@ -63,24 +64,22 @@ typedef struct _lkit_gitem {
 } lkit_gitem_t;
 
 
-struct _mrklkit_ctx;
-
 int lkit_expr_dump(lkit_expr_t *);
-lkit_expr_t *lkit_expr_parse(struct _mrklkit_ctx *,
+lkit_expr_t *lkit_expr_parse(mrklkit_ctx_t *,
                              lkit_expr_t *,
                              fparser_datum_t *,
                              int);
 lkit_expr_t *lkit_expr_find(lkit_expr_t *, bytes_t *);
-int lkit_parse_exprdef(struct _mrklkit_ctx *,
-                       lkit_expr_t *,
+int lkit_parse_exprdef(lkit_expr_t *,
                        array_t *,
-                       array_iter_t *);
+                       array_iter_t *,
+                       void *);
 
 void lexpr_init_ctx(lkit_expr_t *);
 void lexpr_fini_ctx(lkit_expr_t *);
 
 lkit_expr_t *lkit_expr_new(lkit_expr_t *);
-lkit_type_t *lkit_expr_type_of(lkit_expr_t *);
+struct _lkit_type *lkit_expr_type_of(lkit_expr_t *);
 void lkit_expr_init(lkit_expr_t *, lkit_expr_t *);
 void lkit_expr_fini(lkit_expr_t *);
 int lkit_expr_destroy(lkit_expr_t **);

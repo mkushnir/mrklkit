@@ -60,6 +60,7 @@ typedef struct _testrt {
 
 typedef struct _testrt_ctx {
     mrklkit_ctx_t mctx;
+    lkit_expr_t builtin;
     lkit_expr_t root;
     array_t testrts;
     dsource_t *ds;

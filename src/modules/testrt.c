@@ -11,6 +11,7 @@
 
 #include <mrklkit/module.h>
 #include <mrklkit/mrklkit.h>
+#include <mrklkit/fparser.h>
 #include <mrklkit/lparse.h>
 #include <mrklkit/lexpr.h>
 #include <mrklkit/ltype.h>
@@ -43,6 +44,62 @@ static array_t dsources;
 static dict_t targets;
 rt_struct_t *testrt_source = NULL;
 
+static int
+_parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
+{
+    lkit_type_t *ty = NULL;
+    bytes_t *typename = NULL;
+
+    if (lparse_next_word_bytes(form, it, &typename, 1) != 0) {
+        TRRET(TESTRT_PARSE + 800);
+    }
+
+    if (strcmp((char *)typename->data, "url") == 0) {
+        if ((ty = malloc(sizeof(lkit_type_t))) == NULL) {
+            FAIL("malloc");
+        }
+        ty->tag = LKIT_USER + 100;
+        ty->name = "url";
+        ty->rtsz = 0;
+        ty->dtor = NULL;
+        ty->error = 0;
+        ty = lkit_type_finalize(&tctx->mctx, ty);
+        lkit_register_typedef(&tctx->mctx, ty, typename);
+    } else {
+        /* get back */
+        --it->iter;
+        return lkit_parse_typedef(&tctx->mctx, form, it);
+    }
+
+
+    return 0;
+}
+
+static int
+_cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
+{
+    int res;
+    res = ltype_compile(value, lctx);
+    if (res != 0) {
+        TRACE("Could not compile this type:");
+        lkit_type_dump(value);
+    }
+    return 0;
+}
+
+
+static int
+_compile_type(testrt_ctx_t *tctx, LLVMContextRef lctx)
+{
+    return dict_traverse(&tctx->mctx.types, (dict_traverser_t)_cb0, lctx);
+    //return dict_traverse(&tctx->mctx.typedefs, (dict_traverser_t)_cb0, lctx);
+}
+
+static int
+_parse_builtin(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
+{
+    return builtin_parse_exprdef(&tctx->mctx, &tctx->builtin, form, it);
+}
 
 /**
  * data source example
@@ -198,7 +255,7 @@ static int
 _parse_dsource(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
 {
     dsource_t *dsource;
-
+    fparser_datum_t **node;
 
     dsource = dsource_new();
 
@@ -210,14 +267,22 @@ _parse_dsource(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
     /* quals */
     lparse_quals(form, it, (quals_parser_t)parse_dsource_quals, dsource);
 
-    if (ltype_next_struct(&tctx->mctx,
-                          form,
-                          it,
-                          &dsource->_struct,
-                          1) != 0) {
+    if ((node = array_next(form, it)) == NULL) {
         dsource->error = 1;
         return 1;
     }
+
+    if ((dsource->_struct = (lkit_struct_t *)lkit_type_parse(&tctx->mctx,
+                                                             *node,
+                                                             1)) == NULL) {
+        dsource->error = 1;
+        return 1;
+    }
+    if (dsource->_struct->base.tag != LKIT_STRUCT) {
+        dsource->error = 1;
+        return 1;
+    }
+
     dsource->fdelim = dsource->_struct->delim[0];
 
     if (dsource->_struct->parser == LKIT_PARSER_MDELIM) {
@@ -229,7 +294,7 @@ _parse_dsource(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
 
 
 static int
-remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *expr)
+remove_undef(testrt_ctx_t *tctx, lkit_expr_t *expr)
 {
     char *name = (expr->name != NULL) ? (char *)expr->name->data : ")(";
 
@@ -244,7 +309,7 @@ remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *expr)
 
             //lkit_expr_dump(*arg);
 
-            if (builtin_remove_undef(mctx, *arg) != 0) {
+            if (builtin_remove_undef(&tctx->builtin, *arg) != 0) {
                 TRRET(TESTRT_PARSE + 500);
             }
 
@@ -252,7 +317,7 @@ remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *expr)
 
         } else if (strcmp(name, "HANGOVER") == 0) {
         } else {
-            return builtin_remove_undef(mctx, expr);
+            return builtin_remove_undef(&tctx->builtin, expr);
         }
     }
     return 0;
@@ -325,7 +390,7 @@ _parse_take(testrt_ctx_t *tctx,
     lkit_struct_t *ts;
 
     if (trt->takeexpr != NULL) {
-        TRRET(TESTRT_PARSE + 300);
+        TRRET(TESTRT_PARSE + 600);
     }
 
     trt->takeexpr = lkit_expr_new(&tctx->root);
@@ -338,10 +403,6 @@ _parse_take(testrt_ctx_t *tctx,
         lkit_expr_t **expr;
         lkit_type_t **ty;
 
-        //if (FPARSER_DATUM_TAG(*node) != FPARSER_SEQ) {
-        //    TRRET(TESTRT_PARSE + 400);
-        //}
-
         if ((expr = array_incr(&trt->takeexpr->subs)) == NULL) {
             FAIL("array_incr");
         }
@@ -350,11 +411,11 @@ _parse_take(testrt_ctx_t *tctx,
                                      ectx,
                                      *node,
                                      seterror)) == NULL) {
-            TRRET(TESTRT_PARSE + 401);
+            TRRET(TESTRT_PARSE + 601);
         }
 
-        if (remove_undef(&tctx->mctx, *expr) != 0) {
-            TRRET(TESTRT_PARSE + 209);
+        if (remove_undef(tctx, *expr) != 0) {
+            TRRET(TESTRT_PARSE + 602);
         }
 
         if ((ty = array_incr(&ts->fields)) == NULL) {
@@ -363,7 +424,7 @@ _parse_take(testrt_ctx_t *tctx,
         *ty = (*expr)->type;
     }
 
-    trt->takeexpr->type = lkit_type_finalize((lkit_type_t *)ts);
+    trt->takeexpr->type = lkit_type_finalize(&tctx->mctx, (lkit_type_t *)ts);
 
     return 0;
 }
@@ -410,8 +471,8 @@ _parse_do(testrt_ctx_t *tctx,
             TRRET(TESTRT_PARSE + 302);
         }
 
-        if (remove_undef(&tctx->mctx, *expr) != 0) {
-            TRRET(TESTRT_PARSE + 209);
+        if (remove_undef(tctx, *expr) != 0) {
+            TRRET(TESTRT_PARSE + 303);
         }
 
         if ((ty = array_incr(&ts->fields)) == NULL) {
@@ -420,7 +481,7 @@ _parse_do(testrt_ctx_t *tctx,
         *ty = (*expr)->type;
     }
 
-    trt->doexpr->type = lkit_type_finalize((lkit_type_t *)ts);
+    trt->doexpr->type = lkit_type_finalize(&tctx->mctx, (lkit_type_t *)ts);
 
     return 0;
 }
@@ -533,14 +594,17 @@ _parse_see(testrt_ctx_t *tctx,
             FAIL("array_incr");
         }
 
-        if ((*arg = lkit_expr_parse(&tctx->mctx, ectx, *node, 1)) == NULL) {
+        if ((*arg = lkit_expr_parse(&tctx->mctx,
+                                    ectx,
+                                    *node,
+                                    1)) == NULL) {
             TRRET(TESTRT_PARSE + 208);
         }
     }
 
     /* remove undef and validate*/
     //lkit_expr_dump(ifexpr);
-    if (remove_undef(&tctx->mctx, ifexpr) != 0) {
+    if (remove_undef(tctx, ifexpr) != 0) {
         TRRET(TESTRT_PARSE + 209);
     }
     //lkit_expr_dump(ifexpr);
@@ -602,7 +666,7 @@ _parse_clause(testrt_ctx_t *tctx,
                     TRRET(TESTRT_PARSE + 104);
                 }
 
-                if (remove_undef(&tctx->mctx, *expr) != 0) {
+                if (remove_undef(tctx, *expr) != 0) {
                     TRRET(TESTRT_PARSE + 105);
                 }
 
@@ -615,7 +679,7 @@ _parse_clause(testrt_ctx_t *tctx,
         break;
 
     default:
-        TRRET(TESTRT_PARSE + 104);
+        TRRET(TESTRT_PARSE + 107);
     }
 
     return 0;
@@ -658,6 +722,26 @@ _parse_trt(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
 
     return 0;
 }
+
+
+static int
+_parse_expr(testrt_ctx_t *tctx,
+            const char *name,
+            array_t *form,
+            array_iter_t *it)
+{
+    if (strcmp(name, "type") == 0) {
+        return _parse_typedef(tctx, form, it);
+    } else if (strcmp(name, "sym") == 0) {
+        return _parse_builtin(tctx, form, it);
+    } else if (strcmp(name, "dsource") == 0) {
+        return _parse_dsource(tctx, form, it);
+    } else if (strcmp(name, "testrt") == 0) {
+        return _parse_trt(tctx, form, it);
+    }
+    return TESTRT_PARSE + 700;
+}
+
 
 static int
 _compile_trt(testrt_t *trt, void *udata)
@@ -892,11 +976,16 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     LLVMValueRef fn;
     LLVMBasicBlockRef bb;
 
+    /* builtin */
+    if (builtin_sym_compile(&tctx->builtin, module) != 0) {
+        TRRET(TESTRT_COMPILE + 100);
+    }
+
     lctx = LLVMGetModuleContext(module);
     builder = LLVMCreateBuilderInContext(lctx);
 
     if (dsource_compile(module) != 0) {
-        TRRET(TESTRT_COMPILE + 100);
+        TRRET(TESTRT_COMPILE + 101);
     }
 
     fn = LLVMAddFunction(module,
@@ -907,13 +996,13 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     LLVMPositionBuilderAtEnd(builder, bb);
 
     /* initialize all non-lazy variables */
-    builtin_call_eager_initializers(&tctx->mctx, module, builder);
+    builtin_call_eager_initializers(&tctx->builtin, module, builder);
 
     /* compile all */
     if (array_traverse(&tctx->testrts,
                        (array_traverser_t)_compile_trt,
                        module) != 0) {
-        TRRET(TESTRT_COMPILE + 101);
+        TRRET(TESTRT_COMPILE + 102);
     }
 
     /* return */
@@ -1327,7 +1416,7 @@ _init(testrt_ctx_t *tctx)
         BYTES_INCREF(*const_bytes[i].var);
     }
 
-    null_struct = (lkit_struct_t *)lkit_type_finalize(
+    null_struct = (lkit_struct_t *)lkit_type_finalize(&tctx->mctx,
             lkit_type_get(LKIT_STRUCT));
 
     if (array_init(&dsources, sizeof(dsource_t *), 0,
@@ -1336,12 +1425,11 @@ _init(testrt_ctx_t *tctx)
         FAIL("array_init");
     }
 
-    lkit_expr_init(&tctx->root, builtin_get_root_ctx(&tctx->mctx));
-
+    lkit_expr_init(&tctx->builtin, NULL);
+    lkit_expr_init(&tctx->root, &tctx->builtin);
     array_init(&tctx->testrts, sizeof(testrt_t), 0,
                (array_initializer_t)testrt_init,
                (array_finalizer_t)testrt_fini);
-
     dict_init(&targets, 101,
               (dict_hashfn_t)testrt_target_hash,
               (dict_item_comparator_t)testrt_target_cmp,
@@ -1355,6 +1443,7 @@ _fini(testrt_ctx_t *tctx)
     size_t i;
     array_fini(&tctx->testrts);
     lkit_expr_fini(&tctx->root);
+    lkit_expr_fini(&tctx->builtin);
     array_fini(&dsources);
 
     for (i = 0; i < countof(const_bytes); ++i) {
@@ -1362,18 +1451,11 @@ _fini(testrt_ctx_t *tctx)
     }
 }
 
-static mrklkit_parser_info_t _parsers[] = {
-    {"dsource", (mrklkit_module_parser_t)_parse_dsource},
-    {"testrt", (mrklkit_module_parser_t)_parse_trt},
-    {NULL, NULL},
-};
-
-
 mrklkit_module_t testrt_module = {
     (mrklkit_module_initializer_t)_init,
     (mrklkit_module_finalizer_t)_fini,
-    _parsers,
-    NULL,
+    (mrklkit_expr_parser_t)_parse_expr,
+    (mrklkit_type_compiler_t)_compile_type,
     (mrklkit_module_compiler_t)_compile,
     (mrklkit_module_linker_t)_link,
 };

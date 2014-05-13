@@ -7,18 +7,26 @@
 #include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/dict.h>
+
 #include <mrklkit/fparser.h>
-#include <mrklkit/ltype.h>
-#include <mrklkit/lexpr.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+struct _lkit_expr_t;
 typedef struct _mrklkit_ctx {
     array_t *modules;
     fparser_datum_t *datum_root;
-    lkit_expr_t builtin_root;
+    /*
+     * lkit_type_t *, lkit_type_t *
+     */
+    dict_t types;
+    /*
+     * bytes_t *, lkit_type_t *
+     */
+    dict_t typedefs;
     /* backend */
     LLVMContextRef lctx;
     LLVMModuleRef module;

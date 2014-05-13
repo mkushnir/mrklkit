@@ -88,11 +88,11 @@ run(void)
     array_t modules;
     mrklkit_module_t **m;
 
+    mrklkit_init();
+
     array_init(&modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
     m = array_incr(&modules);
     *m = &testrt_module;
-
-    mrklkit_init();
     mrklkit_ctx_init(&tctx.mctx, "test", &modules, &tctx);
 
     test1();

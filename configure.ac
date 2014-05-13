@@ -1,4 +1,4 @@
-AC_INIT(mrklkit, 0.1, markiyan.kushnir@gmail.com)
+AC_INIT(mrklkit, 0.1, markiyan.kushnir@gmail.com, mrklkit, https://github.com/mkushnir/mrklkit)
 if test -n "$USE_GCC"
 then
     probe="gcc${USE_GCC}"
@@ -83,6 +83,8 @@ AC_FUNC_STRTOD
 AC_TYPE_INT64_T
 AC_TYPE_SSIZE_T
 AC_TYPE_UINT64_T
+AC_TYPE_OFF_T
+
 
 # LLVM_CFALGS modulo -On
 if which llvm-config >/dev/null
