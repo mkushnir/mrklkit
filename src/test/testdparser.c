@@ -134,11 +134,11 @@ test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
                          &value,
                          DPFLAGS) == DPARSE_ERRORVALUE) {
             TRACE("err %s", value != NULL ? value->data : NULL);
+            dparser_reach_delim(bs, FDELIM, br->end);
         } else {
             TRACE("ok %s", value->data);
         }
         //D8(SPDATA(bs), br->end - SPOS(bs));
-        //dparser_reach_delim(bs, FDELIM, br->end);
         //D8(SPDATA(bs), br->end - SPOS(bs));
         dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
         //D8(SPDATA(bs), br->end - SPOS(bs));

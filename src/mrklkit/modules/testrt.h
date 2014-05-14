@@ -30,6 +30,8 @@ typedef struct _dsource {
     uint64_t parse_flags;
 } dsource_t;
 
+typedef struct _testrt_url {
+} testrt_url;
 
 typedef struct _testrt_target {
     /* meta */

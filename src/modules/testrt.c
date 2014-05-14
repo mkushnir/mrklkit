@@ -78,11 +78,25 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
 static int
 _cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
 {
+    if ((int)value->tag == (LKIT_USER + 100)) {
+        value->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
+                                                              NULL,
+                                                              0,
+                                                              0), 0);
+    }
+    return 0;
+}
+
+
+static int
+_cb1(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
+{
     int res;
+
     res = ltype_compile(value, lctx);
     if (res != 0) {
-        TRACE("Could not compile this type:");
-        lkit_type_dump(value);
+        //TRACE("Could not compile this type:");
+        //lkit_type_dump(value);
     }
     return 0;
 }
@@ -91,8 +105,8 @@ _cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
 static int
 _compile_type(testrt_ctx_t *tctx, LLVMContextRef lctx)
 {
-    return dict_traverse(&tctx->mctx.types, (dict_traverser_t)_cb0, lctx);
-    //return dict_traverse(&tctx->mctx.typedefs, (dict_traverser_t)_cb0, lctx);
+    (void)dict_traverse(&tctx->mctx.typedefs, (dict_traverser_t)_cb0, lctx);
+    return dict_traverse(&tctx->mctx.types, (dict_traverser_t)_cb1, lctx);
 }
 
 static int
@@ -352,6 +366,11 @@ parse_quals(array_t *form,
     return 0;
 }
 
+void
+url_destroy(bytes_t **o)
+{
+    BYTES_DECREF(o);
+}
 
 static int
 testrt_init(testrt_t *trt)

@@ -303,7 +303,7 @@ dparse_str(bytestream_t *bs,
     dparser_reach_delim(bs, delim, epos);
     br.end = SPOS(bs);
 
-    *val = bytes_new(br.end - br.start + 1);
+    *val = bytes_new(br.end - br.start);
     memcpy((*val)->data, SDATA(bs, br.start), (*val)->sz);
     *((*val)->data + (*val)->sz) = '\0';
     BYTES_INCREF(*val);
@@ -673,6 +673,12 @@ dparse_struct(bytestream_t *bs,
             break;
 
         default:
+            //if (dparse_str(bs,
+            //               sdelim,
+            //               br.end,
+            //               (bytes_t **)val,
+            //               flags) != 0) {
+            //}
             FAIL("dparse_struct: need more types to handle in dparse");
         }
 

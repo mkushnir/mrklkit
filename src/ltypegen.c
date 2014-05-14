@@ -7,7 +7,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -26,9 +26,7 @@
 int
 ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
 {
-    lkit_struct_t *ts;
-    lkit_func_t *tf;
-    LLVMTypeRef retty, *bfields = NULL;
+    LLVMTypeRef retty;
     lkit_type_t **field;
     array_iter_t it;
 
@@ -58,9 +56,14 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
             fields[2] = LLVMInt64TypeInContext(lctx);
             fields[3] = LLVMArrayType(LLVMInt8TypeInContext(lctx), 0);
             tc = (lkit_str_t *)ty;
-            tc->deref_backend = LLVMStructTypeInContext(lctx,
-                                                        fields,
-                                                        countof(fields), 0);
+            //tc->deref_backend = LLVMStructTypeInContext(lctx,
+            //                                            fields,
+            //                                            countof(fields), 0);
+            tc->deref_backend = LLVMStructCreateNamed(lctx, "bytes_t");
+            LLVMStructSetBody(tc->deref_backend,
+                              fields,
+                              countof(fields),
+                              0);
             ty->backend = LLVMPointerType(tc->deref_backend, 0);
         }
         break;
@@ -82,103 +85,131 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
         break;
 
     case LKIT_ARRAY:
-        ty->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
-                                                              NULL,
-                                                              0,
-                                                              0), 0);
+        //ty->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
+        //                                                      NULL,
+        //                                                      0,
+        //                                                      0), 0);
+        ty->backend = LLVMStructCreateNamed(lctx, "rt_array_t");
+        LLVMStructSetBody(ty->backend, NULL, 0, 0);
+        ty->backend = LLVMPointerType(ty->backend, 0);
         break;
 
     case LKIT_DICT:
-        ty->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
-                                                              NULL,
-                                                              0,
-                                                              0), 0);
+        //ty->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
+        //                                                      NULL,
+        //                                                      0,
+        //                                                      0), 0);
+        ty->backend = LLVMStructCreateNamed(lctx, "rt_dict_t");
+        LLVMStructSetBody(ty->backend, NULL, 0, 0);
+        ty->backend = LLVMPointerType(ty->backend, 0);
         break;
 
     case LKIT_STRUCT:
-        ts = (lkit_struct_t *)ty;
-        if ((bfields =
-                malloc(sizeof(LLVMTypeRef) * ts->fields.elnum)) == NULL) {
-            FAIL("malloc");
-        }
-        for (field = array_first(&ts->fields, &it);
-             field != NULL;
-             field = array_next(&ts->fields, &it)) {
+        {
+            lkit_struct_t *ts;
+            ts = (lkit_struct_t *)ty;
+            LLVMTypeRef *bfields;
 
-            if ((*field)->tag == LKIT_UNDEF || (*field)->tag == LKIT_VARARG) {
-                goto end_struct;
+            if ((bfields =
+                    malloc(sizeof(LLVMTypeRef) * ts->fields.elnum)) == NULL) {
+                FAIL("malloc");
             }
 
-            if (ltype_compile(*field, lctx) != 0) {
-                TRRET(LTYPE_COMPILE + 1);
+            for (field = array_first(&ts->fields, &it);
+                 field != NULL;
+                 field = array_next(&ts->fields, &it)) {
+
+                if ((*field)->tag == LKIT_UNDEF || (*field)->tag == LKIT_VARARG) {
+                    free(bfields);
+                    goto end_struct;
+                }
+
+                if (ltype_compile(*field, lctx) != 0) {
+                    free(bfields);
+                    TRRET(LTYPE_COMPILE + 1);
+                }
+
+                bfields[it.iter] = (*field)->backend;
+                ts->base.rtsz += (*field)->rtsz;
             }
 
-            bfields[it.iter] = (*field)->backend;
-            ts->base.rtsz += (*field)->rtsz;
+            //ts->deref_backend = LLVMStructTypeInContext(lctx,
+            //                                            bfields,
+            //                                            ts->fields.elnum,
+            //                                            0);
+            ts->deref_backend = LLVMStructCreateNamed(lctx, NEWVAR("rt_struct_t"));
+            LLVMStructSetBody(ts->deref_backend,
+                              bfields,
+                              ts->fields.elnum,
+                              0);
+            free(bfields);
+            ty->backend = LLVMPointerType(ts->deref_backend, 0);
         }
-
-        ts->deref_backend = LLVMStructTypeInContext(lctx,
-                                                    bfields,
-                                                    ts->fields.elnum,
-                                                    0);
-        ty->backend = LLVMPointerType(ts->deref_backend, 0);
 
 end_struct:
         break;
 
     case LKIT_FUNC:
-        tf = (lkit_func_t *)ty;
-        if ((bfields =
-                malloc(sizeof(LLVMTypeRef) * tf->fields.elnum - 1)) == NULL) {
-            FAIL("malloc");
-        }
+        {
+            LLVMTypeRef *bfields;
+            lkit_func_t *tf;
 
-        if ((field = array_first(&tf->fields, &it)) == NULL) {
-            FAIL("array_first");
-        }
-        //if ((*field)->tag == LKIT_UNDEF) {
-        //    goto end_func;
-        //}
-        if ((*field)->tag == LKIT_VARARG) {
-            TRRET(LTYPE_COMPILE + 2);
-        }
-        if (ltype_compile(*field, lctx) != 0) {
-            TRRET(LTYPE_COMPILE + 3);
-        }
+            tf = (lkit_func_t *)ty;
+            if ((bfields =
+                    malloc(sizeof(LLVMTypeRef) * tf->fields.elnum - 1)) == NULL) {
+                FAIL("malloc");
+            }
 
-        retty = (*field)->backend;
-
-        for (field = array_next(&tf->fields, &it);
-             field != NULL;
-             field = array_next(&tf->fields, &it)) {
-
+            if ((field = array_first(&tf->fields, &it)) == NULL) {
+                FAIL("array_first");
+            }
+            //if ((*field)->tag == LKIT_UNDEF) {
+            //    goto end_func;
+            //}
             if ((*field)->tag == LKIT_VARARG) {
-                break;
+                free(bfields);
+                TRRET(LTYPE_COMPILE + 2);
             }
-
             if (ltype_compile(*field, lctx) != 0) {
-                TRRET(LTYPE_COMPILE + 4);
+                free(bfields);
+                TRRET(LTYPE_COMPILE + 3);
             }
 
-            bfields[it.iter - 1] = (*field)->backend;
-        }
+            retty = (*field)->backend;
 
-        if ((field = array_last(&tf->fields, &it)) == NULL) {
-            FAIL("array_first");
-        }
-        if ((*field)->tag == LKIT_VARARG) {
-            ty->backend = LLVMFunctionType(retty,
-                                           bfields,
-                                           tf->fields.elnum - 2,
-                                           1);
-        } else {
-            ty->backend = LLVMFunctionType(retty,
-                                           bfields,
-                                           tf->fields.elnum - 1,
-                                           0);
-        }
+            for (field = array_next(&tf->fields, &it);
+                 field != NULL;
+                 field = array_next(&tf->fields, &it)) {
 
+                if ((*field)->tag == LKIT_VARARG) {
+                    break;
+                }
 
+                if (ltype_compile(*field, lctx) != 0) {
+                    free(bfields);
+                    TRRET(LTYPE_COMPILE + 4);
+                }
+
+                bfields[it.iter - 1] = (*field)->backend;
+            }
+
+            if ((field = array_last(&tf->fields, &it)) == NULL) {
+                FAIL("array_first");
+            }
+            if ((*field)->tag == LKIT_VARARG) {
+                ty->backend = LLVMFunctionType(retty,
+                                               bfields,
+                                               tf->fields.elnum - 2,
+                                               1);
+            } else {
+                ty->backend = LLVMFunctionType(retty,
+                                               bfields,
+                                               tf->fields.elnum - 1,
+                                               0);
+            }
+            free(bfields);
+
+        }
         break;
 
     default:
@@ -186,13 +217,9 @@ end_struct:
         TRRET(LTYPE_COMPILE + 5);
     }
 
-    if (bfields != NULL) {
-        free(bfields);
-        bfields = NULL;
-    }
-
     return 0;
 }
+
 
 int
 ltype_compile_methods(lkit_type_t *ty,
@@ -251,6 +278,12 @@ ltype_compile_methods(lkit_type_t *ty,
                                                    &argty,
                                                    1,
                                                    0));
+
+            //lkit_type_dump(ty);
+            //TRACE("ts->base.backend=%p", ts->base.backend);
+            //LLVMDumpType(ts->base.backend);
+            //TRACE();
+            //LLVMDumpValue(fn1);
 
             bb = LLVMAppendBasicBlockInContext(lctx, fn1, NEWVAR(".BB"));
             LLVMPositionBuilderAtEnd(b1, bb);
@@ -359,7 +392,16 @@ ltype_compile_methods(lkit_type_t *ty,
                     break;
 
                 default:
-                    TRRET(LTYPE_COMPILE_METHODS + 4);
+                    {
+                        char dtor_name[1024];
+
+                        assert((*fty)->backend != NULL);
+                        snprintf(dtor_name,
+                                 sizeof(dtor_name),
+                                 "%s_destroy", (*fty)->name);
+                        BUILDCODE;
+                    }
+                    break;
                 }
 
             }
