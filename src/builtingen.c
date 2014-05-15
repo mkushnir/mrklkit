@@ -67,7 +67,7 @@ compile_if(LLVMModuleRef module,
            lkit_type_t *restype)
 {
     LLVMContextRef lctx;
-    LLVMValueRef v = NULL, res, cond, texp, fexp, fn, iexp[2];
+    LLVMValueRef v = NULL, res, cond, texp = NULL, fexp = NULL, fn, iexp[2];
     LLVMBasicBlockRef currblock, endblock, tblock, fblock, iblock[2];
 
     lctx = LLVMGetModuleContext(module);

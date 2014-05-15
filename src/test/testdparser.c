@@ -150,7 +150,8 @@ test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 #define TEST_ARRAY(tag) \
     lkit_array_t *arty; \
-    lkit_type_t **fty; \
+    lkit_type_t *ty; \
+    void **fty; \
     arty = (lkit_array_t *)lkit_type_get(LKIT_ARRAY); \
     arty->delim = (unsigned char *)","; \
     fty = array_incr(&arty->fields); \
@@ -174,7 +175,8 @@ test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         dparser_reach_value(bs, FDELIM, br->end, DPFLAGS); \
         mrklkit_rt_array_destroy(&value); \
     } \
-    lkit_type_destroy((lkit_type_t **)&arty); \
+    ty = (lkit_type_t *)arty; \
+    lkit_type_destroy(&ty); \
 
 static int
 test_array_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
@@ -202,7 +204,8 @@ test_array_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 #define TEST_DICT(tag) \
     lkit_dict_t *dcty; \
-    lkit_type_t **fty; \
+    lkit_type_t *ty; \
+    void **fty; \
     dcty = (lkit_dict_t *)lkit_type_get(LKIT_DICT); \
     dcty->kvdelim = (unsigned char *)":"; \
     dcty->fdelim = (unsigned char *)","; \
@@ -227,7 +230,8 @@ test_array_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         dparser_reach_value(bs, FDELIM, br->end, DPFLAGS); \
         mrklkit_rt_dict_destroy(&value); \
     } \
-    lkit_type_destroy((lkit_type_t **)&dcty);
+    ty = (lkit_type_t *)dcty; \
+    lkit_type_destroy(&ty);
 
 
 static int
