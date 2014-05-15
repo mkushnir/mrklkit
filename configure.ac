@@ -108,6 +108,10 @@ AC_ARG_ENABLE(debug,
               [AM_CONDITIONAL([DEBUG], [enable_debug=yes])],
               [AM_CONDITIONAL([DEBUG], [test "$enable_debug" = "yes"])])
 
+# since we require libmrkcommon be *installed* on the system, we are not setting local compiler/linker flags here.
+AC_SUBST(MRKCOMMON_LOCAL_CFLAGS, [''])
+AC_SUBST(MRKCOMMON_LOCAL_LDFLAGS, [''])
+
 # pass LDFLAGS=-L${LOCALBASE}/lib in the environment
 AC_CHECK_LIB(mrkcommon, _fini, [], [AC_MSG_FAILURE(libmrkcommon.so is required. Please find it at git@github.com:mkushnir/mrkcommon.git)])
 export LDFLAGS="`llvm-config34 --ldflags` $LDFLAGS"
