@@ -20,22 +20,22 @@ endif
 nodist_testfoo_SOURCES = ../diag.c
 testfoo_SOURCES = testfoo.c
 testfoo_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @MRKCOMMON_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
-testfoo_LDFLAGS = -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
+testfoo_LDFLAGS = -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @MRKLKIT_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 nodist_testfparser_SOURCES = ../diag.c
 testfparser_SOURCES = testfparser.c
 testfparser_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @MRKCOMMON_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
-testfparser_LDFLAGS = -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
+testfparser_LDFLAGS = -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @MRKLKIT_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 nodist_testdparser_SOURCES = ../diag.c
 testdparser_SOURCES = testdparser.c
 testdparser_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @MRKCOMMON_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
-testdparser_LDFLAGS =  -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
+testdparser_LDFLAGS =  -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @MRKLKIT_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 nodist_testlk_SOURCES = ../diag.c
 testlk_SOURCES = testlk.c
 testlk_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I$(includedir) @MRKCOMMON_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
-testlk_LDFLAGS =  -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @LLVM_LIBS@ @LLVM_LDFLAGS@
+testlk_LDFLAGS =  -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @MRKLKIT_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 ../diag.c ../diag.h: ../diag.txt
 	sh ../gen-diag

@@ -112,6 +112,9 @@ AC_ARG_ENABLE(debug,
 AC_SUBST(MRKCOMMON_LOCAL_CFLAGS, [''])
 AC_SUBST(MRKCOMMON_LOCAL_LDFLAGS, [''])
 
+AC_SUBST(MRKLKIT_LOCAL_CFLAGS, [-I\$\(top_srcdir\)/src])
+AC_SUBST(MRKLKIT_LOCAL_LDFLAGS, [-L\$\(top_srcdir\)/src/.libs])
+
 # pass LDFLAGS=-L${LOCALBASE}/lib in the environment
 AC_CHECK_LIB(mrkcommon, _fini, [], [AC_MSG_FAILURE(libmrkcommon.so is required. Please find it at git@github.com:mkushnir/mrkcommon.git)])
 export LDFLAGS="`llvm-config34 --ldflags` $LDFLAGS"
