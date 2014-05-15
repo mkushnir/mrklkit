@@ -110,5 +110,7 @@ AC_ARG_ENABLE(debug,
 
 # pass LDFLAGS=-L${LOCALBASE}/lib in the environment
 AC_CHECK_LIB(mrkcommon, _fini, [], [AC_MSG_FAILURE(libmrkcommon.so is required. Please find it at git@github.com:mkushnir/mrkcommon.git)])
+export LDFLAGS="`llvm-config34 --ldflags` $LDFLAGS"
+AC_CHECK_LIB(LLVMCore, _fini, [], [AC_MSG_FAILURE(libLLVMCore.a is required. Please find it at ...)])
 
 AC_OUTPUT
