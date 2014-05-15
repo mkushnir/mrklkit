@@ -172,10 +172,10 @@ _strtod(char *ptr, char **endptr, char delim)
     uint64_t integ = 0;
     uint64_t frac = 0;
     double sign;
-    char *p;
+    UNUSED char *p;
     char ch;
     uint64_t factor = 1;
-    char *dot = NULL;
+    UNUSED char *dot = NULL;
     UNUSED int exp = 0;
 
     errno = 0;
