@@ -716,7 +716,9 @@ rt_dict_fini_keyval(bytes_t *key, void *val)
         BYTES_DECREF(&key);
     }
     if (val != NULL) {
-        BYTES_DECREF((bytes_t **)&val);
+        void **v;
+        v = &val;
+        BYTES_DECREF((bytes_t **)v);
     }
     return 0;
 }

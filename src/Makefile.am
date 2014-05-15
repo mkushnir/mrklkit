@@ -15,6 +15,7 @@ nobase_include_HEADERS = \
 	mrklkit/lexpr.h \
 	mrklkit/lparse.h \
 	mrklkit/ltype.h \
+	mrklkit/ltypegen.h \
 	mrklkit/lruntime.h \
 	mrklkit/module.h \
 	mrklkit/mrklkit.h \
