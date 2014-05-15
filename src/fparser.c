@@ -73,7 +73,7 @@ compile_value(struct tokenizer_ctx *ctx,
                         void *),
               void *udata)
 {
-    fparser_datum_t *dat;
+    fparser_datum_t *dat = NULL;
 
     if (state == LEX_TOKIN) {
         ctx->tokstart = buf + idx;
