@@ -285,9 +285,9 @@ ltype_compile_methods(lkit_type_t *ty,
             //TRACE();
             //LLVMDumpValue(fn1);
 
-            bb = LLVMAppendBasicBlockInContext(lctx, fn1, NEWVAR(".BB"));
+            bb = LLVMAppendBasicBlockInContext(lctx, fn1, NEWVAR("L"));
             LLVMPositionBuilderAtEnd(b1, bb);
-            bb = LLVMAppendBasicBlockInContext(lctx, fn2, NEWVAR(".BB"));
+            bb = LLVMAppendBasicBlockInContext(lctx, fn2, NEWVAR("L"));
             LLVMPositionBuilderAtEnd(b2, bb);
 
             cast1 = LLVMBuildPointerCast(b1,
