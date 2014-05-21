@@ -71,17 +71,20 @@ dparser_reach_delim_readmore(bytestream_t *bs, int fd, char delim, off_t epos)
 }
 
 
-void
-dparser_reach_value(bytestream_t *bs, char delim, off_t epos, int flags)
+static void
+dparser_reach_value(bytestream_t *bs, UNUSED char delim, off_t epos)
 {
-    if (flags & DPARSE_MERGEDELIM) {
-        while (SPOS(bs) < epos && SPCHR(bs) == delim) {
-            SINCR(bs);
-        }
-    } else {
-        if (SPOS(bs) < epos) {
-            SINCR(bs);
-        }
+    if (SPOS(bs) < epos) {
+        SINCR(bs);
+    }
+}
+
+
+static void
+dparser_reach_value_m(bytestream_t *bs, char delim, off_t epos)
+{
+    while (SPOS(bs) < epos && SPCHR(bs) == delim) {
+        SINCR(bs);
     }
 }
 
@@ -123,7 +126,7 @@ dparser_read_lines(int fd,
             break;
         }
 
-        dparser_reach_value(&bs, '\n', SEOD(&bs), 0);
+        dparser_reach_value(&bs, '\n', SEOD(&bs));
         br.end = SEOD(&bs);
     }
 
@@ -229,6 +232,18 @@ err:
 }
 
 
+void
+dparse_int_pos(bytestream_t *bs,
+               char delim,
+               off_t spos,
+               int64_t *val)
+{
+    char *ptr = (char *)SDATA(bs, spos);
+    char *endptr = ptr;
+
+    *val = _strtoi64(ptr, &endptr, delim);
+}
+
 int
 dparse_int(bytestream_t *bs,
            char delim,
@@ -255,6 +270,18 @@ end:
     return res;
 }
 
+
+void
+dparse_float_pos(bytestream_t *bs,
+               char delim,
+               off_t spos,
+               double *val)
+{
+    char *ptr = (char *)SDATA(bs, spos);
+    char *endptr = ptr;
+
+    *val = _strtod(ptr, &endptr, delim);
+}
 
 int
 dparse_float(bytestream_t *bs,
@@ -288,6 +315,25 @@ end:
 }
 
 
+void
+dparse_str_pos(bytestream_t *bs,
+               char delim,
+               off_t spos,
+               off_t epos,
+               bytes_t **val)
+{
+    off_t i;
+
+    for (i = spos; i < epos && SNCHR(bs, i) != delim; ++i) {
+        ;
+    }
+
+    *val = bytes_new(i - spos + 1);
+    memcpy((*val)->data, SDATA(bs, spos), (*val)->sz - 1);
+    *((*val)->data + (*val)->sz - 1) = '\0';
+    BYTES_INCREF(*val);
+}
+
 int
 dparse_str(bytestream_t *bs,
            char delim,
@@ -302,9 +348,9 @@ dparse_str(bytestream_t *bs,
     dparser_reach_delim(bs, delim, epos);
     br.end = SPOS(bs);
 
-    *val = bytes_new(br.end - br.start);
-    memcpy((*val)->data, SDATA(bs, br.start), (*val)->sz);
-    *((*val)->data + (*val)->sz) = '\0';
+    *val = bytes_new(br.end - br.start + 1);
+    memcpy((*val)->data, SDATA(bs, br.start), (*val)->sz - 1);
+    *((*val)->data + (*val)->sz - 1) = '\0';
     BYTES_INCREF(*val);
 
     return 0;
@@ -401,6 +447,7 @@ dparse_array(bytestream_t *bs,
     char fdelim;
     lkit_type_t *afty;
     byterange_t br;
+    void (*_dparser_reach_value)(bytestream_t *, char, off_t);
 
     br.start = SPOS(bs);
     dparser_reach_delim(bs, delim, epos);
@@ -410,6 +457,12 @@ dparse_array(bytestream_t *bs,
     fdelim = value->type->delim[0];
     if ((afty = lkit_array_get_element_type(value->type)) == NULL) {
         FAIL("lkit_array_get_element_type");
+    }
+
+    if (flags & LKIT_PARSER_MDELIM) {
+        _dparser_reach_value = dparser_reach_value_m;
+    } else {
+        _dparser_reach_value = dparser_reach_value;
     }
 
 #define DPARSE_ARRAY_CASE(ty, fn) \
@@ -438,7 +491,7 @@ dparse_array(bytestream_t *bs,
                 FAIL("array_incr"); \
             } \
             *v = val.v; \
-            dparser_reach_value(bs, fdelim, br.end, flags); \
+            _dparser_reach_value(bs, fdelim, br.end); \
         }
 
     switch (afty->tag) {
@@ -473,6 +526,7 @@ dparse_dict(bytestream_t *bs,
     char kvdelim, fdelim;
     lkit_type_t *dfty;
     byterange_t br;
+    void (*_dparser_reach_value)(bytestream_t *, char, off_t);
 
     br.start = SPOS(bs);
     dparser_reach_delim(bs, delim, epos);
@@ -485,6 +539,12 @@ dparse_dict(bytestream_t *bs,
         FAIL("lkit_dict_get_element_type");
     }
 
+    if (flags & LKIT_PARSER_MDELIM) {
+        _dparser_reach_value = dparser_reach_value_m;
+    } else {
+        _dparser_reach_value = dparser_reach_value;
+    }
+
 #define DPARSE_DICT_CASE(ty, fn) \
         while (SPOS(bs) < br.end && SPCHR(bs) != delim) { \
             dict_item_t *it; \
@@ -495,7 +555,7 @@ dparse_dict(bytestream_t *bs,
             } val; \
             if (dparse_str(bs, kvdelim, br.end, &key, flags) != 0) { \
                 BYTES_DECREF(&key); \
-                dparser_reach_value(bs, fdelim, br.end, flags); \
+                _dparser_reach_value(bs, fdelim, br.end); \
                 continue; \
             } else { \
                 /* \
@@ -503,7 +563,7 @@ dparse_dict(bytestream_t *bs,
                     TRACE("intkey=%s", key->data); \
                 } \
                 */ \
-                dparser_reach_value(bs, kvdelim, br.end, flags); \
+                _dparser_reach_value(bs, kvdelim, br.end); \
                 if ((it = dict_get_item(&value->fields, key)) == NULL) { \
                     if (fn(bs, fdelim, br.end, &val.x, flags) != 0) { \
                         /* \
@@ -522,7 +582,7 @@ dparse_dict(bytestream_t *bs,
                 } else { \
                     BYTES_DECREF(&key); \
                 } \
-                dparser_reach_value(bs, fdelim, br.end, flags); \
+                _dparser_reach_value(bs, fdelim, br.end); \
             } \
         }
 
@@ -548,6 +608,85 @@ dparse_dict(bytestream_t *bs,
 }
 
 
+UNUSED static void
+_rt_struct_delim_to(UNUSED bytestream_t *bs,
+                    UNUSED char delim,
+                    UNUSED off_t epos,
+                    UNUSED rt_struct_t *value,
+                    UNUSED unsigned int flags)
+{
+}
+
+
+int
+dparse_struct_field(bytestream_t *bs,
+                    char delim,
+                    off_t epos,
+                    rt_struct_t *value,
+                    unsigned int flags,
+                    int idx)
+{
+    lkit_type_t **fty;
+    void **val;
+    off_t dpos, ndpos;
+    int nidx = idx + 1;
+
+    if (value->dpos[idx] & 0x80000000) {
+        return 0;
+    }
+    if (nidx >= value->next_delim) {
+        void (*_dparser_reach_value)(bytestream_t *, char, off_t);
+
+        /*
+         * XXX vmethod?
+         */
+        if (flags & LKIT_PARSER_MDELIM) {
+            _dparser_reach_value = dparser_reach_value_m;
+        } else {
+            _dparser_reach_value = dparser_reach_value;
+        }
+
+        do {
+            value->dpos[value->next_delim] = SPOS(bs);
+            dparser_reach_delim(bs, delim, epos);
+            _dparser_reach_value(bs, delim, epos);
+        } while (value->next_delim++ < nidx);
+    }
+
+    assert(value->next_delim == (nidx + 1));
+
+    dpos = value->dpos[idx];
+    ndpos = value->dpos[nidx] & ~0x80000000;
+    value->dpos[idx] |= 0x80000000;
+
+    fty = ARRAY_GET(lkit_type_t *, &value->type->fields, idx);
+    val = mrklkit_rt_get_struct_item_addr(value, idx);
+
+    switch ((*fty)->tag) {
+    case LKIT_INT:
+        assert(sizeof(int64_t) == sizeof(void *));
+        dparse_int_pos(bs, delim, dpos, (int64_t *)val);
+        break;
+
+    case LKIT_FLOAT:
+        assert(sizeof(double) == sizeof(void *));
+        dparse_float_pos(bs, delim, dpos, (double *)val);
+        break;
+
+    case LKIT_STR:
+        assert(sizeof(bytes_t *) == sizeof(void *));
+        dparse_str_pos(bs, delim, dpos, ndpos, (bytes_t **)val);
+        break;
+
+
+    default:
+        break;
+
+    }
+    return 0;
+}
+
+
 int
 dparse_struct(bytestream_t *bs,
               char delim,
@@ -560,7 +699,7 @@ dparse_struct(bytestream_t *bs,
     byterange_t br;
     lkit_type_t **fty;
     void **val;
-
+    void (*_dparser_reach_value)(bytestream_t *, char, off_t);
 
     sdelim = value->type->delim[0];
     br.start = SPOS(bs);
@@ -568,11 +707,21 @@ dparse_struct(bytestream_t *bs,
     br.end = SPOS(bs);
     SPOS(bs) = br.start;
 
+    if (flags & LKIT_PARSER_MDELIM) {
+        _dparser_reach_value = dparser_reach_value_m;
+    } else {
+        _dparser_reach_value = dparser_reach_value;
+    }
+
     //D32(SPDATA(bs), epos - SPOS(bs));
 
-    for (fty = array_get(&value->type->fields, value->current);
+    for (fty = ARRAY_GET(lkit_type_t*,
+                         &value->type->fields,
+                         value->current);
          fty != NULL;
-         fty = array_get(&value->type->fields, ++(value->current))) {
+         fty = ARRAY_GET(lkit_type_t *,
+                         &value->type->fields,
+                         ++(value->current))) {
 
         val = mrklkit_rt_get_struct_item_addr(value, value->current);
 
@@ -682,7 +831,7 @@ dparse_struct(bytestream_t *bs,
         }
 
         //TRACE("SPCHR='%c' sdelim='%c'", SPCHR(bs), sdelim);
-        dparser_reach_value(bs, sdelim, epos, flags);
+        _dparser_reach_value(bs, sdelim, epos);
     }
 
     SPOS(bs) = br.end;

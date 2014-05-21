@@ -50,15 +50,14 @@ do { \
     } \
 } while (0)
 
-/* XXX repalce fnum/init/fini with type */
 typedef struct _rt_struct {
     ssize_t nref;
     lkit_struct_t *type;
-    //ssize_t fnum;
-    //void (*init)(void **);
-    //void (*fini)(void **);
-    ssize_t current;
-    /* array of void *  */
+    int next_delim;
+    int current;
+    /* delimiter positions */
+    off_t *dpos;
+    /* array of void * + array of int  */
     void *fields[];
 } rt_struct_t;
 

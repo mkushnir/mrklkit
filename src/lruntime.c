@@ -85,7 +85,8 @@ mrklkit_rt_get_array_item_int(rt_array_t *value, int64_t idx, int64_t dflt)
 {
     int64_t *res;
 
-    if ((res = array_get(&value->fields,
+    if ((res = ARRAY_GET(int64_t,
+                         &value->fields,
                          idx % value->fields.elnum)) == NULL) {
         return dflt;
     }
@@ -103,7 +104,8 @@ mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, double dflt)
 
     assert(sizeof(void *) == sizeof(double));
 
-    if ((res.v = array_get(&value->fields,
+    if ((res.v = ARRAY_GET(void *,
+                           &value->fields,
                            idx % value->fields.elnum)) == NULL) {
         return dflt;
     }
@@ -116,7 +118,8 @@ mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
 {
     bytes_t **res;
 
-    if ((res = array_get(&value->fields,
+    if ((res = ARRAY_GET(bytes_t *,
+                         &value->fields,
                          idx % value->fields.elnum)) == NULL) {
         return dflt;
     }
@@ -277,17 +280,17 @@ mrklkit_rt_struct_new(lkit_struct_t *ty)
 {
     rt_struct_t *v;
 
-    size_t sz = ty->fields.elnum * sizeof(void *);
+    size_t sz = ty->fields.elnum * sizeof(void *) +
+                (ty->fields.elnum + 1) * sizeof(off_t);
 
     if ((v = malloc(sizeof(rt_struct_t) + sz)) == NULL) {
         FAIL("malloc");
     }
     v->nref = 0;
     v->type = ty;
-    //v->init = ty->init;
-    //v->fini = ty->fini;
-    //v->fnum = ty->fields.elnum;
+    v->next_delim = 0;
     v->current = 0;
+    v->dpos = (off_t *)v->fields[ty->fields.elnum];
     if (ty->init != NULL) {
         ty->init(v->fields);
     }

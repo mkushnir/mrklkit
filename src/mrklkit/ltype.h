@@ -55,7 +55,8 @@ typedef enum _lkit_parser {
     LKIT_PARSER_NONE,
     LKIT_PARSER_DELIM,
     LKIT_PARSER_MDELIM,
-    LKIT_PARSER_W3C,
+    LKIT_PARSER_SDELIM,
+    LKIT_PARSER_SMDELIM,
 } lkit_parser_t;
 
 struct _lkit_type;

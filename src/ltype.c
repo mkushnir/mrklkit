@@ -879,30 +879,40 @@ parse_array_quals(array_t *form,
                     /* delim requires a string argument */
                     TRRET(PARSE_ARRAY_QUALS + 1);
                 }
-            } else if (strcmp((char *) parser, "delim*") == 0) {
+            } else if (strcmp((char *) parser, "mdelim") == 0) {
                 ta->parser = LKIT_PARSER_MDELIM;
                 if (lparse_next_str(form, it, &ta->delim, 1) != 0) {
-                    /* delim* requires a string argument */
-                    TRRET(PARSE_ARRAY_QUALS + 1);
+                    /* mdelim requires a string argument */
+                    TRRET(PARSE_ARRAY_QUALS + 2);
                 }
-            } else if (strcmp((char *) parser, "w3c") == 0) {
-                ta->parser = LKIT_PARSER_W3C;
+            } else if (strcmp((char *) parser, "sdelim") == 0) {
+                ta->parser = LKIT_PARSER_SDELIM;
+                if (lparse_next_str(form, it, &ta->delim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_ARRAY_QUALS + 3);
+                }
+            } else if (strcmp((char *) parser, "smdelim") == 0) {
+                ta->parser = LKIT_PARSER_SMDELIM;
+                if (lparse_next_str(form, it, &ta->delim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_ARRAY_QUALS + 4);
+                }
             } else if (strcmp((char *) parser, "none") == 0) {
                 ta->parser = LKIT_PARSER_NONE;
             } else {
                 /* unknown parser */
                 ta->parser = -1;
-                TRRET(PARSE_ARRAY_QUALS + 2);
+                TRRET(PARSE_ARRAY_QUALS + 5);
             }
         } else {
             /* a WORD expected after :parser */
-            TRRET(PARSE_ARRAY_QUALS + 3);
+            TRRET(PARSE_ARRAY_QUALS + 6);
         }
     } else {
         /* unknown array qualifier */
         TRACE("unknown qual: %s", s);
     }
-    TRRET(0);
+    return 0;
 }
 
 
@@ -978,24 +988,34 @@ parse_struct_quals(array_t *form,
                     /* delim requires a string argument */
                     TRRET(PARSE_STRUCT_QUALS + 2);
                 }
-            } else if (strcmp((char *) parser, "w3c") == 0) {
-                ts->parser = LKIT_PARSER_W3C;
+            } else if (strcmp((char *) parser, "sdelim") == 0) {
+                ts->parser = LKIT_PARSER_SDELIM;
+                if (lparse_next_str(form, it, &ts->delim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_STRUCT_QUALS + 3);
+                }
+            } else if (strcmp((char *) parser, "smdelim") == 0) {
+                ts->parser = LKIT_PARSER_SMDELIM;
+                if (lparse_next_str(form, it, &ts->delim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_STRUCT_QUALS + 4);
+                }
             } else if (strcmp((char *) parser, "none") == 0) {
                 ts->parser = LKIT_PARSER_NONE;
             } else {
                 /* unknown parser */
                 ts->parser = -1;
-                TRRET(PARSE_STRUCT_QUALS + 3);
+                TRRET(PARSE_STRUCT_QUALS + 5);
             }
         } else {
             /* a WORD expected after :parser */
-            TRRET(PARSE_STRUCT_QUALS + 4);
+            TRRET(PARSE_STRUCT_QUALS + 6);
         }
     } else {
         /* unknown array qualifier */
         TRACE("unknown qual: %s", s);
     }
-    TRRET(0);
+    return 0;
 }
 /**
  * name ::= WORD
