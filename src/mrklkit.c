@@ -32,6 +32,11 @@
 
 
 const profile_t *p_dparser_reach_delim_readmore;
+const profile_t *p_dparser_reach_delim_readmore_0;
+//const profile_t *p_dparser_reach_delim_readmore_1;
+//const profile_t *p_dparser_reach_delim_readmore_2;
+//const profile_t *p_dparser_reach_delim_readmore_3;
+const profile_t *p_cb;
 const profile_t *p_dparser_reach_value;
 
 /**
@@ -504,6 +509,8 @@ mrklkit_init(void)
 {
     profile_init_module();
     p_dparser_reach_delim_readmore = profile_register("dparser_reach_delim_readmore");
+    p_dparser_reach_delim_readmore_0 = profile_register("dparser_reach_delim_readmore_0");
+    p_cb = profile_register("cb");
     p_dparser_reach_value = profile_register("dparser_reach_value");
 
     llvm_init();

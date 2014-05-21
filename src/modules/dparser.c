@@ -19,6 +19,8 @@
 #include "diag.h"
 
 extern const profile_t *p_dparser_reach_delim_readmore;
+extern const profile_t *p_dparser_reach_delim_readmore_0;
+extern const profile_t *p_cb;
 extern const profile_t *p_dparser_reach_value;
 
 void
@@ -61,9 +63,12 @@ dparser_reach_delim_readmore(bytestream_t *bs, int fd, char delim, off_t epos)
         //      SNEEDMORE(bs), SPOS(bs), epos);
         //TRACE("SPCHR='%c'", SPCHR(bs));
         if (SNEEDMORE(bs)) {
+            profile_start(p_dparser_reach_delim_readmore_0);
             if (bytestream_read_more(bs, fd, DPARSE_READSZ) <= 0) {
+                profile_stop(p_dparser_reach_delim_readmore_0);
                 return DPARSE_EOD;
             }
+            profile_stop(p_dparser_reach_delim_readmore_0);
             epos = SEOD(bs);
         }
         if (SPCHR(bs) == delim || SPCHR(bs) == '\0') {
@@ -126,9 +131,12 @@ dparser_read_lines(int fd,
         //TRACE("start=%ld end=%ld", br.start, br.end);
         //D32(SPDATA(&bs), br.end - br.start);
 
+        profile_start(p_cb);
         if ((res = cb(&bs, &br, udata)) != 0) {
+            profile_stop(p_cb);
             break;
         }
+        profile_stop(p_cb);
 
         profile_start(p_dparser_reach_value);
         dparser_reach_value(&bs, '\n', SEOD(&bs), 0);
