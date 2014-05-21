@@ -15,6 +15,7 @@
 #include <mrkcommon/dict.h>
 //#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
+#include <mrkcommon/profile.h>
 #include <mrkcommon/util.h>
 
 #include <mrklkit/fparser.h>
@@ -28,6 +29,10 @@
 #include <mrklkit/lruntime.h>
 
 #include "diag.h"
+
+
+const profile_t *p_dparser_reach_delim_readmore;
+const profile_t *p_dparser_reach_value;
 
 /**
  * Generic form parser
@@ -497,6 +502,10 @@ llvm_fini(void)
 void
 mrklkit_init(void)
 {
+    profile_init_module();
+    p_dparser_reach_delim_readmore = profile_register("dparser_reach_delim_readmore");
+    p_dparser_reach_value = profile_register("dparser_reach_value");
+
     llvm_init();
     ltype_init();
     lexpr_init();
@@ -511,5 +520,7 @@ mrklkit_fini(void)
     lexpr_fini();
     ltype_fini();
     llvm_fini();
+    profile_report_sec();
+    profile_fini_module();
 }
 

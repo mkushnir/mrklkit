@@ -9,6 +9,7 @@
 #include <mrkcommon/bytestream.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
+#include <mrkcommon/profile.h>
 #include <mrkcommon/util.h>
 
 #include <mrklkit/ltype.h>
@@ -17,6 +18,8 @@
 
 #include "diag.h"
 
+extern const profile_t *p_dparser_reach_delim_readmore;
+extern const profile_t *p_dparser_reach_value;
 
 void
 qstr_unescape(char *dst, const char *src, size_t sz)
@@ -97,7 +100,7 @@ dparser_read_lines(int fd,
     ssize_t nread;
     byterange_t br;
 
-    bytestream_init(&bs, 4096);
+    bytestream_init(&bs, 1024 * 1024);
     nread = 0xffffffff;
     br.start = 0;
     br.end = 0x7fffffffffffffff;
@@ -107,12 +110,15 @@ dparser_read_lines(int fd,
         //sleep(1);
 
         br.start = SPOS(&bs);
+        profile_start(p_dparser_reach_delim_readmore);
         if (dparser_reach_delim_readmore(&bs,
                                          fd,
                                          '\n',
                                          br.end) == DPARSE_EOD) {
+            profile_stop(p_dparser_reach_delim_readmore);
             break;
         }
+        profile_stop(p_dparser_reach_delim_readmore);
 
         br.end = SPOS(&bs);
         SPOS(&bs) = br.start;
@@ -124,7 +130,9 @@ dparser_read_lines(int fd,
             break;
         }
 
+        profile_start(p_dparser_reach_value);
         dparser_reach_value(&bs, '\n', SEOD(&bs), 0);
+        profile_stop(p_dparser_reach_value);
         br.end = SEOD(&bs);
     }
 
