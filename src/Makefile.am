@@ -53,7 +53,7 @@ libmrklkit_la_CFLAGS = -Wall -Wextra -Werror -std=c99 -I$(includedir) @MRKCOMMON
 
 libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
-SUBDIRS = . test
+SUBDIRS = .
 
 diag.c diag.h: diag.txt
 	/bin/sh ./gen-diag
