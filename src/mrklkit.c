@@ -270,7 +270,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
 
 int
-mrklkit_init_runtime(mrklkit_ctx_t *ctx, void *udata)
+mrklkit_ctx_init_runtime(mrklkit_ctx_t *ctx, void *udata)
 {
     char *error_msg = NULL;
     mrklkit_module_t **mod;

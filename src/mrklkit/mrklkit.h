@@ -39,8 +39,8 @@ const char *mrklkit_diag_str(int);
 #define MRKLKIT_COMPILE_DUMP1 0x02
 #define MRKLKIT_COMPILE_DUMP2 0x04
 int mrklkit_compile(mrklkit_ctx_t *, int, uint64_t, void *);
-int mrklkit_init_runtime(mrklkit_ctx_t *, void *);
 int mrklkit_call_void(mrklkit_ctx_t *, const char *);
+int mrklkit_ctx_init_runtime(mrklkit_ctx_t *, void *);
 void mrklkit_ctx_init(mrklkit_ctx_t *, const char *, array_t *, void *);
 void mrklkit_ctx_fini(mrklkit_ctx_t *, void *);
 void mrklkit_init(void);

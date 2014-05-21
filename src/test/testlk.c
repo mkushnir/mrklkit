@@ -63,8 +63,8 @@ test1(void)
     tctx.ds->rdelim[0] = '\n';
     tctx.ds->rdelim[1] = '\0';
 
-    if (mrklkit_init_runtime(&tctx.mctx, &tctx) != 0) {
-        FAIL("mrklkit_init_runtime");
+    if (mrklkit_ctx_init_runtime(&tctx.mctx, &tctx) != 0) {
+        FAIL("mrklkit_ctx_init_runtime");
     }
 
     if ((fd = open(input, O_RDONLY)) == -1) {
