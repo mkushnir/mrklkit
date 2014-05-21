@@ -71,7 +71,7 @@ dparser_reach_delim_readmore(bytestream_t *bs, int fd, char delim, off_t epos)
 }
 
 
-static void
+void
 dparser_reach_value(bytestream_t *bs, UNUSED char delim, off_t epos)
 {
     if (SPOS(bs) < epos) {
@@ -80,7 +80,7 @@ dparser_reach_value(bytestream_t *bs, UNUSED char delim, off_t epos)
 }
 
 
-static void
+void
 dparser_reach_value_m(bytestream_t *bs, char delim, off_t epos)
 {
     while (SPOS(bs) < epos && SPCHR(bs) == delim) {

@@ -29,6 +29,8 @@ extern "C" {
 void qstr_unescape(char *, const char *, size_t);
 void dparser_reach_delim(bytestream_t *, char, off_t);
 int dparser_reach_delim_readmore(bytestream_t *, int, char, off_t);
+void dparser_reach_value(bytestream_t *, char, off_t);
+void dparser_reach_value_m(bytestream_t *, char, off_t);
 typedef int (*dparser_read_lines_cb_t)(bytestream_t *, byterange_t *, void *);
 int dparser_read_lines(int,
                        dparser_read_lines_cb_t,

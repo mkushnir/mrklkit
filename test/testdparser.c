@@ -64,7 +64,11 @@ test_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         //D8(SPDATA(bs), br->end - SPOS(bs));
         //dparser_reach_delim(bs, FDELIM, br->end);
         //D8(SPDATA(bs), br->end - SPOS(bs));
-        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        if (DPFLAGS & DPARSE_MERGEDELIM) {
+            dparser_reach_value_m(bs, FDELIM, br->end);
+        } else {
+            dparser_reach_value(bs, FDELIM, br->end);
+        }
         //D8(SPDATA(bs), br->end - SPOS(bs));
     }
     return 0;
@@ -89,7 +93,11 @@ test_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         //D8(SPDATA(bs), br->end - SPOS(bs));
         //dparser_reach_delim(bs, FDELIM, br->end);
         //D8(SPDATA(bs), br->end - SPOS(bs));
-        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        if (DPFLAGS & DPARSE_MERGEDELIM) {
+            dparser_reach_value_m(bs, FDELIM, br->end);
+        } else {
+            dparser_reach_value(bs, FDELIM, br->end);
+        }
         //D8(SPDATA(bs), br->end - SPOS(bs));
     }
     return 0;
@@ -114,7 +122,11 @@ test_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         //D8(SPDATA(bs), br->end - SPOS(bs));
         //dparser_reach_delim(bs, FDELIM, br->end);
         //D8(SPDATA(bs), br->end - SPOS(bs));
-        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        if (DPFLAGS & DPARSE_MERGEDELIM) {
+            dparser_reach_value_m(bs, FDELIM, br->end);
+        } else {
+            dparser_reach_value(bs, FDELIM, br->end);
+        }
         //D8(SPDATA(bs), br->end - SPOS(bs));
         mrklkit_bytes_destroy(&value);
     }
@@ -140,7 +152,11 @@ test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
         }
         //D8(SPDATA(bs), br->end - SPOS(bs));
         //D8(SPDATA(bs), br->end - SPOS(bs));
-        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS);
+        if (DPFLAGS & DPARSE_MERGEDELIM) {
+            dparser_reach_value_m(bs, FDELIM, br->end);
+        } else {
+            dparser_reach_value(bs, FDELIM, br->end);
+        }
         //D8(SPDATA(bs), br->end - SPOS(bs));
         mrklkit_bytes_destroy(&value);
     }
@@ -172,7 +188,11 @@ test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
             mrklkit_rt_array_dump(value); \
             TRACEC("\n"); \
         } \
-        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS); \
+        if (DPFLAGS & DPARSE_MERGEDELIM) { \
+            dparser_reach_value_m(bs, FDELIM, br->end); \
+        } else { \
+            dparser_reach_value(bs, FDELIM, br->end); \
+        } \
         mrklkit_rt_array_destroy(&value); \
     } \
     ty = (lkit_type_t *)arty; \
@@ -227,7 +247,11 @@ test_array_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
             mrklkit_rt_dict_dump(value); \
             TRACEC("\n"); \
         } \
-        dparser_reach_value(bs, FDELIM, br->end, DPFLAGS); \
+        if (DPFLAGS & DPARSE_MERGEDELIM) { \
+            dparser_reach_value_m(bs, FDELIM, br->end); \
+        } else { \
+            dparser_reach_value(bs, FDELIM, br->end); \
+        } \
         mrklkit_rt_dict_destroy(&value); \
     } \
     ty = (lkit_type_t *)dcty; \
