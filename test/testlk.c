@@ -9,7 +9,7 @@
 
 #include <mrklkit/mrklkit.h>
 #include <mrklkit/lruntime.h>
-#include <mrklkit/modules/dparser.h>
+#include <mrklkit/dparser.h>
 #include <mrklkit/modules/testrt.h>
 
 #ifndef NDEBUG
@@ -71,7 +71,7 @@ test1(void)
         FAIL("open");
     }
 
-    if (dparser_read_lines(fd, (dparser_read_lines_cb_t)testrt_run, &tctx) != 0) {
+    if (dparser_read_lines(fd, (dparser_read_lines_cb_t)testrt_run_once, &tctx) != 0) {
         TRACE("error");
     }
 

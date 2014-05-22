@@ -2,6 +2,7 @@
 #define LRUNTIME_H_DEFINED
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
 
 #include <mrklkit/ltype.h>
@@ -53,6 +54,12 @@ do { \
 typedef struct _rt_struct {
     ssize_t nref;
     lkit_struct_t *type;
+    /* weak ref */
+    struct {
+        bytestream_t *bs;
+        byterange_t br;
+        unsigned int flags;
+    } parser_info;
     int next_delim;
     int current;
     /* delimiter positions */
@@ -100,6 +107,7 @@ rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
 void mrklkit_rt_struct_destroy(rt_struct_t **);
 void mrklkit_rt_struct_dump(rt_struct_t *);
 void **mrklkit_rt_get_struct_item_addr(rt_struct_t *, int64_t);
+#define MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(val, idx) ((val)->fields + (idx))
 int64_t mrklkit_rt_get_struct_item_int(rt_struct_t *, int64_t);
 double mrklkit_rt_get_struct_item_float(rt_struct_t *, int64_t);
 int64_t mrklkit_rt_get_struct_item_bool(rt_struct_t *, int64_t);

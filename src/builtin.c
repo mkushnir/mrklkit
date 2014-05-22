@@ -111,6 +111,8 @@ err:
  * (sym > (func bool undef undef)) done
  * (sym >= (func bool undef undef)) done
  *
+ * (sym parse (func undef struct conststr undef)) done
+ *
  * (sym get (func undef undef undef undef)) done
  * (sym set (func undef undef undef)) done
  * (sym del (func undef undef undef)) done
@@ -262,11 +264,12 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             }
             expr->type = (*aarg)->type;
 
-        } else if (strcmp(name, "get") == 0) {
+        } else if (strcmp(name, "get") == 0 ||
+                   strcmp(name, "parse") == 0) {
             /*
-             * (sym get (func undef struct conststr undef))
-             * (sym get (func undef dict conststr undef))
-             * (sym get (func undef array constint undef))
+             * (sym {get|parse} (func undef struct conststr undef))
+             * (sym {get|parse} (func undef dict conststr undef))
+             * (sym {get|parse} (func undef array constint undef))
              */
             lkit_expr_t **cont;
             lkit_type_t *ty;

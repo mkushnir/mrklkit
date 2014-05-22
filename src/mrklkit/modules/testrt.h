@@ -75,7 +75,7 @@ extern rt_struct_t *testrt_source;
 dsource_t *dsource_get(const char *);
 void *testrt_acquire_take_key(testrt_t *);
 void *testrt_get_do(testrt_t *);
-int testrt_run(bytestream_t *, byterange_t *, testrt_ctx_t *);
+int testrt_run_once(bytestream_t *, byterange_t *, testrt_ctx_t *);
 void testrt_dump_targets(void);
 void testrt_dump_source(rt_struct_t *);
 

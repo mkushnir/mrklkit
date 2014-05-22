@@ -12,6 +12,7 @@
 #include <mrklkit/module.h>
 #include <mrklkit/mrklkit.h>
 #include <mrklkit/fparser.h>
+#include <mrklkit/dparser.h>
 #include <mrklkit/lparse.h>
 #include <mrklkit/lexpr.h>
 #include <mrklkit/ltype.h>
@@ -21,7 +22,6 @@
 #include <mrklkit/util.h>
 
 #include <mrklkit/modules/testrt.h>
-#include <mrklkit/modules/dparser.h>
 
 #include "diag.h"
 
@@ -1332,51 +1332,40 @@ testrt_get_do_empty(testrt_t *trt)
 
 
 int
-testrt_run(bytestream_t *bs,
-           byterange_t *br,
-           testrt_ctx_t *tctx)
+testrt_run_once(bytestream_t *bs,
+                byterange_t *br,
+                testrt_ctx_t *tctx)
 {
     int res = 0;
-    char enddelim = '\0';
 
     testrt_source = mrklkit_rt_struct_new(tctx->ds->_struct);
 
-    /*
-     * This should become a call into an llvm-generated parser with only
-     * bs and test_source params.
-     */
-    if ((res = dparse_struct(bs,
-                             tctx->ds->rdelim[0],
-                             br->end,
-                             testrt_source,
-                             &enddelim,
-                             tctx->ds->parse_flags)) == DPARSE_NEEDMORE) {
+    dparse_struct_pos(bs, br, testrt_source, tctx->ds->parse_flags);
+
+    if (res == DPARSE_NEEDMORE) {
         goto end;
 
     } else if (res == DPARSE_ERRORVALUE) {
-        TRACE("ERROR, delim='%02hhx'", enddelim);
         D32(SDATA(bs, br->start), br->end - br->start);
         goto end;
 
     } else {
-        if (enddelim != tctx->ds->rdelim[0] ||
-            enddelim == tctx->ds->rdelim[1]) {
+        if (SPCHR(bs) != tctx->ds->rdelim[0] ||
+            SPCHR(bs) == tctx->ds->rdelim[1]) {
 
             /* truncated input? */
-            //TRACE("TRUNC, delim=%02hhx", enddelim);
             res = DPARSE_ERRORVALUE;
+            D32(SDATA(bs, br->start), br->end - br->start);
             goto end;
         }
 
-        if (enddelim == tctx->ds->rdelim[0]) {
-            //TRACE("EOL");
+        if (SPCHR(bs) == tctx->ds->rdelim[0]) {
+            TRACE("EOL");
         }
 
-        //TRACE("OK, delim=%02hhx:", enddelim);
-
-        if (mrklkit_call_void(&tctx->mctx, TESTRT_START) != 0) {
-            FAIL("mrklkit_call_void");
-        }
+        //if (mrklkit_call_void(&tctx->mctx, TESTRT_START) != 0) {
+        //    FAIL("mrklkit_call_void");
+        //}
     }
 
 end:

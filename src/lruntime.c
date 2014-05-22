@@ -1,3 +1,4 @@
+#include <string.h>
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/util.h>
@@ -288,9 +289,12 @@ mrklkit_rt_struct_new(lkit_struct_t *ty)
     }
     v->nref = 0;
     v->type = ty;
+    v->parser_info.bs = NULL;
+    v->parser_info.flags = 0;
     v->next_delim = 0;
     v->current = 0;
-    v->dpos = (off_t *)v->fields[ty->fields.elnum];
+    v->dpos = (off_t *)(&v->fields[ty->fields.elnum]);
+    (void)memset(v->dpos, '\0', (ty->fields.elnum + 1) * sizeof(off_t));
     if (ty->init != NULL) {
         ty->init(v->fields);
     }
@@ -372,6 +376,7 @@ mrklkit_rt_get_struct_item_int(rt_struct_t *value, int64_t idx)
     assert(idx < (ssize_t)value->type->fields.elnum);
     return *(int64_t *)(value->fields + idx);
 }
+
 
 double
 mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)

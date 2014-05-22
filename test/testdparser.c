@@ -11,7 +11,7 @@
 #include <mrklkit/mrklkit.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
-#include <mrklkit/modules/dparser.h>
+#include <mrklkit/dparser.h>
 
 #include "diag.h"
 #include "unittest.h"

@@ -12,6 +12,7 @@ lib_LTLIBRARIES = libmrklkit.la
 
 nobase_include_HEADERS = \
 	mrklkit/fparser.h \
+	mrklkit/dparser.h
 	mrklkit/lexpr.h \
 	mrklkit/lparse.h \
 	mrklkit/ltype.h \
@@ -21,13 +22,13 @@ nobase_include_HEADERS = \
 	mrklkit/mrklkit.h \
 	mrklkit/builtin.h \
 	mrklkit/util.h \
-	mrklkit/modules/testrt.h \
-	mrklkit/modules/dparser.h
+	mrklkit/modules/testrt.h
 
 noinst_HEADERS =
 
 libmrklkit_la_SOURCES = \
 	fparser.c \
+	dparser.c \
 	lexpr.c \
 	lparse.c \
 	ltype.c \
@@ -37,7 +38,6 @@ libmrklkit_la_SOURCES = \
 	builtin.c \
 	builtingen.c \
 	util.c \
-	modules/dparser.c \
 	modules/testrt.c
 
 nodist_libmrklkit_la_SOURCES = diag.c
