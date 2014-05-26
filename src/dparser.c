@@ -699,7 +699,7 @@ dparser_reach_delim_pos(bytestream_t *bs, char delim, off_t spos, off_t epos)
 }
 
 
-UNUSED static off_t
+static off_t
 dparser_reach_value_pos(UNUSED bytestream_t *bs, UNUSED char delim, off_t spos, off_t epos)
 {
     if (spos < epos) {
@@ -709,7 +709,7 @@ dparser_reach_value_pos(UNUSED bytestream_t *bs, UNUSED char delim, off_t spos, 
 }
 
 
-UNUSED static off_t
+static off_t
 dparser_reach_value_m_pos(bytestream_t *bs, char delim, off_t spos, off_t epos)
 {
     while (spos < epos && SNCHR(bs, spos) == delim) {
@@ -899,7 +899,7 @@ dparse_struct_setup(bytestream_t *bs,
 {
     value->parser_info.bs = bs;
     value->parser_info.br = *br;
-    //TRACE("%ld/%ld", br->start, br->end);
+    value->parser_info.pos = br->start;
 }
 
 static void **
@@ -924,26 +924,35 @@ dparse_struct_item_gen(rt_struct_t *value,
         delim = value->type->delim[0];
 
         if (nidx >= value->next_delim) {
-            void (*_dparser_reach_value)(bytestream_t *, char, off_t);
+            off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t);
 
             /*
              * XXX vmethod in lkit_struct_t ?
              * XXX value->type->_dparser_reach_value()
              */
             if (value->type->parser == LKIT_PARSER_MDELIM) {
-                _dparser_reach_value = dparser_reach_value_m;
+                _dparser_reach_value = dparser_reach_value_m_pos;
             } else {
-                _dparser_reach_value = dparser_reach_value;
+                _dparser_reach_value = dparser_reach_value_pos;
             }
 
-            spos = value->parser_info.br.start;
-
-            //TRACE("delim='%c' spos=%ld SPOS=%ld", delim, spos, SPOS(bs));
+            //TRACE("br %ld:%ld",
+            //      value->parser_info.br.start,
+            //      value->parser_info.br.end);
 
             do {
-                value->dpos[value->next_delim] = SPOS(bs);
-                dparser_reach_delim(bs, delim, value->parser_info.br.end);
-                _dparser_reach_value(bs, delim, value->parser_info.br.end);
+                off_t pos;
+
+                value->dpos[value->next_delim] = value->parser_info.pos;
+                pos = dparser_reach_delim_pos(bs,
+                                              delim,
+                                              value->parser_info.pos,
+                                              value->parser_info.br.end);
+                pos = _dparser_reach_value(bs,
+                                           delim,
+                                           pos,
+                                           value->parser_info.br.end);
+                value->parser_info.pos = pos;
             } while (value->next_delim++ < nidx);
             assert(value->next_delim == (nidx + 1));
         }
@@ -1169,12 +1178,10 @@ dparser_read_lines(int fd,
         //TRACE("start=%ld end=%ld", br.start, br.end);
         //D32(SPDATA(&bs), br.end - br.start);
 
-        SPOS(&bs) = br.start;
         if ((res = cb(&bs, &br, udata)) != 0) {
             break;
         }
 
-        SPOS(&bs) = br.end;
         dparser_reach_value(&bs, '\n', SEOD(&bs));
         br.end = SEOD(&bs);
     }

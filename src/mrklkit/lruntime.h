@@ -58,6 +58,7 @@ typedef struct _rt_struct {
     struct {
         bytestream_t *bs;
         byterange_t br;
+        off_t pos;
     } parser_info;
     int next_delim;
     int current;
