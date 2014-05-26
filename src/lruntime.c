@@ -290,7 +290,6 @@ mrklkit_rt_struct_new(lkit_struct_t *ty)
     v->nref = 0;
     v->type = ty;
     v->parser_info.bs = NULL;
-    v->parser_info.flags = 0;
     v->next_delim = 0;
     v->current = 0;
     v->dpos = (off_t *)(&v->fields[ty->fields.elnum]);

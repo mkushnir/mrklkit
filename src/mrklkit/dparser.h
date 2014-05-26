@@ -27,6 +27,7 @@ extern "C" {
 
 #define DPARSE_READSZ (1024 * 4)
 
+void dparse_rt_struct_dump(rt_struct_t *);
 int64_t dparse_struct_item_int(rt_struct_t *, int64_t);
 double dparse_struct_item_float(rt_struct_t *, int64_t);
 int64_t dparse_struct_item_bool(rt_struct_t *, int64_t);
@@ -81,10 +82,9 @@ int dparse_struct(bytestream_t *,
                   unsigned int);
 
 void
-dparse_struct_pos(bytestream_t *,
-                  byterange_t *,
-                  rt_struct_t *,
-                  unsigned int);
+dparse_struct_setup(bytestream_t *,
+                    byterange_t *,
+                    rt_struct_t *);
 
 typedef int (*dparser_read_lines_cb_t)(bytestream_t *, byterange_t *, void *);
 int dparser_read_lines(int,

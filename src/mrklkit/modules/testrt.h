@@ -27,7 +27,6 @@ typedef struct _dsource {
     lkit_struct_t *_struct;
     char rdelim[2];
     char fdelim;
-    uint64_t parse_flags;
 } dsource_t;
 
 typedef struct _testrt_url {

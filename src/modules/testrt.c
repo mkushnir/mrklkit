@@ -131,7 +131,6 @@ dsource_init(dsource_t *dsource)
     /* weak ref */
     dsource->kind = NULL;
     dsource->_struct = NULL;
-    dsource->parse_flags = 0;
 }
 
 static void
@@ -298,10 +297,6 @@ _parse_dsource(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
     }
 
     dsource->fdelim = dsource->_struct->delim[0];
-
-    if (dsource->_struct->parser == LKIT_PARSER_MDELIM) {
-        dsource->parse_flags |= DPARSE_MERGEDELIM;
-    }
 
     return 0;
 }
@@ -1340,38 +1335,24 @@ testrt_run_once(bytestream_t *bs,
 
     testrt_source = mrklkit_rt_struct_new(tctx->ds->_struct);
 
-    dparse_struct_pos(bs, br, testrt_source, tctx->ds->parse_flags);
+    dparse_struct_setup(bs, br, testrt_source);
 
     if (res == DPARSE_NEEDMORE) {
         goto end;
 
     } else if (res == DPARSE_ERRORVALUE) {
-        D32(SDATA(bs, br->start), br->end - br->start);
+        //D32(SDATA(bs, br->start), br->end - br->start);
         goto end;
 
     } else {
-        if (SPCHR(bs) != tctx->ds->rdelim[0] ||
-            SPCHR(bs) == tctx->ds->rdelim[1]) {
-
-            /* truncated input? */
-            res = DPARSE_ERRORVALUE;
-            D32(SDATA(bs, br->start), br->end - br->start);
-            goto end;
+        if (mrklkit_call_void(&tctx->mctx, TESTRT_START) != 0) {
+            FAIL("mrklkit_call_void");
         }
-
-        if (SPCHR(bs) == tctx->ds->rdelim[0]) {
-            TRACE("EOL");
-        }
-
-        //if (mrklkit_call_void(&tctx->mctx, TESTRT_START) != 0) {
-        //    FAIL("mrklkit_call_void");
-        //}
     }
 
 end:
     //testrt_dump_source(testrt_source);
     mrklkit_rt_struct_destroy(&testrt_source);
-    //testrt_source = NULL;
     return res;
 }
 
@@ -1410,7 +1391,7 @@ testrt_dump_targets(void)
 void
 testrt_dump_source(rt_struct_t *source)
 {
-    mrklkit_rt_struct_dump(source);
+    dparse_rt_struct_dump(source);
     TRACEC("\n");
 }
 
