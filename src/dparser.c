@@ -700,9 +700,9 @@ dparser_reach_delim_pos(bytestream_t *bs, char delim, off_t spos, off_t epos)
 
 
 static off_t
-dparser_reach_value_pos(UNUSED bytestream_t *bs, UNUSED char delim, off_t spos, off_t epos)
+dparser_reach_value_pos(bytestream_t *bs, char delim, off_t spos, off_t epos)
 {
-    if (spos < epos) {
+    if (spos < epos && SNCHR(bs, spos) == delim) {
         ++spos;
     }
     return spos;
@@ -919,49 +919,59 @@ dparse_struct_item_gen(rt_struct_t *value,
         char delim;
         int nidx = idx + 1;
         lkit_type_t **fty;
+        off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t);
 
         bs = value->parser_info.bs;
         delim = value->type->delim[0];
 
+        if (value->type->parser == LKIT_PARSER_MDELIM) {
+            _dparser_reach_value = dparser_reach_value_m_pos;
+        } else {
+            _dparser_reach_value = dparser_reach_value_pos;
+        }
+
+
         if (nidx >= value->next_delim) {
-            off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t);
+            off_t pos;
 
             /*
              * XXX vmethod in lkit_struct_t ?
              * XXX value->type->_dparser_reach_value()
              */
-            if (value->type->parser == LKIT_PARSER_MDELIM) {
-                _dparser_reach_value = dparser_reach_value_m_pos;
-            } else {
-                _dparser_reach_value = dparser_reach_value_pos;
-            }
-
             //TRACE("br %ld:%ld",
             //      value->parser_info.br.start,
             //      value->parser_info.br.end);
 
-            do {
-                off_t pos;
+            pos = value->parser_info.pos;
 
-                value->dpos[value->next_delim] = value->parser_info.pos;
-                pos = dparser_reach_delim_pos(bs,
-                                              delim,
-                                              value->parser_info.pos,
-                                              value->parser_info.br.end);
+            do {
+
+                value->dpos[value->next_delim] = pos;
+                //TRACE("value->dpos[%d]=%ld", value->next_delim, value->dpos[value->next_delim]);
                 pos = _dparser_reach_value(bs,
                                            delim,
                                            pos,
                                            value->parser_info.br.end);
-                value->parser_info.pos = pos;
+                pos = dparser_reach_delim_pos(bs,
+                                              delim,
+                                              pos,
+                                              value->parser_info.br.end);
             } while (value->next_delim++ < nidx);
             assert(value->next_delim == (nidx + 1));
+
+            value->parser_info.pos = pos;
         }
 
         //TRACE("value->next_delim=%d nidx=%d", value->next_delim, nidx);
 
-        spos = value->dpos[idx];
+        spos = _dparser_reach_value(bs,
+                                    delim,
+                                    value->dpos[idx],
+                                    value->parser_info.br.end);
         epos = value->dpos[nidx] & ~0x80000000;
         value->dpos[idx] |= 0x80000000;
+
+        //TRACE("idx=%ld spos=%ld epos=%ld", idx, spos, epos);
 
         val = MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);
         //TRACE("value->next_delim=%d val=%p", value->next_delim, val);
@@ -980,8 +990,14 @@ dparse_struct_item_gen(rt_struct_t *value,
             break;
 
         case LKIT_STRUCT:
-            *val = mrklkit_rt_struct_new((lkit_struct_t *)*fty);
-            dparse_struct_setup(bs, &value->parser_info.br, *val);
+            {
+                byterange_t br;
+
+                br.start = spos;
+                br.end = epos;
+                *val = mrklkit_rt_struct_new((lkit_struct_t *)*fty);
+                dparse_struct_setup(bs, &br, *val);
+            }
             break;
 
         default:
@@ -989,6 +1005,7 @@ dparse_struct_item_gen(rt_struct_t *value,
         }
 
         //TRACE("spos=%ld epos=%ld", spos, epos);
+        //TRACE("c='%c'", SNCHR(bs, epos));
         cb(bs, delim, spos, epos, val);
 
     } else {
