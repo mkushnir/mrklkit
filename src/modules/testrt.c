@@ -1328,7 +1328,7 @@ testrt_get_do_empty(testrt_t *trt)
 
 int
 testrt_run_once(bytestream_t *bs,
-                byterange_t *br,
+                const byterange_t *br,
                 testrt_ctx_t *tctx)
 {
     int res = 0;

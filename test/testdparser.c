@@ -47,7 +47,7 @@ test0(void)
 
 
 static int
-test_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_int(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     while (SPOS(bs) < br->end) {
         int64_t value;
@@ -76,7 +76,7 @@ test_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 
 static int
-test_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_float(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     while (SPOS(bs) < br->end) {
         double value;
@@ -105,7 +105,7 @@ test_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 
 static int
-test_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_str(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     while (SPOS(bs) < br->end) {
         bytes_t *value = NULL;
@@ -135,7 +135,7 @@ test_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 
 static int
-test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_qstr(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     while (SPOS(bs) < br->end) {
         bytes_t *value = NULL;
@@ -199,7 +199,7 @@ test_qstr(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
     lkit_type_destroy(&ty); \
 
 static int
-test_array_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_array_int(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     TEST_ARRAY(LKIT_INT);
     return 0;
@@ -207,7 +207,7 @@ test_array_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 
 static int
-test_array_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_array_float(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     TEST_ARRAY(LKIT_FLOAT);
     return 0;
@@ -215,7 +215,7 @@ test_array_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 
 static int
-test_array_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_array_str(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     TEST_ARRAY(LKIT_STR);
     return 0;
@@ -259,7 +259,7 @@ test_array_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 
 static int
-test_dict_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_dict_int(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     TEST_DICT(LKIT_INT);
     return 0;
@@ -267,7 +267,7 @@ test_dict_int(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 
 static int
-test_dict_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_dict_float(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     TEST_DICT(LKIT_FLOAT);
     return 0;
@@ -275,7 +275,7 @@ test_dict_float(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
 
 
 static int
-test_dict_str(bytestream_t *bs, byterange_t *br, UNUSED void *udata)
+test_dict_str(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     TEST_DICT(LKIT_STR);
     return 0;
@@ -427,25 +427,25 @@ main(int argc, char *argv[])
 
 
         if (strcmp(dtype, "int") == 0) {
-            dparser_read_lines(fd, test_int, NULL);
+            dparser_read_lines(fd, test_int, NULL, NULL);
         } else if (strcmp(dtype, "float") == 0) {
-            dparser_read_lines(fd, test_float, NULL);
+            dparser_read_lines(fd, test_float, NULL, NULL);
         } else if (strcmp(dtype, "qstr") == 0) {
-            dparser_read_lines(fd, test_qstr, NULL);
+            dparser_read_lines(fd, test_qstr, NULL, NULL);
         } else if (strcmp(dtype, "str") == 0) {
-            dparser_read_lines(fd, test_str, NULL);
+            dparser_read_lines(fd, test_str, NULL, NULL);
         } else if (strcmp(dtype, "aint") == 0) {
-            dparser_read_lines(fd, test_array_int, NULL);
+            dparser_read_lines(fd, test_array_int, NULL, NULL);
         } else if (strcmp(dtype, "afloat") == 0) {
-            dparser_read_lines(fd, test_array_float, NULL);
+            dparser_read_lines(fd, test_array_float, NULL, NULL);
         } else if (strcmp(dtype, "astr") == 0) {
-            dparser_read_lines(fd, test_array_str, NULL);
+            dparser_read_lines(fd, test_array_str, NULL, NULL);
         } else if (strcmp(dtype, "dint") == 0) {
-            dparser_read_lines(fd, test_dict_int, NULL);
+            dparser_read_lines(fd, test_dict_int, NULL, NULL);
         } else if (strcmp(dtype, "dfloat") == 0) {
-            dparser_read_lines(fd, test_dict_float, NULL);
+            dparser_read_lines(fd, test_dict_float, NULL, NULL);
         } else if (strcmp(dtype, "dstr") == 0) {
-            dparser_read_lines(fd, test_dict_str, NULL);
+            dparser_read_lines(fd, test_dict_str, NULL, NULL);
         //} else if (strcmp(dtype, "st00") == 0) {
         //    test_struct_00();
         } else {

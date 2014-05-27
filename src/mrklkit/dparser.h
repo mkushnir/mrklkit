@@ -83,12 +83,14 @@ int dparse_struct(bytestream_t *,
 
 void
 dparse_struct_setup(bytestream_t *,
-                    byterange_t *,
+                    const byterange_t *,
                     rt_struct_t *);
 
-typedef int (*dparser_read_lines_cb_t)(bytestream_t *, byterange_t *, void *);
+typedef int (*dparser_read_lines_cb_t)(bytestream_t *, const byterange_t *, void *);
+typedef int (*dparser_bytestream_recycle_cb_t)(void *, off_t);
 int dparser_read_lines(int,
                        dparser_read_lines_cb_t,
+                       dparser_bytestream_recycle_cb_t,
                        void *);
 
 #ifdef __cplusplus

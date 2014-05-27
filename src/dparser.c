@@ -894,7 +894,7 @@ dparse_struct_pos(bytestream_t *bs,
 
 void
 dparse_struct_setup(bytestream_t *bs,
-                  byterange_t *br,
+                  const byterange_t *br,
                   rt_struct_t *value)
 {
     value->parser_info.bs = bs;
@@ -1166,6 +1166,7 @@ dparse_rt_struct_dump(rt_struct_t *value)
 int
 dparser_read_lines(int fd,
                    dparser_read_lines_cb_t cb,
+                   dparser_bytestream_recycle_cb_t rcb,
                    void *udata)
 {
     int res = 0;
@@ -1178,7 +1179,7 @@ dparser_read_lines(int fd,
     br.start = 0;
     br.end = 0x7fffffffffffffff;
 
-    while (nread > 0) {
+    while (1) {
 
         //sleep(1);
 
@@ -1201,6 +1202,17 @@ dparser_read_lines(int fd,
 
         dparser_reach_value(&bs, '\n', SEOD(&bs));
         br.end = SEOD(&bs);
+
+        if (SPOS(&bs) >= 1024 * 1024 - 8192) {
+            off_t recycled;
+
+            recycled = bytestream_recycle(&bs, 0, SPOS(&bs));
+            br.end = SEOD(&bs);
+
+            if (rcb != NULL && rcb(udata, recycled) != 0) {
+                break;
+            }
+        }
     }
 
     bytestream_fini(&bs);

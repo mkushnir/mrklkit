@@ -71,7 +71,7 @@ test1(void)
         FAIL("open");
     }
 
-    if (dparser_read_lines(fd, (dparser_read_lines_cb_t)testrt_run_once, &tctx) != 0) {
+    if (dparser_read_lines(fd, (dparser_read_lines_cb_t)testrt_run_once, NULL, &tctx) != 0) {
         TRACE("error");
     }
 
