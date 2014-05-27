@@ -179,14 +179,17 @@ compile_cmp(LLVMModuleRef module,
              * bytes_t *
              *
              */
+            LLVMTypeRef ty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
             args[0] = LLVMBuildStructGEP(builder,
                                          v,
                                          BYTES_DATA_IDX,
                                          NEWVAR("tmp"));
+            args[0] = LLVMBuildPointerCast(builder, args[0], ty, NEWVAR("cast"));
             args[1] = LLVMBuildStructGEP(builder,
                                          rand,
                                          BYTES_DATA_IDX,
                                          NEWVAR("tmp"));
+            args[1] = LLVMBuildPointerCast(builder, args[1], ty, NEWVAR("cast"));
             rv = LLVMBuildCall(builder,
                               ref,
                               args,
@@ -400,6 +403,7 @@ end:
     return v;
 
 err:
+    //lkit_expr_dump(expr);
     v = NULL;
     goto end;
 }
