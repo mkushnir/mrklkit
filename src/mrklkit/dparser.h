@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <mrkcommon/bytestream.h>
+#include <mrkcommon/util.h>
 
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
