@@ -1165,16 +1165,15 @@ dparse_rt_struct_dump(rt_struct_t *value)
  */
 int
 dparser_read_lines(int fd,
+                   bytestream_t *bs,
                    dparser_read_lines_cb_t cb,
                    dparser_bytestream_recycle_cb_t rcb,
                    void *udata)
 {
     int res = 0;
-    bytestream_t bs;
     ssize_t nread;
     byterange_t br;
 
-    bytestream_init(&bs, 1024 * 1024);
     nread = 0xffffffff;
     br.start = 0;
     br.end = 0x7fffffffffffffff;
@@ -1183,31 +1182,31 @@ dparser_read_lines(int fd,
 
         //sleep(1);
 
-        br.start = SPOS(&bs);
-        if (dparser_reach_delim_readmore(&bs,
+        br.start = SPOS(bs);
+        if (dparser_reach_delim_readmore(bs,
                                          fd,
                                          '\n',
                                          br.end) == DPARSE_EOD) {
             break;
         }
 
-        br.end = SPOS(&bs);
+        br.end = SPOS(bs);
 
         //TRACE("start=%ld end=%ld", br.start, br.end);
-        //D32(SPDATA(&bs), br.end - br.start);
+        //D32(SPDATA(bs), br.end - br.start);
 
-        if ((res = cb(&bs, &br, udata)) != 0) {
+        if ((res = cb(bs, &br, udata)) != 0) {
             break;
         }
 
-        dparser_reach_value(&bs, '\n', SEOD(&bs));
-        br.end = SEOD(&bs);
+        dparser_reach_value(bs, '\n', SEOD(bs));
+        br.end = SEOD(bs);
 
-        if (SPOS(&bs) >= 1024 * 1024 - 8192) {
+        if (SPOS(bs) >= bs->growsz - 8192) {
             off_t recycled;
 
-            recycled = bytestream_recycle(&bs, 0, SPOS(&bs));
-            br.end = SEOD(&bs);
+            recycled = bytestream_recycle(bs, 0, SPOS(bs));
+            br.end = SEOD(bs);
 
             if (rcb != NULL && rcb(udata, recycled) != 0) {
                 break;
@@ -1215,6 +1214,5 @@ dparser_read_lines(int fd,
         }
     }
 
-    bytestream_fini(&bs);
     return res;
 }

@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 
+#include <mrkcommon/bytestream.h>
 #include <mrkcommon/dumpm.h>
 
 #include "unittest.h"
@@ -45,6 +46,7 @@ test1(void)
 {
     int fd;
     int res;
+    bytestream_t bs;
 
     if ((fd = open(prog, O_RDONLY)) == -1) {
         FAIL("open");
@@ -71,9 +73,13 @@ test1(void)
         FAIL("open");
     }
 
-    if (dparser_read_lines(fd, (dparser_read_lines_cb_t)testrt_run_once, NULL, &tctx) != 0) {
+    bytestream_init(&bs, 1024*1024);
+
+    if (dparser_read_lines(fd, &bs, (dparser_read_lines_cb_t)testrt_run_once, NULL, &tctx) != 0) {
         TRACE("error");
     }
+
+    bytestream_fini(&bs);
 
     close(fd);
 
