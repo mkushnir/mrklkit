@@ -1168,7 +1168,8 @@ dparser_read_lines(int fd,
                    bytestream_t *bs,
                    dparser_read_lines_cb_t cb,
                    dparser_bytestream_recycle_cb_t rcb,
-                   void *udata)
+                   void *udata,
+                   size_t *nlines)
 {
     int res = 0;
     ssize_t nread;
@@ -1196,6 +1197,7 @@ dparser_read_lines(int fd,
         //D32(SPDATA(bs), br.end - br.start);
 
         if ((res = cb(bs, &br, udata)) != 0) {
+            ++(*nlines);
             break;
         }
 
@@ -1210,9 +1212,11 @@ dparser_read_lines(int fd,
 
             if (rcb != NULL && rcb(udata) != 0) {
                 res = DPARSER_READ_LINES + 1;
+                ++(*nlines);
                 break;
             }
         }
+        ++(*nlines);
     }
 
     return res;

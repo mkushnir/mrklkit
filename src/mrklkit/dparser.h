@@ -92,7 +92,8 @@ int dparser_read_lines(int,
                        bytestream_t *,
                        dparser_read_lines_cb_t,
                        dparser_bytestream_recycle_cb_t,
-                       void *);
+                       void *,
+                       size_t *);
 
 #ifdef __cplusplus
 }
