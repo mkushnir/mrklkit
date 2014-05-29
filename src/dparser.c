@@ -59,7 +59,7 @@ dparser_reach_delim_readmore(bytestream_t *bs, int fd, char delim, off_t epos)
         //      SNEEDMORE(bs), SPOS(bs), epos);
         //TRACE("SPCHR='%c'", SPCHR(bs));
         if (SNEEDMORE(bs)) {
-            if (bytestream_read_more(bs, fd, DPARSE_READSZ) <= 0) {
+            if (bytestream_read_more(bs, fd, bs->growsz) <= 0) {
                 return DPARSE_EOD;
             }
             epos = SEOD(bs);
@@ -1208,7 +1208,8 @@ dparser_read_lines(int fd,
             recycled = bytestream_recycle(bs, 0, SPOS(bs));
             br.end = SEOD(bs);
 
-            if (rcb != NULL && rcb(udata, recycled) != 0) {
+            if (rcb != NULL && rcb(udata) != 0) {
+                res = DPARSER_READ_LINES + 1;
                 break;
             }
         }
