@@ -167,6 +167,7 @@ lkit_type_t *lkit_type_parse(mrklkit_ctx_t *,
                              int);
 lkit_type_t *lkit_type_finalize(mrklkit_ctx_t *, lkit_type_t *);
 void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *);
+lkit_type_t *lkit_typedef_get(mrklkit_ctx_t *, bytes_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);
 lkit_type_t *lkit_type_get(lkit_tag_t);

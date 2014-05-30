@@ -407,6 +407,18 @@ lkit_register_typedef(mrklkit_ctx_t *mctx, lkit_type_t *ty, bytes_t *typename)
 
 
 lkit_type_t *
+lkit_typedef_get(mrklkit_ctx_t *mctx, bytes_t *typename)
+{
+    dict_item_t *di;
+
+    if ((di = dict_get_item(&mctx->typedefs, typename)) != NULL) {
+        return di->value;
+    }
+    return NULL;
+}
+
+
+lkit_type_t *
 lkit_array_get_element_type(lkit_array_t *ta)
 {
     array_iter_t it;
@@ -725,6 +737,28 @@ rt_dict_fini_keyval(bytes_t *key, void *val)
 
 
 static int
+struct_field_name_cmp(bytes_t **a, bytes_t **b)
+{
+    return bytes_cmp(*a, *b);
+}
+
+static int
+delim_cmp(const unsigned char *a, const unsigned char *b)
+{
+    if (a == NULL) {
+        if (b != NULL) {
+            return -1;
+        }
+    } else {
+        if (b == NULL) {
+            return 1;
+        }
+        return a[0] - b[0];
+    }
+    return 0;
+}
+
+static int
 type_cmp(lkit_type_t **pa, lkit_type_t **pb)
 {
     lkit_type_t *a = *pa;
@@ -749,7 +783,7 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                     aa = (lkit_array_t *)a;
                     ab = (lkit_array_t *)b;
 
-                    diff = aa->delim[0] - ab->delim[0];
+                    diff = delim_cmp(aa->delim, ab->delim);
 
                     if (diff == 0) {
                         return array_cmp(&aa->fields,
@@ -766,9 +800,9 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                     da = (lkit_dict_t *)a;
                     db = (lkit_dict_t *)b;
 
-                    diff = da->kvdelim[0] - db->kvdelim[0];
+                    diff = delim_cmp(da->kvdelim, db->kvdelim);
                     if (diff == 0) {
-                        diff = da->fdelim[0] - db->fdelim[0];
+                        diff = delim_cmp(da->fdelim, db->fdelim);
                     }
                     if (diff == 0) {
                         return array_cmp(&da->fields,
@@ -786,13 +820,20 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                     sa = (lkit_struct_t *)a;
                     sb = (lkit_struct_t *)b;
 
-                    diff = sa->delim[0] - sb->delim[0];
+                    diff = delim_cmp(sa->delim, sb->delim);
 
                     if (diff == 0) {
-                        return array_cmp(&sa->fields,
+                        diff = array_cmp(&sa->fields,
                                          &sb->fields,
                                          (array_compar_t)type_cmp,
                                          0);
+                        if (diff == 0) {
+                            return array_cmp(
+                                &sa->names,
+                                &sb->names,
+                                (array_compar_t)struct_field_name_cmp,
+                                0);
+                        }
                     }
 
                 }
@@ -851,7 +892,7 @@ lkit_type_cmp(lkit_type_t *a, lkit_type_t *b)
 
     diff = (int)(ha - hb);
 
-    if (diff) {
+    if (diff == 0) {
         return type_cmp(&a, &b);
     }
     return diff;
