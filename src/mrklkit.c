@@ -79,7 +79,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
                     unsigned char *arg = NULL;
 
                     if (lparse_next_word(nform, &nit, &arg, 1) == 0) {
-                        TRACE("pragma arg: %s", arg);
+                        //TRACE("pragma arg: %s", arg);
                     } else {
                         TRACE("ignoring empty pragma");
                     }
