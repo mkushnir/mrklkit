@@ -1023,7 +1023,7 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     LLVMPositionBuilderAtEnd(builder, bb);
 
     /* builtin symbol postactions */
-    if (builtin_sym_compile_post(&tctx->builtin, module) != 0) {
+    if (builtin_sym_compile_post(&tctx->builtin, module, builder) != 0) {
         TRRET(TESTRT_COMPILE + 103);
     }
 

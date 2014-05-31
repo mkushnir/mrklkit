@@ -712,11 +712,17 @@ builtin_call_eager_initializers(lkit_expr_t *ectx,
 
 
 int
-builtin_sym_compile_post(lkit_expr_t *ectx, LLVMModuleRef module)
+builtin_sym_compile_post(lkit_expr_t *ectx,
+                         LLVMModuleRef module,
+                         LLVMBuilderRef builder)
 {
+    struct {
+        LLVMModuleRef module;
+        LLVMBuilderRef builder;
+    } params = {module, builder};
     if (array_traverse(&ectx->glist,
                        (array_traverser_t)builtin_call_lazy_finalizer,
-                       module) != 0) {
+                       &params) != 0) {
         TRRET(BUILTIN_SYM_COMPILE_POST + 1);
     }
     return 0;

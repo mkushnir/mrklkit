@@ -1490,10 +1490,11 @@ builtin_call_lazy_finalizer(lkit_gitem_t **gitem, void *udata)
                  ".mrklkit.init.done.%s",
                  (char *)name->data);
 
-        if ((v = LLVMGetNamedGlobal(params->module,
-                                    (char *)expr->name->data)) == NULL) {
+        if ((v = LLVMGetNamedGlobal(params->module, buf)) == NULL) {
             FAIL("builtin_call_lazy_finalizer");
         }
+
+        LLVMDumpValue(v);
 
         LLVMBuildStore(params->builder,
                        LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0),

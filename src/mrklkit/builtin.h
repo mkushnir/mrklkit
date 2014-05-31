@@ -27,7 +27,7 @@ int builtin_call_eager_initializers(lkit_expr_t *,
 LLVMValueRef builtin_compile_expr(LLVMModuleRef,
                                   LLVMBuilderRef,
                                   lkit_expr_t *);
-int builtin_sym_compile_post(lkit_expr_t *, LLVMModuleRef);
+int builtin_sym_compile_post(lkit_expr_t *, LLVMModuleRef, LLVMBuilderRef);
 int builtin_call_lazy_finalizer(lkit_gitem_t **, void *);
 
 #ifdef __cplusplus

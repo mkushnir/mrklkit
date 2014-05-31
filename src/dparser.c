@@ -7,7 +7,8 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -1219,5 +1220,5 @@ dparser_read_lines(int fd,
         ++(*nlines);
     }
 
-    return res;
+    TRRET(res);
 }
