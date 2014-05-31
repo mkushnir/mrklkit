@@ -691,6 +691,7 @@ builtin_sym_compile(lkit_expr_t *ectx, LLVMModuleRef module)
     return 0;
 }
 
+
 int
 builtin_call_eager_initializers(lkit_expr_t *ectx,
                                 LLVMModuleRef module,
@@ -707,3 +708,17 @@ builtin_call_eager_initializers(lkit_expr_t *ectx,
     }
     return 0;
 }
+
+
+
+int
+builtin_sym_compile_post(lkit_expr_t *ectx, LLVMModuleRef module)
+{
+    if (array_traverse(&ectx->glist,
+                       (array_traverser_t)builtin_call_lazy_finalizer,
+                       module) != 0) {
+        TRRET(BUILTIN_SYM_COMPILE_POST + 1);
+    }
+    return 0;
+}
+

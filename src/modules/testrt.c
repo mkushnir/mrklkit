@@ -1019,9 +1019,15 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
         TRRET(TESTRT_COMPILE + 102);
     }
 
-    /* return */
     bb = LLVMGetLastBasicBlock(fn);
     LLVMPositionBuilderAtEnd(builder, bb);
+
+    /* builtin symbol postactions */
+    if (builtin_sym_compile_post(&tctx->builtin, module) != 0) {
+        TRRET(TESTRT_COMPILE + 103);
+    }
+
+    /* return */
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
 
     LLVMDisposeBuilder(builder);

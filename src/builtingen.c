@@ -1271,6 +1271,7 @@ builtin_compile_expr(LLVMModuleRef module,
 
                     if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
                         if (expr->value.ref->lazy_init) {
+                            expr->value.ref->lazy_init_referenced = 1;
                             if (LLVMBuildCall(builder,
                                               fn,
                                               NULL,
@@ -1467,3 +1468,37 @@ builtingen_call_eager_initializer(lkit_gitem_t **gitem, void *udata)
 }
 
 
+int
+builtin_call_lazy_finalizer(lkit_gitem_t **gitem, void *udata)
+{
+    bytes_t *name = (*gitem)->name;
+    lkit_expr_t *expr = (*gitem)->expr;
+    struct {
+        LLVMModuleRef module;
+        LLVMBuilderRef builder;
+    } *params = udata;
+
+    if (expr->lazy_init && expr->lazy_init_referenced) {
+        char buf[1024];
+        LLVMContextRef lctx;
+        LLVMValueRef v;
+
+        lctx = LLVMGetModuleContext(params->module);
+
+        snprintf(buf,
+                 sizeof(buf),
+                 ".mrklkit.init.done.%s",
+                 (char *)name->data);
+
+        if ((v = LLVMGetNamedGlobal(params->module,
+                                    (char *)expr->name->data)) == NULL) {
+            FAIL("builtin_call_lazy_finalizer");
+        }
+
+        LLVMBuildStore(params->builder,
+                       LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0),
+                       v);
+    }
+    return 0;
+
+}
