@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/limits.h>
 #include <unistd.h>
 
 #include <mrkcommon/array.h>
@@ -1187,7 +1188,7 @@ dparser_read_lines(int fd,
 
     nread = 0xffffffff;
     br.start = 0;
-    br.end = 0x7fffffffffffffff;
+    br.end = OFF_MAX;
 
     while (1) {
 

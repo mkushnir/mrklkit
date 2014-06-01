@@ -54,8 +54,8 @@ do { \
 typedef struct _rt_struct {
     ssize_t nref;
     lkit_struct_t *type;
-    /* weak ref */
     struct {
+        /* weak ref */
         bytestream_t *bs;
         byterange_t br;
         off_t pos;
