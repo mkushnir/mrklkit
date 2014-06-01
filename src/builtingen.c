@@ -1494,8 +1494,6 @@ builtin_call_lazy_finalizer(lkit_gitem_t **gitem, void *udata)
             FAIL("builtin_call_lazy_finalizer");
         }
 
-        LLVMDumpValue(v);
-
         LLVMBuildStore(params->builder,
                        LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0),
                        v);
