@@ -309,22 +309,22 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
         switch (FPARSER_DATUM_TAG(dat)) {
         case FPARSER_INT:
             expr->value.literal = dat;
-            expr->type = lkit_type_get(LKIT_INT);
+            expr->type = lkit_type_get(mctx, LKIT_INT);
             break;
 
         case FPARSER_STR:
             expr->value.literal = dat;
-            expr->type = lkit_type_get(LKIT_STR);
+            expr->type = lkit_type_get(mctx, LKIT_STR);
             break;
 
         case FPARSER_FLOAT:
             expr->value.literal = dat;
-            expr->type = lkit_type_get(LKIT_FLOAT);
+            expr->type = lkit_type_get(mctx, LKIT_FLOAT);
             break;
 
         case FPARSER_BOOL:
             expr->value.literal = dat;
-            expr->type = lkit_type_get(LKIT_BOOL);
+            expr->type = lkit_type_get(mctx, LKIT_BOOL);
             break;
 
         case FPARSER_WORD:
@@ -333,6 +333,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
              */
             expr->name = (bytes_t *)(dat->body);
             if ((expr->value.ref = lkit_expr_find(ectx, expr->name)) == NULL) {
+                lkit_expr_dump(expr);
                 TR(LKIT_EXPR_PARSE + 1);
                 goto err;
             }

@@ -318,7 +318,7 @@ remove_undef(testrt_ctx_t *tctx, lkit_expr_t *expr)
 
             //lkit_expr_dump(*arg);
 
-            if (builtin_remove_undef(&tctx->builtin, *arg) != 0) {
+            if (builtin_remove_undef(&tctx->mctx, &tctx->builtin, *arg) != 0) {
                 TRRET(TESTRT_PARSE + 500);
             }
 
@@ -326,7 +326,7 @@ remove_undef(testrt_ctx_t *tctx, lkit_expr_t *expr)
 
         } else if (strcmp(name, "HANGOVER") == 0) {
         } else {
-            return builtin_remove_undef(&tctx->builtin, expr);
+            return builtin_remove_undef(&tctx->mctx, &tctx->builtin, expr);
         }
     }
     return 0;
@@ -408,7 +408,7 @@ _parse_take(testrt_ctx_t *tctx,
     }
 
     trt->takeexpr = lkit_expr_new(&tctx->root);
-    ts = (lkit_struct_t *)lkit_type_get(LKIT_STRUCT);
+    ts = (lkit_struct_t *)lkit_type_get(&tctx->mctx, LKIT_STRUCT);
 
     for (node = array_next(form, it);
          node != NULL;
@@ -461,7 +461,7 @@ _parse_do(testrt_ctx_t *tctx,
 
     trt->doexpr = lkit_expr_new(&tctx->root);
 
-    ts = (lkit_struct_t *)lkit_type_get(LKIT_STRUCT);
+    ts = (lkit_struct_t *)lkit_type_get(&tctx->mctx, LKIT_STRUCT);
 
     for (node = array_next(form, it);
          node != NULL;
@@ -560,7 +560,7 @@ _parse_see(testrt_ctx_t *tctx,
         texpr->isref = 1;
 
         /* hack ... */
-        if ((texpr->type = lkit_type_get(LKIT_VOID)) == NULL) {
+        if ((texpr->type = lkit_type_get(&tctx->mctx, LKIT_VOID)) == NULL) {
             TRRET(TESTRT_PARSE + 205);
         }
 
@@ -581,7 +581,7 @@ _parse_see(testrt_ctx_t *tctx,
         fexpr->isref = 1;
 
         /* hack ... */
-        if ((fexpr->type = lkit_type_get(LKIT_VOID)) == NULL) {
+        if ((fexpr->type = lkit_type_get(&tctx->mctx, LKIT_VOID)) == NULL) {
             TRRET(TESTRT_PARSE + 207);
         }
 
@@ -991,7 +991,7 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     LLVMBasicBlockRef bb;
 
     /* builtin */
-    if (builtin_sym_compile(&tctx->builtin, module) != 0) {
+    if (builtin_sym_compile(&tctx->mctx, &tctx->builtin, module) != 0) {
         TRRET(TESTRT_COMPILE + 100);
     }
 
@@ -1412,7 +1412,7 @@ _init(testrt_ctx_t *tctx)
     }
 
     null_struct = (lkit_struct_t *)lkit_type_finalize(&tctx->mctx,
-            lkit_type_get(LKIT_STRUCT));
+            lkit_type_get(&tctx->mctx, LKIT_STRUCT));
 
     if (array_init(&dsources, sizeof(dsource_t *), 0,
                    NULL,

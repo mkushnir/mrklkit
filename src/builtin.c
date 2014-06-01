@@ -120,18 +120,22 @@ err:
  * (sym itof (func float int)) done
  * (sym ftoi (func int float)) done
  * (sym tostr (func str undef))
+ * (sym dp-info (func undef undef str))
  *
  * (sym map (func undef undef undef))
  * (sym reduce (func undef undef undef))
  */
 
 int
-builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
+builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 {
     char *name = (expr->name != NULL) ? (char *)expr->name->data : ")(";
 
     //TRACEN("%s: ", name);
     if (expr->type->tag == LKIT_UNDEF) {
+        /*
+         * (func undef )
+         */
 
         //TRACEC("undef\n");
 
@@ -139,15 +143,13 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             lkit_expr_t **cond, **texp, **fexp;
             lkit_type_t *tty, *fty;
 
-            //expr->isbuiltin = 1;
-
             /*
              * (sym if (func undef bool undef undef))
              */
             cond = array_get(&expr->subs, 0);
             assert(cond != NULL);
 
-            if (builtin_remove_undef(ectx, *cond) != 0) {
+            if (builtin_remove_undef(mctx, ectx, *cond) != 0) {
                 TRRET(REMOVE_UNDEF + 1);
             }
 
@@ -160,14 +162,14 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             texp = array_get(&expr->subs, 1);
             assert(texp != NULL);
 
-            if (builtin_remove_undef(ectx, *texp) != 0) {
+            if (builtin_remove_undef(mctx, ectx, *texp) != 0) {
                 TRRET(REMOVE_UNDEF + 3);
             }
 
             fexp = array_get(&expr->subs, 2);
             assert(fexp != NULL);
 
-            if (builtin_remove_undef(ectx, *fexp) != 0) {
+            if (builtin_remove_undef(mctx, ectx, *fexp) != 0) {
                 TRRET(REMOVE_UNDEF + 4);
             }
 
@@ -192,7 +194,7 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                if (builtin_remove_undef(ectx, *arg) != 0) {
+                if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
                     TRRET(REMOVE_UNDEF + 6);
                 }
             }
@@ -206,8 +208,6 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             lkit_expr_t **arg;
             array_iter_t it;
 
-            //expr->isbuiltin = 1;
-
             /*
              * (sym print (func undef ...))
              */
@@ -215,7 +215,7 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
-                if (builtin_remove_undef(ectx, *arg) != 0) {
+                if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
                     TRRET(REMOVE_UNDEF + 8);
                 }
             }
@@ -235,15 +235,13 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             lkit_expr_t **aarg, **barg;
             array_iter_t it;
 
-            //expr->isbuiltin = 1;
-
             /*
              * (sym +|*|%|-|/ (func undef undef ...))
              */
             aarg = array_first(&expr->subs, &it);
             assert(aarg != NULL);
 
-            if (builtin_remove_undef(ectx, *aarg) != 0) {
+            if (builtin_remove_undef(mctx, ectx, *aarg) != 0) {
                 TRRET(REMOVE_UNDEF + 9);
             }
 
@@ -251,7 +249,7 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
                  barg != NULL;
                  barg = array_next(&expr->subs, &it)) {
 
-                if (builtin_remove_undef(ectx, *barg) != 0) {
+                if (builtin_remove_undef(mctx, ectx, *barg) != 0) {
                     TRRET(REMOVE_UNDEF + 10);
                 }
 
@@ -274,12 +272,10 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             lkit_expr_t **cont;
             lkit_type_t *ty;
 
-            //expr->isbuiltin = 1;
-
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (builtin_remove_undef(ectx, *cont) != 0) {
+            if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
                 TRRET(REMOVE_UNDEF + 12);
             }
 
@@ -379,7 +375,7 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
                 dflt = array_get(&expr->subs, 2);
                 assert(dflt != NULL);
 
-                if (builtin_remove_undef(ectx, *dflt) != 0) {
+                if (builtin_remove_undef(mctx, ectx, *dflt) != 0) {
                     TRRET(REMOVE_UNDEF + 20);
                 }
 
@@ -399,12 +395,10 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             lkit_type_t *ty;
             lkit_type_t *elty;
 
-            //expr->isbuiltin = 1;
-
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (builtin_remove_undef(ectx, *cont) != 0) {
+            if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
                 TRRET(REMOVE_UNDEF + 22);
             }
 
@@ -497,7 +491,7 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             setv = array_get(&expr->subs, 2);
             assert(setv != NULL);
 
-            if (builtin_remove_undef(ectx, *setv) != 0) {
+            if (builtin_remove_undef(mctx, ectx, *setv) != 0) {
                 TRRET(REMOVE_UNDEF + 30);
             }
 
@@ -515,12 +509,10 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             lkit_expr_t **cont;
             lkit_type_t *ty;
 
-            //expr->isbuiltin = 1;
-
             cont = array_get(&expr->subs, 0);
             assert(cont != NULL);
 
-            if (builtin_remove_undef(ectx, *cont) != 0) {
+            if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
                 TRRET(REMOVE_UNDEF + 32);
             }
 
@@ -586,6 +578,48 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
 
             expr->type = ty;
 
+        } else if (strcmp(name, "dp-info") == 0) {
+            /*
+             * (sym dp-info (func undef conststr))
+             */
+            lkit_expr_t **cont;
+
+            cont = array_get(&expr->subs, 0);
+            assert(cont != NULL);
+
+            if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
+                TRRET(REMOVE_UNDEF + 37);
+            }
+
+            if ((*cont)->type->tag != LKIT_STRUCT) {
+                TRRET(REMOVE_UNDEF + 38);
+            } else {
+                lkit_expr_t **opt;
+                bytes_t *optname;
+
+                if ((opt = array_get(&expr->subs, 1)) == NULL) {
+                    expr->error = 1;
+                    TRRET(REMOVE_UNDEF + 39);
+                }
+
+                /* constant str */
+                if ((*opt)->type->tag != LKIT_STR ||
+                    !LKIT_EXPR_CONSTANT(*opt)) {
+
+                    (*opt)->error = 1;
+                    TRRET(REMOVE_UNDEF + 39);
+                }
+
+                optname = (bytes_t *)(*opt)->value.literal->body;
+                if (strcmp((char *)optname->data, "pos") == 0) {
+                    expr->type = lkit_type_get(mctx, LKIT_INT);
+                } else {
+                    lkit_expr_dump(expr);
+                    (*opt)->error = 1;
+                    TRRET(REMOVE_UNDEF + 40);
+                }
+            }
+
         } else {
             dict_item_t *it;
             lkit_expr_t *ref = NULL;
@@ -594,17 +628,20 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             if ((it = dict_get_item(
                     &ectx->ctx, expr->name)) == NULL) {
                 lkit_expr_dump(expr);
-                TRRET(REMOVE_UNDEF + 37);
+                TRRET(REMOVE_UNDEF + 40);
             } else {
                 ref = it->value;
             }
-            if (builtin_remove_undef(ectx, ref) != 0) {
-                TRRET(REMOVE_UNDEF + 38);
+            if (builtin_remove_undef(mctx, ectx, ref) != 0) {
+                TRRET(REMOVE_UNDEF + 41);
             }
             expr->type = ref->type;
         }
 
     } else {
+        /*
+         * (func ty )
+         */
         if (strcmp(name, "==") == 0 ||
                    strcmp(name, "!=") == 0 ||
                    strcmp(name, "<") == 0 ||
@@ -615,14 +652,12 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
             lkit_expr_t **arg;
             array_iter_t it;
 
-            //expr->isbuiltin = 1;
-
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                if (builtin_remove_undef(ectx, *arg) != 0) {
-                    TRRET(REMOVE_UNDEF + 39);
+                if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
+                    TRRET(REMOVE_UNDEF + 42);
                 }
             }
 
@@ -632,13 +667,11 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
              */
             lkit_expr_t **arg;
 
-            //expr->isbuiltin = 1;
-
             arg = array_get(&expr->subs, 0);
             assert(arg != NULL);
 
-            if (builtin_remove_undef(ectx, *arg) != 0) {
-                TRRET(REMOVE_UNDEF + 40);
+            if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
+                TRRET(REMOVE_UNDEF + 43);
             }
 
         } else {
@@ -648,6 +681,7 @@ builtin_remove_undef(lkit_expr_t *ectx, lkit_expr_t *expr)
         }
 
     }
+
     if (expr->type->tag == LKIT_UNDEF) {
         /* should not be reached */
         lkit_type_dump(expr->type);
@@ -662,20 +696,22 @@ static int
 _acb(lkit_gitem_t **gitem, void *udata)
 {
     struct {
-        int (*cb)(mrklkit_ctx_t *, lkit_expr_t *);
+        int (*cb)(mrklkit_ctx_t *, lkit_expr_t *, lkit_expr_t *);
         mrklkit_ctx_t *mctx;
+        lkit_expr_t *ectx;
     } *params = udata;
-    return params->cb(params->mctx, (*gitem)->expr);
+    return params->cb(params->mctx, params->ectx, (*gitem)->expr);
 }
 
 
 int
-builtin_sym_compile(lkit_expr_t *ectx, LLVMModuleRef module)
+builtin_sym_compile(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, LLVMModuleRef module)
 {
     struct {
-        int (*cb)(lkit_expr_t *, lkit_expr_t *);
+        int (*cb)(mrklkit_ctx_t *, lkit_expr_t *, lkit_expr_t *);
+        mrklkit_ctx_t *mctx;
         lkit_expr_t *ectx;
-    } params = { builtin_remove_undef, ectx };
+    } params = { builtin_remove_undef, mctx, ectx };
 
     if (array_traverse(&ectx->glist,
                        (array_traverser_t)_acb,

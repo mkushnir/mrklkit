@@ -23,6 +23,7 @@ typedef struct _mrklkit_ctx {
      * lkit_type_t *, lkit_type_t *
      */
     dict_t types;
+    array_t builtin_types;
     /*
      * bytes_t *, lkit_type_t *
      */

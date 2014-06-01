@@ -2,7 +2,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -235,7 +235,7 @@ compile_get(LLVMModuleRef module,
     }
 
     if ((args[0] = builtin_compile_expr(module, builder, *cont)) == NULL) {
-        TR(COMPILE_GET + 2);
+        TR(COMPILE_GET + 1);
         goto err;
     }
     args[0] = LLVMBuildPointerCast(builder,
@@ -252,7 +252,7 @@ compile_get(LLVMModuleRef module,
         if ((args[2] = builtin_compile_expr(module,
                                             builder,
                                             *arg)) == NULL) {
-            TR(COMPILE_GET + 1);
+            TR(COMPILE_GET + 2);
             goto err;
         }
     }
@@ -274,13 +274,13 @@ compile_get(LLVMModuleRef module,
             if ((args[1] = builtin_compile_expr(module,
                                                 builder,
                                                 *arg)) == NULL) {
-                TR(COMPILE_FUNCTION + 1302);
+                TR(COMPILE_GET + 100);
                 goto err;
             }
 
             if ((fty = lkit_array_get_element_type(
                         (lkit_array_t *)(*cont)->type)) == NULL) {
-                TR(COMPILE_FUNCTION + 1303);
+                TR(COMPILE_GET + 102);
                 goto err;
             }
             if (flag & COMPILE_GET_GET) {
@@ -289,13 +289,13 @@ compile_get(LLVMModuleRef module,
                          "mrklkit_rt_get_array_item_%s",
                          fty->name);
             } else {
-                TR(COMPILE_FUNCTION + 1303);
+                TR(COMPILE_GET + 103);
                 goto err;
             }
 
             //(sym mrklkit_rt_get_array_item (func undef array int undef))
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
-                TR(COMPILE_FUNCTION + 1304);
+                TR(COMPILE_GET + 104);
                 goto err;
             }
             v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
@@ -314,13 +314,13 @@ compile_get(LLVMModuleRef module,
             if ((args[1] = builtin_compile_expr(module,
                                                 builder,
                                                 *arg)) == NULL) {
-                TR(COMPILE_FUNCTION + 1305);
+                TR(COMPILE_GET + 200);
                 goto err;
             }
 
             if ((fty = lkit_dict_get_element_type(
                         (lkit_dict_t *)(*cont)->type)) == NULL) {
-                TR(COMPILE_FUNCTION + 1306);
+                TR(COMPILE_GET + 201);
                 goto err;
             }
             if (flag & COMPILE_GET_GET) {
@@ -329,12 +329,12 @@ compile_get(LLVMModuleRef module,
                          "mrklkit_rt_get_dict_item_%s",
                          fty->name);
             } else {
-                TR(COMPILE_FUNCTION + 1303);
+                TR(COMPILE_GET + 202);
                 goto err;
             }
 
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
-                TR(COMPILE_FUNCTION + 1307);
+                TR(COMPILE_GET + 203);
                 goto err;
             }
             v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
@@ -358,14 +358,14 @@ compile_get(LLVMModuleRef module,
             if ((idx = lkit_struct_get_field_index(
                         (lkit_struct_t *)(*cont)->type,
                         (bytes_t *)(*arg)->value.literal->body)) == -1) {
-                TR(COMPILE_FUNCTION + 1308);
+                TR(COMPILE_GET + 300);
                 goto err;
             }
 
             if ((fty = lkit_struct_get_field_type(
                         (lkit_struct_t *)(*cont)->type,
                         (bytes_t *)(*arg)->value.literal->body)) == NULL) {
-                TR(COMPILE_FUNCTION + 1309);
+                TR(COMPILE_GET + 301);
                 goto err;
             }
 
@@ -384,7 +384,7 @@ compile_get(LLVMModuleRef module,
             args[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx), idx, 1);
 
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
-                TR(COMPILE_FUNCTION + 1310);
+                TR(COMPILE_GET + 302);
                 goto err;
             }
             //LLVMDumpValue(fn);
@@ -1064,8 +1064,60 @@ compile_function(LLVMModuleRef module,
         } else {
         }
 
+    } else if (strcmp(name , "dp-info") == 0) {
+        lkit_expr_t **cont, **opt;
+        bytes_t *optname;
+        LLVMValueRef ref, args[1];
+
+        //(sym dp-info (func undef undef str))
+
+        /* container */
+        if ((cont = array_get(&expr->subs, 0)) == NULL) {
+            FAIL("array_get");
+        }
+
+        /* option */
+        if ((opt = array_get(&expr->subs, 1)) == NULL) {
+            FAIL("array_get");
+        }
+
+        /* constant str */
+        assert(!(*opt)->isref);
+        optname = (bytes_t *)(*opt)->value.literal->body;
+
+        if (strcmp((char *)optname->data, "pos") == 0) {
+
+            if ((ref = LLVMGetNamedFunction(module,
+                    "dparse_struct_pi_pos")) == NULL) {
+                TR(COMPILE_FUNCTION + 1700);
+                goto err;
+            }
+
+            if ((args[0] = builtin_compile_expr(module,
+                                                builder,
+                                                *cont)) == NULL) {
+                TR(COMPILE_FUNCTION + 1701);
+                goto err;
+            }
+
+            args[0] = LLVMBuildPointerCast(builder,
+                                           args[0],
+                                           LLVMPointerType(
+                                               LLVMInt8TypeInContext(lctx), 0),
+                                           NEWVAR("cast"));
+
+            v = LLVMBuildCall(builder,
+                              ref,
+                              args,
+                              countof(args),
+                              NEWVAR("call"));
+        } else {
+            TR(COMPILE_FUNCTION + 1702);
+            goto err;
+        }
+
     } else {
-        TR(COMPILE_FUNCTION + 1700);
+        TR(COMPILE_FUNCTION + 1800);
         goto err;
     }
 
@@ -1222,13 +1274,16 @@ builtin_compile_expr(LLVMModuleRef module,
                         FAIL("malloc");
                     }
 
+                    LLVMDumpValue(ref);
                     for (rand = array_first(&expr->subs, &it);
                          rand != NULL;
                          rand = array_next(&expr->subs, &it)) {
                         args[it.iter] =
                             builtin_compile_expr(module, builder, *rand);
                         assert(args[it.iter] != NULL);
+                        LLVMDumpValue(args[it.iter]);
                     }
+
 
                     v = LLVMBuildCall(builder,
                                       ref,
@@ -1353,12 +1408,12 @@ builtin_compile_expr(LLVMModuleRef module,
 
                 //lkit_expr_dump(expr);
                 //LLVMDumpModule(module);
-                TR(BUILTIN_COMPILE_EXPR + 7);
+                TR(BUILTIN_COMPILE_EXPR + 6);
                 break;
 
             }
         } else {
-            TR(BUILTIN_COMPILE_EXPR + 8);
+            TR(BUILTIN_COMPILE_EXPR + 7);
         }
     }
 

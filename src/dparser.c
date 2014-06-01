@@ -893,6 +893,7 @@ dparse_struct_pos(bytestream_t *bs,
     (*val)->parser_info.br.end = epos;
 }
 
+
 void
 dparse_struct_setup(bytestream_t *bs,
                   const byterange_t *br,
@@ -902,6 +903,14 @@ dparse_struct_setup(bytestream_t *bs,
     value->parser_info.br = *br;
     value->parser_info.pos = br->start;
 }
+
+
+off_t
+dparse_struct_pi_pos(rt_struct_t *value)
+{
+    return value->parser_info.pos;
+}
+
 
 static void **
 dparse_struct_item_gen(rt_struct_t *value,
