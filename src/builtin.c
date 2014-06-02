@@ -5,7 +5,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -32,7 +32,7 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
 {
     int res = 0;
     bytes_t *name = NULL;
-    lkit_expr_t *expr = NULL;
+    lkit_expr_t **expr = NULL;
     lkit_gitem_t **gitem;
     fparser_datum_t **node = NULL;
 
@@ -54,7 +54,11 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
         goto err;
     }
 
-    if ((expr = lkit_expr_parse(mctx,
+    if ((expr = array_incr(&ectx->subs)) == NULL) {
+        FAIL("array_incr");
+    }
+
+    if ((*expr = lkit_expr_parse(mctx,
                                 ectx,
                                 *node,
                                 1)) == NULL) {
@@ -63,18 +67,18 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
         goto err;
     }
 
-    dict_set_item(&ectx->ctx, name, expr);
+    dict_set_item(&ectx->ctx, name, *expr);
     if ((gitem = array_incr(&ectx->glist)) == NULL) {
         FAIL("array_incr");
     }
     (*gitem)->name = lkit_expr_qual_name(ectx, name);
-    (*gitem)->expr = expr;
+    (*gitem)->expr = *expr;
 
 end:
     return res;
 
 err:
-    (void)lkit_expr_destroy(&expr);
+    (void)lkit_expr_destroy(expr);
     res = 1;
     goto end;
 }
@@ -614,7 +618,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                 if (strcmp((char *)optname->data, "pos") == 0) {
                     expr->type = lkit_type_get(mctx, LKIT_INT);
                 } else {
-                    lkit_expr_dump(expr);
+                    //lkit_expr_dump(expr);
                     (*opt)->error = 1;
                     TRRET(REMOVE_UNDEF + 40);
                 }
@@ -626,8 +630,8 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
             /* not a builtin */
             if ((ref = lkit_expr_find(ectx, expr->name)) == NULL) {
-                lkit_expr_dump(expr);
-                TRRET(REMOVE_UNDEF + 40);
+                //lkit_expr_dump(expr);
+                TRRET(REMOVE_UNDEF + 41);
             }
             //if ((it = dict_get_item(
             //        &ectx->ctx, expr->name)) == NULL) {
@@ -637,7 +641,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             //    ref = it->value;
             //}
             if (builtin_remove_undef(mctx, ectx, ref) != 0) {
-                TRRET(REMOVE_UNDEF + 41);
+                TRRET(REMOVE_UNDEF + 42);
             }
             expr->type = ref->type;
         }
@@ -661,7 +665,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                  arg = array_next(&expr->subs, &it)) {
 
                 if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-                    TRRET(REMOVE_UNDEF + 42);
+                    TRRET(REMOVE_UNDEF + 43);
                 }
             }
 
@@ -675,14 +679,23 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             assert(arg != NULL);
 
             if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-                TRRET(REMOVE_UNDEF + 43);
+                TRRET(REMOVE_UNDEF + 44);
             }
 
         } else {
-            //TRACEC("\n");
-            //lkit_expr_dump(expr);
-            //TRACE("........");
+            lkit_expr_t **arg;
+            array_iter_t it;
+
+            for (arg = array_first(&expr->subs, &it);
+                 arg != NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
+                    TRRET(REMOVE_UNDEF + 43);
+                }
+            }
         }
+
 
     }
 
@@ -748,7 +761,7 @@ builtin_call_eager_initializers(lkit_expr_t *ectx,
     if (array_traverse(&ectx->glist,
                        (array_traverser_t)builtingen_call_eager_initializer,
                        &params) != 0) {
-        TRRET(BUILTIN_SYM_COMPILE + 2);
+        TRRET(BUILTIN_SYM_COMPILE + 3);
     }
     return 0;
 }

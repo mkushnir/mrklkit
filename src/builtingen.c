@@ -332,6 +332,7 @@ compile_get(lkit_expr_t *ectx,
                 TR(COMPILE_GET + 201);
                 goto err;
             }
+
             if (flag & COMPILE_GET_GET) {
                 snprintf(buf,
                          sizeof(buf),
@@ -346,6 +347,7 @@ compile_get(lkit_expr_t *ectx,
                 TR(COMPILE_GET + 203);
                 goto err;
             }
+            args[1] = LLVMBuildPointerCast(builder, args[1], LLVMTypeOf(LLVMGetParam(fn, 1)), NEWVAR("cast"));
             v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
         }
         break;
@@ -1238,10 +1240,10 @@ compile_dynamic_initializer(lkit_expr_t *ectx,
 
         currblock = LLVMAppendBasicBlockInContext(lctx,
                                                   fn,
-                                                  NEWVAR("L.dyninit"));
-        tblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.true"));
-        fblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.false"));
-        endblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.end"));
+                                                  NEWVAR("D.dyninit"));
+        tblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("D.if.true"));
+        fblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("D.if.false"));
+        endblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("D.if.end"));
 
         LLVMPositionBuilderAtEnd(builder, tblock);
 
@@ -1276,7 +1278,7 @@ compile_dynamic_initializer(lkit_expr_t *ectx,
         LLVMPositionBuilderAtEnd(builder, endblock);
 
     } else {
-        bb = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.dyninit"));
+        bb = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("D.dyninit"));
         LLVMPositionBuilderAtEnd(builder, bb);
         if ((storedv = builtin_compile_expr(ectx,
                                             module,
@@ -1430,7 +1432,7 @@ builtin_compile_expr(lkit_expr_t *ectx,
             break;
 
         default:
-            lkit_expr_dump(expr);
+            //lkit_expr_dump(expr);
             TR(BUILTIN_COMPILE_EXPR + 5);
             break;
 
