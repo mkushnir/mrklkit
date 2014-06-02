@@ -1393,7 +1393,6 @@ builtin_compile_expr(lkit_expr_t *ectx,
                     bytes_t *qual_name = NULL;
 
                     qual_name = lkit_expr_qual_name(ectx, expr->name);
-                    TRACE("qual_name=%s", qual_name->data);
                     if ((ref = LLVMGetNamedGlobal(module,
                             (char *)qual_name->data)) == NULL) {
                         LLVMDumpModule(module);
