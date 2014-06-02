@@ -67,7 +67,7 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
     if ((gitem = array_incr(&ectx->glist)) == NULL) {
         FAIL("array_incr");
     }
-    (*gitem)->name = name;
+    (*gitem)->name = lkit_expr_qual_name(ectx, name);
     (*gitem)->expr = expr;
 
 end:
@@ -621,17 +621,21 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             }
 
         } else {
-            dict_item_t *it;
+            //dict_item_t *it;
             lkit_expr_t *ref = NULL;
 
             /* not a builtin */
-            if ((it = dict_get_item(
-                    &ectx->ctx, expr->name)) == NULL) {
+            if ((ref = lkit_expr_find(ectx, expr->name)) == NULL) {
                 lkit_expr_dump(expr);
                 TRRET(REMOVE_UNDEF + 40);
-            } else {
-                ref = it->value;
             }
+            //if ((it = dict_get_item(
+            //        &ectx->ctx, expr->name)) == NULL) {
+            //    lkit_expr_dump(expr);
+            //    TRRET(REMOVE_UNDEF + 40);
+            //} else {
+            //    ref = it->value;
+            //}
             if (builtin_remove_undef(mctx, ectx, ref) != 0) {
                 TRRET(REMOVE_UNDEF + 41);
             }

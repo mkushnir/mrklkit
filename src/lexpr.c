@@ -19,6 +19,24 @@
 
 static void lexpr_dump(bytestream_t *, lkit_expr_t *);
 
+
+bytes_t *
+lkit_expr_qual_name(lkit_expr_t *ectx, bytes_t *name)
+{
+    bytes_t *res;
+
+    if (ectx->name != NULL) {
+        res = bytes_new(ectx->name->sz + name->sz);
+        memcpy(res->data, ectx->name->data, ectx->name->sz - 1);
+        memcpy(res->data + ectx->name->sz - 1, name->data, name->sz);
+    } else {
+        res = bytes_new_from_str((char *)name->data);
+    }
+
+    return res;
+}
+
+
 static void
 lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
 {
@@ -213,6 +231,7 @@ static int
 gitem_fini(lkit_gitem_t **gitem)
 {
     if (*gitem != NULL) {
+        BYTES_DECREF(&(*gitem)->name);
         free(*gitem);
         *gitem = NULL;
     }

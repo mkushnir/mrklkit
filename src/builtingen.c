@@ -1312,6 +1312,7 @@ builtin_compile_expr(LLVMModuleRef module,
                 ref = LLVMGetNamedGlobal(module, (char *)expr->name->data);
                 if (ref == NULL) {
                     //LLVMDumpModule(module);
+                    lkit_expr_dump(expr);
                     TR(BUILTIN_COMPILE_EXPR + 3);
 
                 } else {

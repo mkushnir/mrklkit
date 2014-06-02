@@ -1450,6 +1450,7 @@ mrklkit_module_t testrt_module = {
     (mrklkit_module_initializer_t)_init,
     (mrklkit_module_finalizer_t)_fini,
     (mrklkit_expr_parser_t)_parse_expr,
+    NULL,
     (mrklkit_type_compiler_t)_compile_type,
     (mrklkit_module_compiler_t)_compile,
     (mrklkit_module_linker_t)_link,

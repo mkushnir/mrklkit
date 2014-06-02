@@ -196,6 +196,18 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
         TRRET(MRKLKIT_COMPILE + 1);
     }
 
+    /* post parse */
+    for (mod = array_first(ctx->modules, &it);
+         mod != NULL;
+         mod = array_next(ctx->modules, &it)) {
+
+        if ((*mod)->post_parse != NULL) {
+            if ((*mod)->post_parse(udata)) {
+                TRRET(MRKLKIT_COMPILE + 5);
+            }
+        }
+    }
+
     /* compile */
 
     for (mod = array_first(ctx->modules, &it);

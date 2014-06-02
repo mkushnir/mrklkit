@@ -58,7 +58,7 @@ typedef struct _lkit_expr {
 #define LKIT_EXPR_CONSTANT(expr) ((!(expr)->isref) && ((expr)->value.literal != NULL))
 
 typedef struct _lkit_gitem {
-    /* weakref */
+    /* strongref */
     bytes_t *name;
     /* weakref */
     lkit_expr_t *expr;
@@ -84,7 +84,7 @@ struct _lkit_type *lkit_expr_type_of(lkit_expr_t *);
 void lkit_expr_init(lkit_expr_t *, lkit_expr_t *);
 void lkit_expr_fini(lkit_expr_t *);
 int lkit_expr_destroy(lkit_expr_t **);
-
+bytes_t *lkit_expr_qual_name(lkit_expr_t *, bytes_t *);
 void lexpr_init(void);
 void lexpr_fini(void);
 
