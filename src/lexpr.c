@@ -1,11 +1,12 @@
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -26,9 +27,10 @@ lkit_expr_qual_name(lkit_expr_t *ectx, bytes_t *name)
     bytes_t *res;
 
     if (ectx->name != NULL) {
-        res = bytes_new(ectx->name->sz + name->sz);
-        memcpy(res->data, ectx->name->data, ectx->name->sz - 1);
-        memcpy(res->data + ectx->name->sz - 1, name->data, name->sz);
+        res = bytes_new(ectx->name->sz + name->sz + 3);
+        //memcpy(res->data, ectx->name->data, ectx->name->sz - 1);
+        //memcpy(res->data + ectx->name->sz - 1, name->data, name->sz);
+        snprintf((char *)res->data, res->sz, "%s::%s", ectx->name->data, name->data);
     } else {
         res = bytes_new_from_str((char *)name->data);
     }

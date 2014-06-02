@@ -2,7 +2,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -60,7 +60,8 @@ check_function(bytes_t *name)
  * LLVM IR emitter.
  */
 static LLVMValueRef
-compile_if(LLVMModuleRef module,
+compile_if(lkit_expr_t *ectx,
+           LLVMModuleRef module,
            LLVMBuilderRef builder,
            lkit_expr_t *cexpr,
            lkit_expr_t *texpr,
@@ -76,7 +77,7 @@ compile_if(LLVMModuleRef module,
     fn = LLVMGetBasicBlockParent(currblock);
 
     /**/
-    cond = builtin_compile_expr(module, builder, cexpr);
+    cond = builtin_compile_expr(ectx, module, builder, cexpr);
     assert(cond != NULL);
 
     endblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.end"));
@@ -86,7 +87,7 @@ compile_if(LLVMModuleRef module,
     LLVMPositionBuilderAtEnd(builder, tblock);
 
     if (texpr != NULL) {
-        texp = builtin_compile_expr(module, builder, texpr);
+        texp = builtin_compile_expr(ectx, module, builder, texpr);
         assert(texp != NULL);
         res = LLVMBuildBr(builder, endblock);
         assert(res != NULL);
@@ -99,7 +100,7 @@ compile_if(LLVMModuleRef module,
     LLVMPositionBuilderAtEnd(builder, fblock);
 
     if (fexpr != NULL) {
-        fexp = builtin_compile_expr(module, builder, fexpr);
+        fexp = builtin_compile_expr(ectx, module, builder, fexpr);
         assert(fexp != NULL);
         res = LLVMBuildBr(builder, endblock);
         assert(res != NULL);
@@ -127,11 +128,12 @@ compile_if(LLVMModuleRef module,
 
 
 static LLVMValueRef
-compile_cmp(LLVMModuleRef module,
-           LLVMBuilderRef builder,
-           lkit_expr_t *expr,
-           LLVMIntPredicate ip,
-           LLVMRealPredicate rp)
+compile_cmp(lkit_expr_t *ectx,
+            LLVMModuleRef module,
+            LLVMBuilderRef builder,
+            lkit_expr_t *expr,
+            LLVMIntPredicate ip,
+            LLVMRealPredicate rp)
 {
     LLVMContextRef lctx;
     LLVMValueRef v = NULL;
@@ -142,13 +144,13 @@ compile_cmp(LLVMModuleRef module,
     lctx = LLVMGetModuleContext(module);
 
     arg = array_first(&expr->subs, &it);
-    if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+    if ((v = builtin_compile_expr(ectx, module, builder, *arg)) == NULL) {
         TR(COMPILE_CMP + 1);
         goto end;
     }
 
     arg = array_next(&expr->subs, &it);
-    if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+    if ((rand = builtin_compile_expr(ectx, module, builder, *arg)) == NULL) {
         TR(COMPILE_CMP + 2);
         goto end;
     }
@@ -216,7 +218,8 @@ end:
 #define COMPILE_GET_GET 0x01
 #define COMPILE_GET_PARSE 0x02
 static LLVMValueRef
-compile_get(LLVMModuleRef module,
+compile_get(lkit_expr_t *ectx,
+            LLVMModuleRef module,
             LLVMBuilderRef builder,
             lkit_expr_t *expr,
             int flag)
@@ -234,7 +237,10 @@ compile_get(LLVMModuleRef module,
         FAIL("array_get");
     }
 
-    if ((args[0] = builtin_compile_expr(module, builder, *cont)) == NULL) {
+    if ((args[0] = builtin_compile_expr(ectx,
+                                        module,
+                                        builder,
+                                        *cont)) == NULL) {
         TR(COMPILE_GET + 1);
         goto err;
     }
@@ -249,7 +255,8 @@ compile_get(LLVMModuleRef module,
         if ((arg = array_get(&expr->subs, 2)) == NULL) {
             FAIL("array_get");
         }
-        if ((args[2] = builtin_compile_expr(module,
+        if ((args[2] = builtin_compile_expr(ectx,
+                                            module,
                                             builder,
                                             *arg)) == NULL) {
             TR(COMPILE_GET + 2);
@@ -271,7 +278,8 @@ compile_get(LLVMModuleRef module,
             if ((arg = array_get(&expr->subs, 1)) == NULL) {
                 FAIL("array_get");
             }
-            if ((args[1] = builtin_compile_expr(module,
+            if ((args[1] = builtin_compile_expr(ectx,
+                                                module,
                                                 builder,
                                                 *arg)) == NULL) {
                 TR(COMPILE_GET + 100);
@@ -311,7 +319,8 @@ compile_get(LLVMModuleRef module,
             if ((arg = array_get(&expr->subs, 1)) == NULL) {
                 FAIL("array_get");
             }
-            if ((args[1] = builtin_compile_expr(module,
+            if ((args[1] = builtin_compile_expr(ectx,
+                                                module,
                                                 builder,
                                                 *arg)) == NULL) {
                 TR(COMPILE_GET + 200);
@@ -410,7 +419,8 @@ err:
 
 
 static LLVMValueRef
-compile_function(LLVMModuleRef module,
+compile_function(lkit_expr_t *ectx,
+                 LLVMModuleRef module,
                  LLVMBuilderRef builder,
                  lkit_expr_t *expr)
 {
@@ -439,7 +449,7 @@ compile_function(LLVMModuleRef module,
         fexpr = array_get(&expr->subs, 2);
         assert(fexpr != NULL);
         //TRACE("%p %p %p", cexpr, texpr, fexpr);
-        v = compile_if(module, builder, *cexpr, *texpr, *fexpr, expr->type);
+        v = compile_if(ectx, module, builder, *cexpr, *texpr, *fexpr, expr->type);
 
     } else if (strcmp(name, ",") == 0) {
         lkit_expr_t **arg;
@@ -450,7 +460,10 @@ compile_function(LLVMModuleRef module,
              arg != NULL;
              arg = array_next(&expr->subs, &it)) {
 
-            if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+            if ((v = builtin_compile_expr(ectx,
+                                          module,
+                                          builder,
+                                          *arg)) == NULL) {
                 TR(COMPILE_FUNCTION + 200);
                 goto err;
             }
@@ -471,7 +484,10 @@ compile_function(LLVMModuleRef module,
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+                if ((v = builtin_compile_expr(ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 301);
                     goto err;
                 }
@@ -549,7 +565,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 400);
@@ -567,7 +584,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 401);
@@ -592,7 +610,10 @@ compile_function(LLVMModuleRef module,
          * (- 1 2 3 4) -> (- 0 1 2 3 4) -> -10
          */
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 500);
             goto err;
         }
@@ -604,7 +625,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 501);
@@ -620,7 +642,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 502);
@@ -640,7 +663,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym / (func undef undef ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 600);
             goto err;
         }
@@ -652,7 +678,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 601);
@@ -668,7 +695,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 602);
@@ -695,7 +723,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 700);
@@ -713,7 +742,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 701);
@@ -733,7 +763,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym % (func undef undef ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 800);
             goto err;
         }
@@ -745,7 +778,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 801);
@@ -761,7 +795,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 802);
@@ -781,7 +816,8 @@ compile_function(LLVMModuleRef module,
 
         //(sym min (func undef undef ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module, builder, *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 900);
             goto err;
         }
@@ -796,7 +832,7 @@ compile_function(LLVMModuleRef module,
 
             LLVMValueRef rand;
 
-            if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+            if ((rand = builtin_compile_expr(ectx, module, builder, *arg)) == NULL) {
                 TR(COMPILE_FUNCTION + 901);
                 goto err;
             }
@@ -819,7 +855,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 902);
@@ -842,7 +879,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 903);
@@ -869,7 +907,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym max (func undef undef ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1000);
             goto err;
         }
@@ -881,7 +922,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 1001);
@@ -904,7 +946,8 @@ compile_function(LLVMModuleRef module,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = builtin_compile_expr(module,
+                if ((rand = builtin_compile_expr(ectx,
+                                                 module,
                                                  builder,
                                                  *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 1002);
@@ -931,7 +974,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym and (func bool bool ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1100);
             goto err;
         }
@@ -942,7 +988,10 @@ compile_function(LLVMModuleRef module,
 
             LLVMValueRef rand;
 
-            if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+            if ((rand = builtin_compile_expr(ectx,
+                                             module,
+                                             builder,
+                                             *arg)) == NULL) {
                 TR(COMPILE_FUNCTION + 1101);
                 goto err;
             }
@@ -956,7 +1005,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym or (func bool bool ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1200);
             goto err;
         }
@@ -967,7 +1019,10 @@ compile_function(LLVMModuleRef module,
 
             LLVMValueRef rand;
 
-            if ((rand = builtin_compile_expr(module, builder, *arg)) == NULL) {
+            if ((rand = builtin_compile_expr(ectx,
+                                             module,
+                                             builder,
+                                             *arg)) == NULL) {
                 TR(COMPILE_FUNCTION + 1201);
                 goto err;
             }
@@ -981,7 +1036,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym not (func bool bool))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1300);
             goto err;
         }
@@ -989,35 +1047,35 @@ compile_function(LLVMModuleRef module,
 
     } else if (strcmp(name , "==") == 0) {
         //(sym == (func bool undef undef)) done
-        v = compile_cmp(module, builder, expr, LLVMIntEQ, LLVMRealUEQ);
+        v = compile_cmp(ectx, module, builder, expr, LLVMIntEQ, LLVMRealUEQ);
 
     } else if (strcmp(name , "!=") == 0) {
         //(sym != (func bool undef undef)) done
-        v = compile_cmp(module, builder, expr, LLVMIntNE, LLVMRealUNE);
+        v = compile_cmp(ectx, module, builder, expr, LLVMIntNE, LLVMRealUNE);
 
     } else if (strcmp(name , "<") == 0) {
         //(sym < (func bool undef undef)) done
-        v = compile_cmp(module, builder, expr, LLVMIntSLT, LLVMRealULT);
+        v = compile_cmp(ectx, module, builder, expr, LLVMIntSLT, LLVMRealULT);
 
     } else if (strcmp(name , "<=") == 0) {
         //(sym <= (func bool undef undef)) done
-        v = compile_cmp(module, builder, expr, LLVMIntSLE, LLVMRealULE);
+        v = compile_cmp(ectx, module, builder, expr, LLVMIntSLE, LLVMRealULE);
 
     } else if (strcmp(name , ">") == 0) {
         //(sym > (func bool undef undef)) done
-        v = compile_cmp(module, builder, expr, LLVMIntSGT, LLVMRealUGT);
+        v = compile_cmp(ectx, module, builder, expr, LLVMIntSGT, LLVMRealUGT);
 
     } else if (strcmp(name , ">=") == 0) {
         //(sym >= (func bool undef undef)) done
-        v = compile_cmp(module, builder, expr, LLVMIntSGE, LLVMRealUGE);
+        v = compile_cmp(ectx, module, builder, expr, LLVMIntSGE, LLVMRealUGE);
 
     } else if (strcmp(name , "get") == 0) {
         //(sym get (func undef undef undef under)) done
-        v = compile_get(module, builder, expr, COMPILE_GET_GET);
+        v = compile_get(ectx, module, builder, expr, COMPILE_GET_GET);
 
     } else if (strcmp(name , "parse") == 0) {
         //(sym parse (func undef undef undef under)) done
-        v = compile_get(module, builder, expr, COMPILE_GET_PARSE);
+        v = compile_get(ectx, module, builder, expr, COMPILE_GET_PARSE);
 
     } else if (strcmp(name , "itof") == 0) {
         lkit_expr_t **arg;
@@ -1025,7 +1083,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym itof (func float int))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1400);
             goto err;
         }
@@ -1040,7 +1101,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym ftoi (func int float))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1500);
             goto err;
         }
@@ -1055,7 +1119,10 @@ compile_function(LLVMModuleRef module,
 
         //(sym tostr (func str undef))
         arg = array_first(&expr->subs, &it);
-        if ((v = builtin_compile_expr(module, builder, *arg)) == NULL) {
+        if ((v = builtin_compile_expr(ectx,
+                                      module,
+                                      builder,
+                                      *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1600);
             goto err;
         }
@@ -1093,7 +1160,8 @@ compile_function(LLVMModuleRef module,
                 goto err;
             }
 
-            if ((args[0] = builtin_compile_expr(module,
+            if ((args[0] = builtin_compile_expr(ectx,
+                                                module,
                                                 builder,
                                                 *cont)) == NULL) {
                 TR(COMPILE_FUNCTION + 1701);
@@ -1131,7 +1199,8 @@ err:
 
 
 static int
-compile_dynamic_initializer(LLVMModuleRef module,
+compile_dynamic_initializer(lkit_expr_t *ectx,
+                            LLVMModuleRef module,
                             bytes_t *name,
                             lkit_expr_t *value)
 {
@@ -1176,7 +1245,10 @@ compile_dynamic_initializer(LLVMModuleRef module,
 
         LLVMPositionBuilderAtEnd(builder, tblock);
 
-        if ((storedv = builtin_compile_expr(module, builder, value)) == NULL) {
+        if ((storedv = builtin_compile_expr(ectx,
+                                            module,
+                                            builder,
+                                            value)) == NULL) {
             TRRET(COMPILE_DYNAMIC_INITIALIZER + 1);
         }
 
@@ -1206,7 +1278,10 @@ compile_dynamic_initializer(LLVMModuleRef module,
     } else {
         bb = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.dyninit"));
         LLVMPositionBuilderAtEnd(builder, bb);
-        if ((storedv = builtin_compile_expr(module, builder, value)) == NULL) {
+        if ((storedv = builtin_compile_expr(ectx,
+                                            module,
+                                            builder,
+                                            value)) == NULL) {
             TRRET(COMPILE_DYNAMIC_INITIALIZER + 2);
         }
 
@@ -1227,9 +1302,10 @@ compile_dynamic_initializer(LLVMModuleRef module,
 
 
 LLVMValueRef
-builtin_compile_expr(LLVMModuleRef module,
-                    LLVMBuilderRef builder,
-                    lkit_expr_t *expr)
+builtin_compile_expr(lkit_expr_t *ectx,
+                     LLVMModuleRef module,
+                     LLVMBuilderRef builder,
+                     lkit_expr_t *expr)
 {
     LLVMContextRef lctx;
     LLVMValueRef v;
@@ -1244,7 +1320,7 @@ builtin_compile_expr(LLVMModuleRef module,
             assert(builder != NULL);
 
             /* first try pre-defined functions */
-            if ((v = compile_function(module, builder, expr)) == NULL) {
+            if ((v = compile_function(ectx, module, builder, expr)) == NULL) {
                 LLVMValueRef ref;
 
                 /* then user-defined */
@@ -1279,7 +1355,7 @@ builtin_compile_expr(LLVMModuleRef module,
                          rand != NULL;
                          rand = array_next(&expr->subs, &it)) {
                         args[it.iter] =
-                            builtin_compile_expr(module, builder, *rand);
+                            builtin_compile_expr(ectx, module, builder, *rand);
                         assert(args[it.iter] != NULL);
                         LLVMDumpValue(args[it.iter]);
                     }
@@ -1306,42 +1382,50 @@ builtin_compile_expr(LLVMModuleRef module,
         case LKIT_STRUCT:
             {
                 LLVMValueRef ref;
+                char buf[1024];
+                LLVMValueRef fn;
 
                 assert(builder != NULL);
 
-                ref = LLVMGetNamedGlobal(module, (char *)expr->name->data);
-                if (ref == NULL) {
-                    //LLVMDumpModule(module);
-                    lkit_expr_dump(expr);
-                    TR(BUILTIN_COMPILE_EXPR + 3);
+                if ((ref = LLVMGetNamedGlobal(module,
+                        (char *)expr->name->data)) == NULL) {
 
+                    bytes_t *qual_name = NULL;
+
+                    qual_name = lkit_expr_qual_name(ectx, expr->name);
+                    TRACE("qual_name=%s", qual_name->data);
+                    if ((ref = LLVMGetNamedGlobal(module,
+                            (char *)qual_name->data)) == NULL) {
+                        LLVMDumpModule(module);
+                        FAIL("LLVMGetNamedGlobal");
+                    }
+                    snprintf(buf,
+                             sizeof(buf),
+                             ".mrklkit.init.%s",
+                             (char *)qual_name->data);
                 } else {
-                    char buf[1024];
-                    LLVMValueRef fn;
-
                     snprintf(buf,
                              sizeof(buf),
                              ".mrklkit.init.%s",
                              (char *)expr->name->data);
-                    //TRACE("init: %s", buf);
+                }
 
-                    if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
-                        if (expr->value.ref->lazy_init) {
-                            expr->value.ref->lazy_init_referenced = 1;
-                            if (LLVMBuildCall(builder,
-                                              fn,
-                                              NULL,
-                                              0,
-                                              NEWVAR("tmp")) == NULL) {
-                                TR(BUILTIN_COMPILE_EXPR + 4);
-                            }
+                //TRACE("init: %s", buf);
+
+                if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
+                    if (expr->value.ref->lazy_init) {
+                        expr->value.ref->lazy_init_referenced = 1;
+                        if (LLVMBuildCall(builder,
+                                          fn,
+                                          NULL,
+                                          0,
+                                          NEWVAR("tmp")) == NULL) {
+                            TR(BUILTIN_COMPILE_EXPR + 4);
                         }
                     }
-
-                    v = LLVMBuildLoad(builder,
-                                      ref,
-                                      NEWVAR((char *)expr->name->data));
                 }
+
+                v = LLVMBuildLoad(builder, ref, NEWVAR("load"));
             }
 
             break;
@@ -1448,9 +1532,12 @@ compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
 int
 builtin_compile(lkit_gitem_t **gitem, void *udata)
 {
+    struct {
+        LLVMModuleRef module;
+        lkit_expr_t *ectx;
+    } *params = udata;
     bytes_t *name = (*gitem)->name;
     lkit_expr_t *expr = (*gitem)->expr;
-    LLVMModuleRef module = (LLVMModuleRef)udata;
 
     //TRACE("%p/%s %d", expr->type->backend, (char *)name->data, expr->isref);
     //lkit_type_dump(expr->type);
@@ -1462,23 +1549,31 @@ builtin_compile(lkit_gitem_t **gitem, void *udata)
     }
 
     if (expr->isref) {
-        if (compile_dynamic_initializer(module, name, expr) != 0) {
+        if (compile_dynamic_initializer(params->ectx,
+                                        params->module,
+                                        name,
+                                        expr) != 0) {
             TRRET(SYM_COMPILE + 1);
         }
     } else {
         if (expr->value.literal != NULL) {
             LLVMValueRef initv, v;
 
-            initv = builtin_compile_expr(module, NULL, expr);
+            initv = builtin_compile_expr(params->ectx,
+                                         params->module,
+                                         NULL,
+                                         expr);
             assert(initv != NULL);
-            v = LLVMAddGlobal(module, LLVMTypeOf(initv), (char *)name->data);
+            v = LLVMAddGlobal(params->module,
+                              LLVMTypeOf(initv),
+                              (char *)name->data);
             LLVMSetLinkage(v, LLVMPrivateLinkage);
             //LLVMDumpValue(v);
             //LLVMDumpValue(initv);
             LLVMSetInitializer(v, initv);
         } else {
             /* declaration, */
-            compile_decl(module, name, expr->type);
+            compile_decl(params->module, name, expr->type);
         }
     }
 

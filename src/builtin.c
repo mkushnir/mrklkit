@@ -5,7 +5,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -716,6 +716,10 @@ builtin_sym_compile(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, LLVMModuleRef module
         mrklkit_ctx_t *mctx;
         lkit_expr_t *ectx;
     } params = { builtin_remove_undef, mctx, ectx };
+    struct {
+        LLVMModuleRef module;
+        lkit_expr_t *ectx;
+    } params1 = { module, ectx };
 
     if (array_traverse(&ectx->glist,
                        (array_traverser_t)_acb,
@@ -725,7 +729,7 @@ builtin_sym_compile(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, LLVMModuleRef module
 
     if (array_traverse(&ectx->glist,
                        (array_traverser_t)builtin_compile,
-                       module) != 0) {
+                       &params1) != 0) {
         TRRET(BUILTIN_SYM_COMPILE + 2);
     }
     return 0;

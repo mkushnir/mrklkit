@@ -32,7 +32,8 @@ int builtin_call_eager_initializers(lkit_expr_t *,
                                     LLVMModuleRef,
                                     LLVMBuilderRef);
 
-LLVMValueRef builtin_compile_expr(LLVMModuleRef,
+LLVMValueRef builtin_compile_expr(lkit_expr_t *,
+                                  LLVMModuleRef,
                                   LLVMBuilderRef,
                                   lkit_expr_t *);
 

@@ -761,6 +761,7 @@ static int
 _compile_trt(testrt_t *trt, void *udata)
 {
     int res = 0;
+    testrt_ctx_t *tctx;
     lkit_struct_t *ts;
     lkit_expr_t **expr;
     array_iter_t it;
@@ -772,7 +773,8 @@ _compile_trt(testrt_t *trt, void *udata)
     bytes_t *name;
     char buf[1024];
 
-    module = (LLVMModuleRef)udata;
+    tctx = udata;
+    module = tctx->mctx.module;
     lctx = LLVMGetModuleContext(module);
     builder = LLVMCreateBuilderInContext(lctx);
 
@@ -830,7 +832,10 @@ _compile_trt(testrt_t *trt, void *udata)
 
         LLVMValueRef val, gep;
 
-        val = builtin_compile_expr(module, builder, *expr);
+        val = builtin_compile_expr(&tctx->builtin,
+                                   module,
+                                   builder,
+                                   *expr);
         gep = LLVMBuildStructGEP(builder, av, it.iter, NEWVAR("gep"));
         LLVMBuildStore(builder, val, gep);
 
@@ -883,7 +888,8 @@ _compile_trt(testrt_t *trt, void *udata)
                 case LKIT_INT:
                     val = LLVMBuildAdd(builder,
                                        val,
-                                       builtin_compile_expr(module,
+                                       builtin_compile_expr(&tctx->builtin,
+                                                            module,
                                                             builder,
                                                             *arg),
                                        NEWVAR("MERGE"));
@@ -892,7 +898,8 @@ _compile_trt(testrt_t *trt, void *udata)
                 case LKIT_FLOAT:
                     val = LLVMBuildFAdd(builder,
                                         val,
-                                        builtin_compile_expr(module,
+                                        builtin_compile_expr(&tctx->builtin,
+                                                             module,
                                                              builder,
                                                              *arg),
                                         NEWVAR("MERGE"));
@@ -952,7 +959,7 @@ _compile_trt(testrt_t *trt, void *udata)
 
         tblock = LLVMAppendBasicBlockInContext(lctx, fnmain, NEWVAR("L.if.true"));
         endblock = LLVMAppendBasicBlockInContext(lctx, fnmain, NEWVAR("L.if.end"));
-        res = builtin_compile_expr(module, builder, *seecond);
+        res = builtin_compile_expr(&tctx->builtin, module, builder, *seecond);
         assert(res != NULL);
         LLVMBuildCondBr(builder, res, tblock, endblock);
         LLVMPositionBuilderAtEnd(builder, tblock);
@@ -969,7 +976,7 @@ _compile_trt(testrt_t *trt, void *udata)
     for (expr = array_first(&trt->otherexpr, &it);
          expr != NULL;
          expr = array_next(&trt->otherexpr, &it)) {
-        if (builtin_compile_expr(module, builder, *expr) == NULL) {
+        if (builtin_compile_expr(&tctx->builtin, module, builder, *expr) == NULL) {
             res = TESTRT_COMPILE + 205;
             goto end;
         }
@@ -1015,7 +1022,7 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     /* compile all */
     if (array_traverse(&tctx->testrts,
                        (array_traverser_t)_compile_trt,
-                       module) != 0) {
+                       tctx) != 0) {
         TRRET(TESTRT_COMPILE + 102);
     }
 
