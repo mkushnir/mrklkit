@@ -305,7 +305,13 @@ parse_expr_quals(array_t *form,
     if (strcmp(s, ":lazy") == 0) {
         EXPR_SET_INT(lazy_init);
     } else {
+        fparser_datum_t **node;
+
         TRACE("unknown qual: %s", s);
+        /* expect a single argument, and ignore it */
+        if ((node = array_next(form, it)) == NULL) {
+            return 1;
+        }
     }
     return 0;
 }
