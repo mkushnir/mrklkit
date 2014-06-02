@@ -380,6 +380,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                 int isvararg = 0, narg;
 
                 form = (array_t *)(dat->body);
+
                 if (lparse_first_word_bytes(form, &it, &expr->name, 1) != 0) {
                     TR(LKIT_EXPR_PARSE + 2);
                     goto err;
@@ -396,11 +397,14 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                 //TRACE("ISREF by %s", expr->name->data);
                 expr->isref = 1;
 
-                /* functions only ATM */
-                if (expr->value.ref->type->tag != LKIT_FUNC) {
-                    TR(LKIT_EXPR_PARSE + 4);
-                    goto err;
-                }
+                /*
+                 * XXX (xxx) (xxx :q q :w w :e e)
+                 */
+                ///* functions only ATM */
+                //if (expr->value.ref->type->tag != LKIT_FUNC) {
+                //    TR(LKIT_EXPR_PARSE + 4);
+                //    goto err;
+                //}
 
                 /* quals */
                 lparse_quals(form,
