@@ -750,7 +750,7 @@ compile_function(lkit_expr_t *ectx,
                     goto err;
                 }
 
-                v = LLVMBuildFAdd(builder, v, rand, NEWVAR("mul"));
+                v = LLVMBuildFMul(builder, v, rand, NEWVAR("mul"));
             }
         } else {
             TR(COMPILE_FUNCTION + 702);
