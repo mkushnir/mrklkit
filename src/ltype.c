@@ -171,7 +171,7 @@ lkit_type_new(lkit_tag_t tag)
             tc->base.name = "str";
             tc->base.rtsz = sizeof(bytes_t *);
             LKIT_ERROR(tc) = 0;
-            tc->base.dtor = (lkit_type_dtor_t)mrklkit_bytes_destroy;
+            tc->base.dtor = (lkit_type_dtor_t)mrklkit_bytes_decref;
             tc->deref_backend = NULL;
             ty = (lkit_type_t *)tc;
         }

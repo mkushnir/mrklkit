@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +13,7 @@
 
 
 uint64_t
-bytes_hash(bytes_t *bytes)
+mrklkit_bytes_hash(bytes_t *bytes)
 {
     if (bytes->hash == 0) {
         bytes->hash = fasthash(0, bytes->data, bytes->sz);
@@ -22,7 +23,7 @@ bytes_hash(bytes_t *bytes)
 
 
 int
-bytes_cmp(bytes_t *a, bytes_t *b)
+mrklkit_bytes_cmp(bytes_t *a, bytes_t *b)
 {
     uint64_t ha, hb;
     int diff;
@@ -42,10 +43,12 @@ bytes_cmp(bytes_t *a, bytes_t *b)
 
 
 bytes_t *
-bytes_new(size_t sz)
+mrklkit_bytes_new(size_t sz)
 {
     size_t mod, msz;
     bytes_t *res;
+
+    assert(sz > 0);
 
     msz = sz;
     mod = sz % 8;
@@ -65,8 +68,16 @@ bytes_new(size_t sz)
 }
 
 
+void
+mrklkit_bytes_copy(bytes_t *dst, bytes_t *src, size_t off)
+{
+    assert((off + src->sz) <= dst->sz);
+    memcpy(dst->data + off, src->data, src->sz);
+}
+
+
 bytes_t *
-bytes_new_from_str(const char *s)
+mrklkit_bytes_new_from_str(const char *s)
 {
     bytes_t *res;
     size_t mod, msz;
@@ -94,9 +105,16 @@ bytes_new_from_str(const char *s)
 
 
 void
-mrklkit_bytes_destroy(bytes_t **value)
+mrklkit_bytes_decref(bytes_t **value)
 {
     BYTES_DECREF(value);
+}
+
+
+void
+mrklkit_bytes_decref_fast(bytes_t *value)
+{
+    BYTES_DECREF_FAST(value);
 }
 
 

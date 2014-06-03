@@ -39,6 +39,8 @@ static char *fnames[] = {
     "del",
     "itof",
     "ftoi",
+    "startswith",
+    "endswith",
     "tostr",
 };
 static int
@@ -421,6 +423,93 @@ err:
 
 
 static LLVMValueRef
+compile_str_join(lkit_expr_t *ectx,
+                 LLVMContextRef lctx,
+                 LLVMModuleRef module,
+                 LLVMBuilderRef builder,
+                 lkit_expr_t *expr)
+{
+    size_t i;
+    lkit_expr_t **arg;
+    array_iter_t it;
+    LLVMValueRef v = NULL;
+    UNUSED LLVMValueRef tmp, sz, accum, bifn, bnfn, bcfn, bdfn;
+    LLVMValueRef *av, *asz;
+    LLVMValueRef const0, const1;
+
+    //sz = LLVMBuildAlloca(builder, LLVMInt64TypeInContext(lctx), NEWVAR("sz"));
+    //LLVMBuildStore(builder,
+    //               LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0),
+    //               sz);
+    //accum = LLVMBuildLoad(builder, sz, NEWVAR("load"));
+    const0 = LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0);
+    const1 = LLVMConstInt(LLVMInt64TypeInContext(lctx), 1, 0);
+    accum = const0;
+    if ((av = malloc(sizeof(LLVMValueRef) * expr->subs.elnum)) == NULL) {
+        FAIL("malloc");
+    }
+    if ((asz = malloc(sizeof(LLVMValueRef) * expr->subs.elnum)) == NULL) {
+        FAIL("malloc");
+    }
+    if ((bifn = LLVMGetNamedFunction(module, "mrklkit_bytes_incref")) == NULL) {
+        FAIL("LLVMGetNamedFunction");
+    }
+    for (arg = array_first(&expr->subs, &it);
+         arg != NULL;
+         arg = array_next(&expr->subs, &it)) {
+        av[it.iter] = builtin_compile_expr(ectx, module, builder, *arg);
+        assert(av[it.iter] != NULL);
+        asz[it.iter] = LLVMBuildStructGEP(builder,
+                                          av[it.iter],
+                                          BYTES_SZ_IDX,
+                                          NEWVAR("gep"));
+        asz[it.iter] = LLVMBuildLoad(builder, asz[it.iter], NEWVAR("load"));
+        accum = LLVMBuildAdd(builder, accum, asz[it.iter], NEWVAR("plus"));
+        av[it.iter] = LLVMBuildPointerCast(builder,
+                                           av[it.iter],
+                                           expr->type->backend,
+                                           NEWVAR("cast"));
+        (void)LLVMBuildCall(builder, bifn, av + it.iter, 1, NEWVAR("call"));
+    }
+    //LLVMBuildStore(builder, accum, sz);
+    if ((bnfn = LLVMGetNamedFunction(module, "mrklkit_bytes_new")) == NULL) {
+        FAIL("LLVMGetNamedFunction");
+    }
+    if ((bcfn = LLVMGetNamedFunction(module, "mrklkit_bytes_copy")) == NULL) {
+        FAIL("LLVMGetNamedFunction");
+    }
+    if ((bdfn = LLVMGetNamedFunction(module, "mrklkit_bytes_decref_fast")) == NULL) {
+        FAIL("LLVMGetNamedFunction");
+    }
+    v = LLVMBuildCall(builder, bnfn, &accum, 1, NEWVAR("call"));
+    tmp = const0;
+    for (i = 0; i < expr->subs.elnum; ++i) {
+        LLVMValueRef args[3];
+
+        args[0] = v;
+        //args[1] = LLVMBuildPointerCast(builder,
+        //                               av[i],
+        //                               expr->type->backend,
+        //                               NEWVAR("cast"));
+        args[1] = av[i];
+        args[2] = tmp;
+        //LLVMDumpValue(bcfn);
+        //LLVMDumpValue(args[0]);
+        //LLVMDumpValue(args[1]);
+        //LLVMDumpValue(args[2]);
+        (void)LLVMBuildCall(builder, bcfn, args, countof(args), NEWVAR("call"));
+        (void)LLVMBuildCall(builder, bdfn, args + 1, 1, NEWVAR("call"));
+        tmp = LLVMBuildAdd(builder, tmp, asz[i], NEWVAR("plus"));
+        tmp = LLVMBuildSub(builder, tmp, const1, NEWVAR("dec")); /* zero term */
+    }
+    free(av);
+    free(asz);
+
+    return v;
+}
+
+
+static LLVMValueRef
 compile_function(lkit_expr_t *ectx,
                  LLVMModuleRef module,
                  LLVMBuilderRef builder,
@@ -596,6 +685,8 @@ compile_function(lkit_expr_t *ectx,
 
                 v = LLVMBuildFAdd(builder, v, rand, NEWVAR("plus"));
             }
+        } else if (expr->type->tag == LKIT_STR) {
+            v = compile_str_join(ectx, lctx, module, builder, expr);
         } else {
             TR(COMPILE_FUNCTION + 402);
             goto err;
@@ -1328,10 +1419,11 @@ builtin_compile_expr(lkit_expr_t *ectx,
                 /* then user-defined */
                 ref = LLVMGetNamedFunction(module, (char *)expr->name->data);
                 if (ref == NULL) {
-                    //LLVMDumpModule(module);
-                    //TRACE("failed to find builtin (normally must be "
-                    //      "mrklkit_rt_* or a standard C library, found %s)",
-                    //      (char *)expr->name->data);
+                    LLVMDumpModule(module);
+                    lkit_expr_dump(expr);
+                    TRACE("failed to find builtin (normally must be "
+                          "mrklkit_rt_* or a standard C library, found %s)",
+                          (char *)expr->name->data);
                     TR(BUILTIN_COMPILE_EXPR + 1);
 
                 } else {
