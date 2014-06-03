@@ -71,21 +71,30 @@ compile_if(lkit_expr_t *ectx,
            lkit_type_t *restype)
 {
     LLVMContextRef lctx;
-    LLVMValueRef v = NULL, res, cond, texp = NULL, fexp = NULL, fn, iexp[2];
-    LLVMBasicBlockRef currblock, endblock, tblock, fblock, iblock[2];
+    LLVMValueRef v = NULL, res, cond, texp = NULL, fexp = NULL, iexp[2];
+    LLVMBasicBlockRef currblock, nextblock, endblock, tblock, fblock, iblock[2];
 
     lctx = LLVMGetModuleContext(module);
+
     currblock = LLVMGetInsertBlock(builder);
-    fn = LLVMGetBasicBlockParent(currblock);
+    nextblock = LLVMGetNextBasicBlock(currblock);
+    if (nextblock == NULL) {
+        LLVMValueRef fn;
+        fn = LLVMGetBasicBlockParent(currblock);
+        endblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("C.end"));
+    } else {
+        endblock = LLVMInsertBasicBlockInContext(lctx, nextblock, NEWVAR("C.true"));
+    }
+
+    tblock = LLVMInsertBasicBlockInContext(lctx, endblock, NEWVAR("C.true"));
+    fblock = LLVMInsertBasicBlockInContext(lctx, endblock, NEWVAR("C.false"));
 
     /**/
     cond = builtin_compile_expr(ectx, module, builder, cexpr);
     assert(cond != NULL);
-
-    endblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.end"));
+    LLVMBuildCondBr(builder, cond, tblock, fblock);
 
     /**/
-    tblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.true"));
     LLVMPositionBuilderAtEnd(builder, tblock);
 
     if (texpr != NULL) {
@@ -98,7 +107,6 @@ compile_if(lkit_expr_t *ectx,
     }
 
     /**/
-    fblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("L.if.false"));
     LLVMPositionBuilderAtEnd(builder, fblock);
 
     if (fexpr != NULL) {
@@ -110,12 +118,9 @@ compile_if(lkit_expr_t *ectx,
         assert(restype == NULL);
     }
 
-    /**/
-    LLVMPositionBuilderAtEnd(builder, currblock);
-    LLVMBuildCondBr(builder, cond, tblock, fblock);
     LLVMPositionBuilderAtEnd(builder, endblock);
     if (restype != NULL) {
-        v = LLVMBuildPhi(builder, restype->backend, NEWVAR("if.result"));
+        v = LLVMBuildPhi(builder, restype->backend, NEWVAR("result"));
         iexp[0] = texp;
         iblock[0] = LLVMIsConstant(texp) ? tblock :
                     LLVMGetInstructionParent(texp);
@@ -433,7 +438,8 @@ compile_str_join(lkit_expr_t *ectx,
     lkit_expr_t **arg;
     array_iter_t it;
     LLVMValueRef v = NULL;
-    UNUSED LLVMValueRef tmp, sz, accum, bifn, bnfn, bcfn, bdfn;
+    UNUSED LLVMValueRef sz;
+    LLVMValueRef tmp, accum, bifn, bnfn, bcfn, bdfn;
     LLVMValueRef *av, *asz;
     LLVMValueRef const0, const1;
 
@@ -487,16 +493,8 @@ compile_str_join(lkit_expr_t *ectx,
         LLVMValueRef args[3];
 
         args[0] = v;
-        //args[1] = LLVMBuildPointerCast(builder,
-        //                               av[i],
-        //                               expr->type->backend,
-        //                               NEWVAR("cast"));
         args[1] = av[i];
         args[2] = tmp;
-        //LLVMDumpValue(bcfn);
-        //LLVMDumpValue(args[0]);
-        //LLVMDumpValue(args[1]);
-        //LLVMDumpValue(args[2]);
         (void)LLVMBuildCall(builder, bcfn, args, countof(args), NEWVAR("call"));
         (void)LLVMBuildCall(builder, bdfn, args + 1, 1, NEWVAR("call"));
         tmp = LLVMBuildAdd(builder, tmp, asz[i], NEWVAR("plus"));
@@ -506,6 +504,72 @@ compile_str_join(lkit_expr_t *ectx,
     free(asz);
 
     return v;
+}
+
+
+#define COMPILE_STRSTR_START 0
+#define COMPILE_STRSTR_END 1
+static LLVMValueRef
+compile_strstr(lkit_expr_t *ectx,
+               LLVMContextRef lctx,
+               LLVMModuleRef module,
+               LLVMBuilderRef builder,
+               lkit_expr_t *expr,
+               int flag)
+{
+    lkit_expr_t **arg;
+    LLVMValueRef a0, a1;
+    LLVMValueRef fn, fnparam, args[2], fnrv, tmp, tmp1;
+
+    if ((fn = LLVMGetNamedFunction(module, "strstr")) == NULL) {
+        FAIL("LLVMGetNamedFunction");
+    }
+
+    arg = array_get(&expr->subs, 0);
+    assert(arg != NULL);
+    a0 = builtin_compile_expr(ectx, module, builder, *arg);
+    assert(a0 != NULL);
+    tmp = LLVMBuildStructGEP(builder, a0, BYTES_DATA_IDX, NEWVAR("gep"));
+    fnparam = LLVMGetParam(fn, 0);
+    args[0] = LLVMBuildPointerCast(builder, tmp, LLVMTypeOf(fnparam), NEWVAR("cast"));
+
+    arg = array_get(&expr->subs, 1);
+    assert(arg != NULL);
+    a1 = builtin_compile_expr(ectx, module, builder, *arg);
+    assert(a1 != NULL);
+    tmp = LLVMBuildStructGEP(builder, a1, BYTES_DATA_IDX, NEWVAR("gep"));
+    fnparam = LLVMGetParam(fn, 1);
+    args[1] = LLVMBuildPointerCast(builder, tmp, LLVMTypeOf(fnparam), NEWVAR("cast"));
+
+    /*
+     * p = strstr(a, b);
+     */
+    fnrv = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
+    tmp = LLVMBuildPtrToInt(builder, fnrv, LLVMInt64TypeInContext(lctx), NEWVAR("cast"));
+    tmp1 = LLVMBuildPtrToInt(builder, args[0], LLVMInt64TypeInContext(lctx), NEWVAR("cast"));
+
+    if (flag == COMPILE_STRSTR_END) {
+        LLVMValueRef const1, sz;
+
+        /*
+         * p = p - len(a) + len(b);
+         */
+        const1 = LLVMConstInt(LLVMInt64TypeInContext(lctx), 1, 0);
+
+        sz = LLVMBuildStructGEP(builder, a0, BYTES_SZ_IDX, NEWVAR("gep"));
+        sz = LLVMBuildLoad(builder, sz, NEWVAR("load"));
+        sz = LLVMBuildSub(builder, sz, const1, NEWVAR("dec")); /* zero term */
+        tmp = LLVMBuildSub(builder, tmp, sz, NEWVAR("minus"));
+
+        sz = LLVMBuildStructGEP(builder, a1, BYTES_SZ_IDX, NEWVAR("gep"));
+        sz = LLVMBuildLoad(builder, sz, NEWVAR("load"));
+        sz = LLVMBuildSub(builder, sz, const1, NEWVAR("dec")); /* zero term */
+        tmp = LLVMBuildAdd(builder, tmp, sz, NEWVAR("plus"));
+    }
+    /*
+     * p == a
+     */
+    return LLVMBuildICmp(builder, LLVMIntEQ, tmp, tmp1, NEWVAR("test"));
 }
 
 
@@ -1206,6 +1270,22 @@ compile_function(lkit_expr_t *ectx,
                             LLVMInt64TypeInContext(lctx),
                             NEWVAR("ftoi"));
 
+    } else if (strcmp(name , "startswith") == 0) {
+        v = compile_strstr(ectx,
+                           lctx,
+                           module,
+                           builder,
+                           expr,
+                           COMPILE_STRSTR_START);
+
+    } else if (strcmp(name , "endswith") == 0) {
+        v = compile_strstr(ectx,
+                           lctx,
+                           module,
+                           builder,
+                           expr,
+                           COMPILE_STRSTR_END);
+
     } else if (strcmp(name , "tostr") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
@@ -1219,10 +1299,10 @@ compile_function(lkit_expr_t *ectx,
             TR(COMPILE_FUNCTION + 1600);
             goto err;
         }
+        /* not implemented */
+        TR(COMPILE_FUNCTION + 1699);
+        goto err;
 
-        if ((*arg)->type->tag == LKIT_INT) {
-        } else {
-        }
 
     } else if (strcmp(name , "dp-info") == 0) {
         lkit_expr_t **cont, **opt;
@@ -1249,7 +1329,7 @@ compile_function(lkit_expr_t *ectx,
 
             if ((ref = LLVMGetNamedFunction(module,
                     "dparse_struct_pi_pos")) == NULL) {
-                TR(COMPILE_FUNCTION + 1700);
+                TR(COMPILE_FUNCTION + 4900);
                 goto err;
             }
 
@@ -1257,7 +1337,7 @@ compile_function(lkit_expr_t *ectx,
                                                 module,
                                                 builder,
                                                 *cont)) == NULL) {
-                TR(COMPILE_FUNCTION + 1701);
+                TR(COMPILE_FUNCTION + 4901);
                 goto err;
             }
 
@@ -1273,12 +1353,12 @@ compile_function(lkit_expr_t *ectx,
                               countof(args),
                               NEWVAR("call"));
         } else {
-            TR(COMPILE_FUNCTION + 1702);
+            TR(COMPILE_FUNCTION + 4902);
             goto err;
         }
 
     } else {
-        TR(COMPILE_FUNCTION + 1800);
+        TR(COMPILE_FUNCTION + 5000);
         goto err;
     }
 
