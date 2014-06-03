@@ -162,10 +162,16 @@ compile_cmp(lkit_expr_t *ectx,
         goto end;
     }
 
-    if ((*arg)->type->tag == LKIT_INT || (*arg)->type->tag == LKIT_BOOL) {
+    if ((*arg)->type->tag == LKIT_INT ||
+        (*arg)->type->tag == LKIT_INT_MIN ||
+        (*arg)->type->tag == LKIT_INT_MAX ||
+        (*arg)->type->tag == LKIT_BOOL) {
         v = LLVMBuildICmp(builder, ip, v, rand, NEWVAR("cmp"));
 
-    } else if ((*arg)->type->tag == LKIT_FLOAT) {
+    } else if ((*arg)->type->tag == LKIT_FLOAT ||
+               (*arg)->type->tag == LKIT_FLOAT_MIN ||
+               (*arg)->type->tag == LKIT_FLOAT_MAX) {
+
         v = LLVMBuildFCmp(builder, rp, v, rand, NEWVAR("cmp"));
 
     } else if ((*arg)->type->tag == LKIT_STR) {
@@ -649,6 +655,8 @@ compile_function(lkit_expr_t *ectx,
 
                 switch ((*arg)->type->tag) {
                 case LKIT_INT:
+                case LKIT_INT_MIN:
+                case LKIT_INT_MAX:
                     args[0] = LLVMBuildGlobalStringPtr(builder,
                                                        "%ld ",
                                                        NEWVAR("printf.fmt"));
@@ -656,6 +664,8 @@ compile_function(lkit_expr_t *ectx,
                     break;
 
                 case LKIT_FLOAT:
+                case LKIT_FLOAT_MIN:
+                case LKIT_FLOAT_MAX:
                     args[0] = LLVMBuildGlobalStringPtr(builder,
                                                        "%lf ",
                                                        NEWVAR("printf.fmt"));
@@ -712,8 +722,12 @@ compile_function(lkit_expr_t *ectx,
         array_iter_t it;
 
         //(sym + (func undef undef ...))
-        if (expr->type->tag == LKIT_INT) {
+        if (expr->type->tag == LKIT_INT ||
+            expr->type->tag == LKIT_INT_MIN ||
+            expr->type->tag == LKIT_INT_MAX) {
+
             v = LLVMConstInt(expr->type->backend, 0, 1);
+
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -731,7 +745,10 @@ compile_function(lkit_expr_t *ectx,
                 v = LLVMBuildAdd(builder, v, rand, NEWVAR("plus"));
             }
 
-        } else if (expr->type->tag == LKIT_FLOAT) {
+        } else if (expr->type->tag == LKIT_FLOAT ||
+                   expr->type->tag == LKIT_FLOAT_MIN ||
+                   expr->type->tag == LKIT_FLOAT_MAX) {
+
             v = LLVMConstReal(expr->type->backend, 0.0);
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
@@ -774,7 +791,9 @@ compile_function(lkit_expr_t *ectx,
             TR(COMPILE_FUNCTION + 500);
             goto err;
         }
-        if (expr->type->tag == LKIT_INT) {
+        if (expr->type->tag == LKIT_INT ||
+            expr->type->tag == LKIT_INT_MIN ||
+            expr->type->tag == LKIT_INT_MAX) {
 
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
@@ -792,7 +811,10 @@ compile_function(lkit_expr_t *ectx,
 
                 v = LLVMBuildSub(builder, v, rand, NEWVAR("minus"));
             }
-        } else if (expr->type->tag == LKIT_FLOAT) {
+        } else if (expr->type->tag == LKIT_FLOAT ||
+                   expr->type->tag == LKIT_FLOAT_MIN ||
+                   expr->type->tag == LKIT_FLOAT_MAX) {
+
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -828,7 +850,9 @@ compile_function(lkit_expr_t *ectx,
             goto err;
         }
 
-        if (expr->type->tag == LKIT_INT) {
+        if (expr->type->tag == LKIT_INT ||
+            expr->type->tag == LKIT_INT_MIN ||
+            expr->type->tag == LKIT_INT_MAX) {
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -845,7 +869,10 @@ compile_function(lkit_expr_t *ectx,
 
                 v = LLVMBuildSDiv(builder, v, rand, NEWVAR("div"));
             }
-        } else if (expr->type->tag == LKIT_FLOAT) {
+        } else if (expr->type->tag == LKIT_FLOAT ||
+                   expr->type->tag == LKIT_FLOAT_MIN ||
+                   expr->type->tag == LKIT_FLOAT_MAX) {
+
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -872,8 +899,12 @@ compile_function(lkit_expr_t *ectx,
         array_iter_t it;
 
         //(sym * (func undef undef ...))
-        if (expr->type->tag == LKIT_INT) {
+        if (expr->type->tag == LKIT_INT ||
+            expr->type->tag == LKIT_INT_MIN ||
+            expr->type->tag == LKIT_INT_MAX) {
+
             v = LLVMConstInt(expr->type->backend, 1, 1);
+
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -891,7 +922,10 @@ compile_function(lkit_expr_t *ectx,
                 v = LLVMBuildMul(builder, v, rand, NEWVAR("mul"));
             }
 
-        } else if (expr->type->tag == LKIT_FLOAT) {
+        } else if (expr->type->tag == LKIT_FLOAT ||
+                   expr->type->tag == LKIT_FLOAT_MIN ||
+                   expr->type->tag == LKIT_FLOAT_MAX) {
+
             v = LLVMConstReal(expr->type->backend, 1.0);
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
@@ -928,7 +962,10 @@ compile_function(lkit_expr_t *ectx,
             goto err;
         }
 
-        if (expr->type->tag == LKIT_INT) {
+        if (expr->type->tag == LKIT_INT ||
+            expr->type->tag == LKIT_INT_MIN ||
+            expr->type->tag == LKIT_INT_MAX) {
+
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -945,7 +982,10 @@ compile_function(lkit_expr_t *ectx,
 
                 v = LLVMBuildSRem(builder, v, rand, NEWVAR("rem"));
             }
-        } else if (expr->type->tag == LKIT_FLOAT) {
+        } else if (expr->type->tag == LKIT_FLOAT ||
+                   expr->type->tag == LKIT_FLOAT_MIN ||
+                   expr->type->tag == LKIT_FLOAT_MAX) {
+
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -1005,7 +1045,10 @@ compile_function(lkit_expr_t *ectx,
         v = LLVMBuildLoad(builder, mem, NEWVAR("min"));
 #endif
 
-        if (expr->type->tag == LKIT_INT) {
+        if (expr->type->tag == LKIT_INT ||
+            expr->type->tag == LKIT_INT_MIN ||
+            expr->type->tag == LKIT_INT_MAX) {
+
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -1029,7 +1072,10 @@ compile_function(lkit_expr_t *ectx,
                 v = LLVMBuildSelect(builder, cond, v, rand, NEWVAR("min"));
             }
 
-        } else if (expr->type->tag == LKIT_FLOAT) {
+        } else if (expr->type->tag == LKIT_FLOAT ||
+                   expr->type->tag == LKIT_FLOAT_MIN ||
+                   expr->type->tag == LKIT_FLOAT_MAX) {
+
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -1072,7 +1118,10 @@ compile_function(lkit_expr_t *ectx,
             goto err;
         }
 
-        if (expr->type->tag == LKIT_INT) {
+        if (expr->type->tag == LKIT_INT ||
+            expr->type->tag == LKIT_INT_MIN ||
+            expr->type->tag == LKIT_INT_MAX) {
+
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -1096,7 +1145,10 @@ compile_function(lkit_expr_t *ectx,
                 v = LLVMBuildSelect(builder, cond, v, rand, NEWVAR("max"));
             }
 
-        } else if (expr->type->tag == LKIT_FLOAT) {
+        } else if (expr->type->tag == LKIT_FLOAT ||
+                   expr->type->tag == LKIT_FLOAT_MIN ||
+                   expr->type->tag == LKIT_FLOAT_MAX) {
+
             for (arg = array_next(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -1548,7 +1600,11 @@ builtin_compile_expr(lkit_expr_t *ectx,
             break;
 
         case LKIT_INT:
+        case LKIT_INT_MIN:
+        case LKIT_INT_MAX:
         case LKIT_FLOAT:
+        case LKIT_FLOAT_MIN:
+        case LKIT_FLOAT_MAX:
         case LKIT_BOOL:
         case LKIT_STR:
         case LKIT_ARRAY:
@@ -1616,11 +1672,15 @@ builtin_compile_expr(lkit_expr_t *ectx,
 
             switch (expr->type->tag) {
             case LKIT_INT:
+            case LKIT_INT_MIN:
+            case LKIT_INT_MAX:
                 v = LLVMConstInt(expr->type->backend,
                                  *(int64_t *)expr->value.literal->body, 1);
                 break;
 
             case LKIT_FLOAT:
+            case LKIT_FLOAT_MIN:
+            case LKIT_FLOAT_MAX:
                 v = LLVMConstReal(expr->type->backend,
                                   *(double *)expr->value.literal->body);
                 break;

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdint.h> /* INT64_MAX */
 #include <stdlib.h>
 #include <string.h>
 
@@ -40,6 +41,8 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
         break;
 
     case LKIT_INT:
+    case LKIT_INT_MIN:
+    case LKIT_INT_MAX:
         ty->backend = LLVMInt64TypeInContext(lctx);
         break;
 
@@ -69,6 +72,8 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
         break;
 
     case LKIT_FLOAT:
+    case LKIT_FLOAT_MIN:
+    case LKIT_FLOAT_MAX:
         ty->backend = LLVMDoubleTypeInContext(lctx);
         break;
 
@@ -371,21 +376,37 @@ ltype_compile_methods(lkit_type_t *ty,
                     break;
 
                 case LKIT_INT:
+                case LKIT_INT_MIN:
+                case LKIT_INT_MAX:
                 case LKIT_BOOL:
                     {
                         LLVMValueRef zero;
 
-                        zero = LLVMConstInt((*fty)->backend, 0, 1);
+                        if ((*fty)->tag == LKIT_INT_MAX) {
+                            zero = LLVMConstInt((*fty)->backend, INT64_MAX, 1);
+                        } else if ((*fty)->tag == LKIT_INT_MIN) {
+                            zero = LLVMConstInt((*fty)->backend, INT64_MIN, 1);
+                        } else {
+                            zero = LLVMConstInt((*fty)->backend, 0, 1);
+                        }
                         LLVMBuildStore(b1, zero, gep1);
                         LLVMBuildStore(b2, zero, gep2);
                     }
                     break;
 
                 case LKIT_FLOAT:
+                case LKIT_FLOAT_MIN:
+                case LKIT_FLOAT_MAX:
                     {
                         LLVMValueRef zero;
 
-                        zero = LLVMConstReal((*fty)->backend, 0.0);
+                        if ((*fty)->tag == LKIT_FLOAT_MAX) {
+                            zero = LLVMConstReal((*fty)->backend, INFINITY);
+                        } else if ((*fty)->tag == LKIT_FLOAT_MIN) {
+                            zero = LLVMConstReal((*fty)->backend, -INFINITY);
+                        } else {
+                            zero = LLVMConstReal((*fty)->backend, 0.0);
+                        }
                         LLVMBuildStore(b1, zero, gep1);
                         LLVMBuildStore(b2, zero, gep2);
                     }

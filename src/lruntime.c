@@ -32,11 +32,15 @@ mrklkit_rt_array_dump(rt_array_t *value)
 
         switch (fty->tag) {
         case LKIT_INT:
+        case LKIT_INT_MIN:
+        case LKIT_INT_MAX:
             TRACEC("%ld ",
                    mrklkit_rt_get_array_item_int(value, it.iter, 0));
             break;
 
         case LKIT_FLOAT:
+        case LKIT_FLOAT_MIN:
+        case LKIT_FLOAT_MAX:
             TRACEC("%lf ",
                    mrklkit_rt_get_array_item_float(value, it.iter, 0.0));
             break;
@@ -170,12 +174,16 @@ mrklkit_rt_dict_dump(rt_dict_t *value)
     TRACEC("{ ");
     switch (fty->tag) {
     case LKIT_INT:
+    case LKIT_INT_MIN:
+    case LKIT_INT_MAX:
         dict_traverse(&value->fields,
                       (dict_traverser_t)dump_int_dict,
                       NULL);
         break;
 
     case LKIT_FLOAT:
+    case LKIT_FLOAT_MIN:
+    case LKIT_FLOAT_MAX:
         dict_traverse(&value->fields,
                       (dict_traverser_t)dump_float_dict,
                       NULL);
@@ -323,10 +331,14 @@ mrklkit_rt_struct_dump(rt_struct_t *value)
 
         switch ((*fty)->tag) {
         case LKIT_INT:
+        case LKIT_INT_MIN:
+        case LKIT_INT_MAX:
             TRACEC("%ld ", mrklkit_rt_get_struct_item_int(value, it.iter));
             break;
 
         case LKIT_FLOAT:
+        case LKIT_FLOAT_MIN:
+        case LKIT_FLOAT_MAX:
             TRACEC("%lf ", mrklkit_rt_get_struct_item_float(value, it.iter));
             break;
 

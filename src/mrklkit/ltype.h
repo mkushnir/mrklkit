@@ -20,8 +20,12 @@ typedef enum _lkit_tag {
     LKIT_UNDEF,
     LKIT_VOID,
     LKIT_INT,
+    LKIT_INT_MIN,
+    LKIT_INT_MAX,
     LKIT_STR,
     LKIT_FLOAT,
+    LKIT_FLOAT_MIN,
+    LKIT_FLOAT_MAX,
     LKIT_BOOL,
     LKIT_ANY,
     LKIT_VARARG,
@@ -38,8 +42,12 @@ typedef enum _lkit_tag {
     (tag) == LKIT_UNDEF ? "UNDEF" : \
     (tag) == LKIT_VOID ? "VOID" : \
     (tag) == LKIT_INT ? "INT" : \
+    (tag) == LKIT_INT_MIN ? "INTMIN" : \
+    (tag) == LKIT_INT_MAX ? "INTMAX" : \
     (tag) == LKIT_STR ? "STR" : \
     (tag) == LKIT_FLOAT ? "FLOAT" : \
+    (tag) == LKIT_FLOAT_MIN ? "FLOATMIN" : \
+    (tag) == LKIT_FLOAT_MAX ? "FLOATMAX" : \
     (tag) == LKIT_BOOL ? "BOOL" : \
     (tag) == LKIT_ANY ? "ANY" : \
     (tag) == LKIT_VARARG ? "VARARG" : \
@@ -74,7 +82,7 @@ typedef struct _lkit_type {
     lkit_type_dtor_t dtor;
 } lkit_type_t;
 
-#define LKIT_ERROR(pty) (((lkit_type_t *)(pty))->error)
+#define LTYPE_ERROR(pty) (((lkit_type_t *)(pty))->error)
 
 typedef struct _lkit_void {
     struct _lkit_type base;

@@ -407,6 +407,18 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
     }
     *pty = ty;
 
+    ty = lkit_type_new(LKIT_INT_MIN);
+    if ((pty = array_get(&ctx->builtin_types, LKIT_INT_MIN)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = ty;
+
+    ty = lkit_type_new(LKIT_INT_MAX);
+    if ((pty = array_get(&ctx->builtin_types, LKIT_INT_MAX)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = ty;
+
     ty = lkit_type_new(LKIT_STR);
     if ((pty = array_get(&ctx->builtin_types, LKIT_STR)) == NULL) {
         FAIL("array_get");
@@ -415,6 +427,18 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
 
     ty = lkit_type_new(LKIT_FLOAT);
     if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = ty;
+
+    ty = lkit_type_new(LKIT_FLOAT_MIN);
+    if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT_MIN)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = ty;
+
+    ty = lkit_type_new(LKIT_FLOAT_MAX);
+    if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT_MAX)) == NULL) {
         FAIL("array_get");
     }
     *pty = ty;

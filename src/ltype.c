@@ -138,13 +138,15 @@ lkit_type_new(lkit_tag_t tag)
             tv->base.tag = tag;
             tv->base.name = "void";
             tv->base.rtsz = 0;
-            LKIT_ERROR(tv) = 0;
+            LTYPE_ERROR(tv) = 0;
             tv->base.dtor = NULL;
             ty = (lkit_type_t *)tv;
         }
         break;
 
     case LKIT_INT:
+    case LKIT_INT_MIN:
+    case LKIT_INT_MAX:
         {
             lkit_int_t *ti;
             ti = (lkit_int_t *)ty;
@@ -152,9 +154,11 @@ lkit_type_new(lkit_tag_t tag)
                 FAIL("malloc");
             }
             ti->base.tag = tag;
-            ti->base.name = "int";
+            ti->base.name = (tag == LKIT_INT_MIN) ? "intm" :
+                            (tag == LKIT_INT_MAX) ? "intM" :
+                            "int";
             ti->base.rtsz = sizeof(int64_t);
-            LKIT_ERROR(ti) = 0;
+            LTYPE_ERROR(ti) = 0;
             ti->base.dtor = NULL;
             ty = (lkit_type_t *)ti;
         }
@@ -170,7 +174,7 @@ lkit_type_new(lkit_tag_t tag)
             tc->base.tag = tag;
             tc->base.name = "str";
             tc->base.rtsz = sizeof(bytes_t *);
-            LKIT_ERROR(tc) = 0;
+            LTYPE_ERROR(tc) = 0;
             tc->base.dtor = (lkit_type_dtor_t)mrklkit_bytes_decref;
             tc->deref_backend = NULL;
             ty = (lkit_type_t *)tc;
@@ -178,6 +182,8 @@ lkit_type_new(lkit_tag_t tag)
         break;
 
     case LKIT_FLOAT:
+    case LKIT_FLOAT_MIN:
+    case LKIT_FLOAT_MAX:
         {
             lkit_float_t *tg;
             tg = (lkit_float_t *)ty;
@@ -185,9 +191,11 @@ lkit_type_new(lkit_tag_t tag)
                 FAIL("malloc");
             }
             tg->base.tag = tag;
-            tg->base.name = "float";
+            tg->base.name = (tag == LKIT_FLOAT_MIN) ? "floatm" :
+                            (tag == LKIT_FLOAT_MAX) ? "floatM" :
+                            "float";
             tg->base.rtsz = sizeof(double);
-            LKIT_ERROR(tg) = 0;
+            LTYPE_ERROR(tg) = 0;
             tg->base.dtor = NULL;
             ty = (lkit_type_t *)tg;
         }
@@ -203,7 +211,7 @@ lkit_type_new(lkit_tag_t tag)
             tb->base.tag = tag;
             tb->base.name = "bool";
             tb->base.rtsz = sizeof(uint64_t);
-            LKIT_ERROR(tb) = 0;
+            LTYPE_ERROR(tb) = 0;
             tb->base.dtor = NULL;
             ty = (lkit_type_t *)tb;
         }
@@ -219,7 +227,7 @@ lkit_type_new(lkit_tag_t tag)
             tn->base.tag = tag;
             tn->base.name = "any";
             tn->base.rtsz = 0;
-            LKIT_ERROR(tn) = 0;
+            LTYPE_ERROR(tn) = 0;
             tn->base.dtor = NULL;
             ty = (lkit_type_t *)tn;
         }
@@ -235,7 +243,7 @@ lkit_type_new(lkit_tag_t tag)
             tv->base.tag = tag;
             tv->base.name = "...";
             tv->base.rtsz = 0;
-            LKIT_ERROR(tv) = 0;
+            LTYPE_ERROR(tv) = 0;
             tv->base.dtor = NULL;
             ty = (lkit_type_t *)tv;
         }
@@ -251,7 +259,7 @@ lkit_type_new(lkit_tag_t tag)
             ta->base.tag = tag;
             ta->base.name = "array";
             ta->base.rtsz = 0;
-            LKIT_ERROR(ta) = 0;
+            LTYPE_ERROR(ta) = 0;
             ta->fini = NULL;
             ta->parser = LKIT_PARSER_NONE;
             ta->delim = NULL;
@@ -271,7 +279,7 @@ lkit_type_new(lkit_tag_t tag)
             td->base.tag = tag;
             td->base.name = "dict";
             td->base.rtsz = 0;
-            LKIT_ERROR(td) = 0;
+            LTYPE_ERROR(td) = 0;
             td->fini = NULL;
             td->kvdelim = NULL;
             td->fdelim = NULL;
@@ -291,7 +299,7 @@ lkit_type_new(lkit_tag_t tag)
             ts->base.tag = tag;
             ts->base.name = "struct";
             ts->base.rtsz = 0;
-            LKIT_ERROR(ts) = 0;
+            LTYPE_ERROR(ts) = 0;
             ts->init = NULL;
             ts->fini = NULL;
             ts->parser = LKIT_PARSER_NONE;
@@ -315,7 +323,7 @@ lkit_type_new(lkit_tag_t tag)
             tf->base.name = "func";
             tf->base.rtsz = 0;
             tf->base.dtor = NULL;
-            LKIT_ERROR(tf) = 0;
+            LTYPE_ERROR(tf) = 0;
             array_init(&tf->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             ty = (lkit_type_t *)tf;
         }
@@ -769,89 +777,82 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
 
     if (diff == 0) {
         /* deep compare of custom types by their field content */
-        if (a->tag > _LKIT_END_OF_BUILTIN_TYPES) {
+        switch (a->tag) {
 
-            switch (a->tag) {
+        case LKIT_ARRAY:
+            {
+                lkit_array_t *aa, *ab;
+                aa = (lkit_array_t *)a;
+                ab = (lkit_array_t *)b;
 
-            case LKIT_ARRAY:
-                {
-                    lkit_array_t *aa, *ab;
-                    aa = (lkit_array_t *)a;
-                    ab = (lkit_array_t *)b;
+                diff = delim_cmp(aa->delim, ab->delim);
 
-                    diff = delim_cmp(aa->delim, ab->delim);
-
-                    if (diff == 0) {
-                        return array_cmp(&aa->fields,
-                                         &ab->fields,
-                                         (array_compar_t)type_cmp,
-                                         0);
-                    }
-                }
-                break;
-
-            case LKIT_DICT:
-                {
-                    lkit_dict_t *da, *db;
-                    da = (lkit_dict_t *)a;
-                    db = (lkit_dict_t *)b;
-
-                    diff = delim_cmp(da->kvdelim, db->kvdelim);
-                    if (diff == 0) {
-                        diff = delim_cmp(da->fdelim, db->fdelim);
-                    }
-                    if (diff == 0) {
-                        return array_cmp(&da->fields,
-                                         &db->fields,
-                                         (array_compar_t)type_cmp,
-                                         0);
-                    }
-
-                }
-                break;
-
-            case LKIT_STRUCT:
-                {
-                    lkit_struct_t *sa, *sb;
-                    sa = (lkit_struct_t *)a;
-                    sb = (lkit_struct_t *)b;
-
-                    diff = delim_cmp(sa->delim, sb->delim);
-
-                    if (diff == 0) {
-                        diff = array_cmp(&sa->fields,
-                                         &sb->fields,
-                                         (array_compar_t)type_cmp,
-                                         0);
-                        if (diff == 0) {
-                            return array_cmp(
-                                &sa->names,
-                                &sb->names,
-                                (array_compar_t)struct_field_name_cmp,
-                                0);
-                        }
-                    }
-
-                }
-                break;
-
-            case LKIT_FUNC:
-                {
-                    lkit_func_t *fa, *fb;
-                    fa = (lkit_func_t *)a;
-                    fb = (lkit_func_t *)b;
-
-                    return array_cmp(&fa->fields,
-                                     &fb->fields,
+                if (diff == 0) {
+                    diff = array_cmp(&aa->fields,
+                                     &ab->fields,
                                      (array_compar_t)type_cmp,
                                      0);
-
                 }
-                break;
-
-            default:
-                FAIL("type_cmp");
             }
+            break;
+
+        case LKIT_DICT:
+            {
+                lkit_dict_t *da, *db;
+                da = (lkit_dict_t *)a;
+                db = (lkit_dict_t *)b;
+
+                diff = delim_cmp(da->kvdelim, db->kvdelim);
+                if (diff == 0) {
+                    diff = delim_cmp(da->fdelim, db->fdelim);
+                }
+                if (diff == 0) {
+                    diff = array_cmp(&da->fields,
+                                     &db->fields,
+                                     (array_compar_t)type_cmp,
+                                     0);
+                }
+            }
+            break;
+
+        case LKIT_STRUCT:
+            {
+                lkit_struct_t *sa, *sb;
+                sa = (lkit_struct_t *)a;
+                sb = (lkit_struct_t *)b;
+
+                diff = delim_cmp(sa->delim, sb->delim);
+
+                if (diff == 0) {
+                    diff = array_cmp(&sa->fields,
+                                     &sb->fields,
+                                     (array_compar_t)type_cmp,
+                                     0);
+                    if (diff == 0) {
+                        diff = array_cmp(&sa->names,
+                                         &sb->names,
+                                         (array_compar_t)struct_field_name_cmp,
+                                         0);
+                    }
+                }
+            }
+            break;
+
+        case LKIT_FUNC:
+            {
+                lkit_func_t *fa, *fb;
+                fa = (lkit_func_t *)a;
+                fb = (lkit_func_t *)b;
+
+                diff = array_cmp(&fa->fields,
+                                 &fb->fields,
+                                 (array_compar_t)type_cmp,
+                                 0);
+            }
+            break;
+
+        default:
+            break;
         }
     }
 
@@ -1087,7 +1088,7 @@ parse_fielddef(mrklkit_ctx_t *mctx,
         fparser_datum_t **node; \
         lkit_type_t **fty; \
         if ((node = array_next(form, &it)) == NULL) { \
-            LKIT_ERROR(var) = 1; \
+            LTYPE_ERROR(var) = 1; \
             dat->error = 1; \
             return 1; \
         } \
@@ -1095,12 +1096,12 @@ parse_fielddef(mrklkit_ctx_t *mctx,
             FAIL("array_incr"); \
         } \
         if ((*fty = lkit_type_parse(mctx, *node, 1)) == NULL) { \
-            LKIT_ERROR(var) = 1; \
+            LTYPE_ERROR(var) = 1; \
             (*node)->error = 1; \
             return 1; \
         } \
     } else { \
-        LKIT_ERROR(var) = 1; \
+        LTYPE_ERROR(var) = 1; \
         dat->error = 1; \
         return 1; \
     }
