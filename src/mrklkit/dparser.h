@@ -7,7 +7,7 @@
 
 #include <limits.h>
 #ifndef OFF_MAX
-#   define OFF_TMAX LONG_MAX
+#   define OFF_MAX LONG_MAX
 #endif
 #include <unistd.h>
 
