@@ -3,7 +3,6 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/limits.h>
 #include <unistd.h>
 
 #include <mrkcommon/array.h>
@@ -1057,7 +1056,7 @@ dparse_struct_item_float(rt_struct_t *value, int64_t idx)
 int64_t
 dparse_struct_item_bool(rt_struct_t *value, int64_t idx)
 {
-    int64_t *val;
+    UNUSED int64_t *val;
 
     assert(sizeof(int64_t) == sizeof(void *));
     val = (int64_t *)dparse_struct_item_gen(value,
@@ -1069,7 +1068,7 @@ dparse_struct_item_bool(rt_struct_t *value, int64_t idx)
 bytes_t *
 dparse_struct_item_str(rt_struct_t *value, int64_t idx)
 {
-    bytes_t **val;
+    UNUSED bytes_t **val;
 
     assert(sizeof(bytes_t *) == sizeof(void *));
     val = (bytes_t **)dparse_struct_item_gen(value,
@@ -1081,7 +1080,7 @@ dparse_struct_item_str(rt_struct_t *value, int64_t idx)
 rt_array_t *
 dparse_struct_item_array(rt_struct_t *value, int64_t idx)
 {
-    rt_array_t **val;
+    UNUSED rt_array_t **val;
 
     assert(sizeof(rt_array_t *) == sizeof(void *));
     val = (rt_array_t **)dparse_struct_item_gen(value,
@@ -1093,7 +1092,7 @@ dparse_struct_item_array(rt_struct_t *value, int64_t idx)
 rt_dict_t *
 dparse_struct_item_dict(rt_struct_t *value, int64_t idx)
 {
-    rt_dict_t **val;
+    UNUSED rt_dict_t **val;
 
     assert(sizeof(rt_dict_t *) == sizeof(void *));
     val = (rt_dict_t **)dparse_struct_item_gen(value,
@@ -1105,7 +1104,7 @@ dparse_struct_item_dict(rt_struct_t *value, int64_t idx)
 rt_struct_t *
 dparse_struct_item_struct(rt_struct_t *value, int64_t idx)
 {
-    rt_struct_t **val;
+    UNUSED rt_struct_t **val;
 
     assert(sizeof(rt_struct_t *) == sizeof(void *));
 
@@ -1183,7 +1182,7 @@ dparser_read_lines(int fd,
                    size_t *nlines)
 {
     int res = 0;
-    ssize_t nread;
+    UNUSED ssize_t nread;
     byterange_t br;
 
     nread = 0xffffffff;
@@ -1216,7 +1215,7 @@ dparser_read_lines(int fd,
         br.end = SEOD(bs);
 
         if (SPOS(bs) >= bs->growsz - 8192) {
-            off_t recycled;
+            UNUSED off_t recycled;
 
             recycled = bytestream_recycle(bs, 0, SPOS(bs));
             br.end = SEOD(bs);
