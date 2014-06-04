@@ -71,7 +71,8 @@ compile_if(lkit_expr_t *ectx,
            lkit_type_t *restype)
 {
     LLVMContextRef lctx;
-    LLVMValueRef v = NULL, res, cond, texp = NULL, fexp = NULL, iexp[2];
+    LLVMValueRef v = NULL, cond, texp = NULL, fexp = NULL, iexp[2];
+    UNUSED LLVMValueRef res;
     LLVMBasicBlockRef currblock, nextblock, endblock, tblock, fblock, iblock[2];
 
     lctx = LLVMGetModuleContext(module);
@@ -1674,15 +1675,19 @@ builtin_compile_expr(lkit_expr_t *ectx,
             case LKIT_INT:
             case LKIT_INT_MIN:
             case LKIT_INT_MAX:
-                v = LLVMConstInt(expr->type->backend,
-                                 *(int64_t *)expr->value.literal->body, 1);
+                {
+                    int64_t *pv = (int64_t *)expr->value.literal->body;
+                    v = LLVMConstInt(expr->type->backend, *pv, 1);
+                }
                 break;
 
             case LKIT_FLOAT:
             case LKIT_FLOAT_MIN:
             case LKIT_FLOAT_MAX:
-                v = LLVMConstReal(expr->type->backend,
-                                  *(double *)expr->value.literal->body);
+                {
+                    double *pv = (double *)expr->value.literal->body;
+                    v = LLVMConstReal(expr->type->backend, *pv);
+                }
                 break;
 
             case LKIT_BOOL:

@@ -479,10 +479,12 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
         TRACE("WORD '%s'", v->data);
 
     } else if (rdat->tag == FPARSER_INT) {
-        TRACE("INT '%ld'", *((int64_t *)(rdat->body)));
+        int64_t *v = (int64_t *)rdat->body;
+        TRACE("INT '%ld'", *v);
 
     } else if (rdat->tag == FPARSER_FLOAT) {
-        TRACE("FLOAT '%f'", *((double *)(rdat->body)));
+        double *v = (double *)rdat->body;
+        TRACE("FLOAT '%f'", *v);
 
     } else if (rdat->tag == FPARSER_BOOL) {
         TRACE("BOOL '#%c'", *((char *)(rdat->body)) ? 't' : 'f');
@@ -601,20 +603,24 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
 
     } else if (rdat->tag == FPARSER_INT) {
         if (rdat->error) {
+            int64_t *v = (int64_t *)(rdat->body);
             bytestream_nprintf(di->bs, 20 + 10 + 7, "-->%ld<--",
-                               *((int64_t *)(rdat->body)));
+                               *v);
         } else {
+            int64_t *v = (int64_t *)(rdat->body);
             bytestream_nprintf(di->bs, 20 + 10 + 1, "%ld",
-                               *((int64_t *)(rdat->body)));
+                               *v);
         }
 
     } else if (rdat->tag == FPARSER_FLOAT) {
         if (rdat->error) {
+            double *v = (double *)(rdat->body);
             bytestream_nprintf(di->bs, 13 * 2 + 10 + 7, "-->%f<--",
-                               *((double *)(rdat->body)));
+                               *v);
         } else {
+            double *v = (double *)(rdat->body);
             bytestream_nprintf(di->bs, 13 * 2 + 10 + 1, "%f",
-                               *((double *)(rdat->body)));
+                               *v);
         }
 
     } else if (rdat->tag == FPARSER_BOOL) {

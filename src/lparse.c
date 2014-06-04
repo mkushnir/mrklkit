@@ -120,7 +120,8 @@ lparse_first_int(array_t *form, array_iter_t *it, int64_t *value, int seterror)
     }
     tag = FPARSER_DATUM_TAG(*node);
     if (tag == FPARSER_INT) {
-        *value = *((int64_t *)((*node)->body));
+        int64_t *v = (int64_t *)((*node)->body);
+        *value = *v;
         return 0;
     }
     (*node)->error = seterror;
@@ -137,7 +138,8 @@ lparse_next_int(array_t *form, array_iter_t *it, int64_t *value, int seterror)
     }
     tag = FPARSER_DATUM_TAG(*node);
     if (tag == FPARSER_INT) {
-        *value = *((int64_t *)((*node)->body));
+        int64_t *v = (int64_t *)((*node)->body);
+        *value = *v;
         return 0;
     }
     (void)array_prev(form, it);
@@ -155,7 +157,8 @@ lparse_first_double(array_t *form, array_iter_t *it, double *value, int seterror
     }
     tag = FPARSER_DATUM_TAG(*node);
     if (tag == FPARSER_FLOAT) {
-        *value = *((double *)((*node)->body));
+        double *v = (double *)((*node)->body);
+        *value = *v;
         return 0;
     }
     (*node)->error = seterror;
@@ -172,7 +175,8 @@ lparse_next_double(array_t *form, array_iter_t *it, double *value, int seterror)
     }
     tag = FPARSER_DATUM_TAG(*node);
     if (tag == FPARSER_FLOAT) {
-        *value = *((double *)((*node)->body));
+        double *v = (double *)((*node)->body);
+        *value = *v;
         return 0;
     }
     (void)array_prev(form, it);
