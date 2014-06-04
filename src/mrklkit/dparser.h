@@ -6,8 +6,8 @@
  */
 
 #include <limits.h>
-#ifndef OFF_T
-#   define OFF_T LONG_MAX
+#ifndef OFF_MAX
+#   define OFF_TMAX LONG_MAX
 #endif
 #include <unistd.h>
 
