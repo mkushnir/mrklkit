@@ -10,7 +10,7 @@
 #include "diag.h"
 
 int
-lparse_first_word(array_t *form, array_iter_t *it, unsigned char **value, int seterror)
+lparse_first_word(array_t *form, array_iter_t *it, char **value, int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -21,7 +21,7 @@ lparse_first_word(array_t *form, array_iter_t *it, unsigned char **value, int se
     tag = FPARSER_DATUM_TAG(*node);
     if (tag == FPARSER_WORD) {
         bytes_t *v = (bytes_t *)((*node)->body);
-        *value = (unsigned char *)(v->data);
+        *value = (char *)(v->data);
         return 0;
     }
     *value = NULL;
@@ -49,7 +49,7 @@ lparse_first_word_bytes(array_t *form, array_iter_t *it, bytes_t **value, int se
 }
 
 int
-lparse_next_word(array_t *form, array_iter_t *it, unsigned char **value, int seterror)
+lparse_next_word(array_t *form, array_iter_t *it, char **value, int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -60,7 +60,7 @@ lparse_next_word(array_t *form, array_iter_t *it, unsigned char **value, int set
     tag = FPARSER_DATUM_TAG(*node);
     if (tag == FPARSER_WORD) {
         bytes_t *v = (bytes_t *)((*node)->body);
-        *value = (unsigned char *)(v->data);
+        *value = (char *)(v->data);
         return 0;
     }
     (void)array_prev(form, it);
@@ -90,7 +90,7 @@ lparse_next_word_bytes(array_t *form, array_iter_t *it, bytes_t **value, int set
 }
 
 int
-lparse_next_str(array_t *form, array_iter_t *it, unsigned char **value, int seterror)
+lparse_next_str(array_t *form, array_iter_t *it, char **value, int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -101,7 +101,7 @@ lparse_next_str(array_t *form, array_iter_t *it, unsigned char **value, int sete
     tag = FPARSER_DATUM_TAG(*node);
     if (tag == FPARSER_STR) {
         bytes_t *v = (bytes_t *)((*node)->body);
-        *value = (unsigned char *)(v->data);
+        *value = (char *)(v->data);
         return 0;
     }
     (void)array_prev(form, it);
@@ -193,7 +193,7 @@ lparse_quals(array_t *form,
     int res = 0;
 
     while (1) {
-        unsigned char *qual = NULL;
+        char *qual = NULL;
 
         if (lparse_next_word(form, it, &qual, 0) != 0) {
             break;

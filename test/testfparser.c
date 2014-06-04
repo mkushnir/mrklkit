@@ -10,7 +10,7 @@
 #include "unittest.h"
 
 static int
-mycb(UNUSED const unsigned char *buf,
+mycb(UNUSED const char *buf,
      fparser_datum_t *dat,
      UNUSED void *udata)
 {
@@ -44,7 +44,7 @@ test1(void)
     fparser_datum_t *root = NULL;
 
     if ((fd = open("data-04", O_RDONLY)) < 0) {
-        assert(0);
+        FAIL("open");
     }
 
     root = fparser_parse(fd, mycb, NULL);

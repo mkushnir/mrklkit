@@ -118,7 +118,7 @@ typedef struct _lkit_array {
     array_finalizer_t fini;
     lkit_parser_t parser;
     /* weak ref, will use delim[0] */
-    unsigned char *delim;
+    char *delim;
     /* lkit_type_t * */
     array_t fields;
 } lkit_array_t;
@@ -128,9 +128,9 @@ typedef struct _lkit_dict {
     dict_item_finalizer_t fini;
     lkit_parser_t parser;
     /* weak ref, will use kvdelim[0] */
-    unsigned char *kvdelim;
+    char *kvdelim;
     /* weak ref, will use fdelim[0] */
-    unsigned char *fdelim;
+    char *fdelim;
     /* lkit_type_t * */
     array_t fields;
 } lkit_dict_t;
@@ -142,7 +142,7 @@ typedef struct _lkit_struct {
     void (*fini)(void **);
     lkit_parser_t parser;
     /* weak ref, will use delim[0] */
-    unsigned char *delim;
+    char *delim;
     /* lkit_type_t * */
     array_t fields;
     /* weak refs */
@@ -157,7 +157,7 @@ typedef struct _lkit_func {
 
 typedef struct _lkit_typedef {
     /* weakref */
-    unsigned char *name;
+    char *name;
     lkit_type_t *type;
 } lkit_typedef_t;
 

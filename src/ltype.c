@@ -511,7 +511,7 @@ _lkit_type_dump(lkit_type_t *ty, int level)
     case LKIT_ARRAY:
         {
             lkit_array_t *ta;
-            unsigned char *dst;
+            char *dst;
             size_t sz;
 
             ta = (lkit_array_t *)ty;
@@ -532,7 +532,7 @@ _lkit_type_dump(lkit_type_t *ty, int level)
     case LKIT_DICT:
         {
             lkit_dict_t *td;
-            unsigned char *dst;
+            char *dst;
             size_t sz;
 
             td = (lkit_dict_t *)ty;
@@ -563,7 +563,7 @@ _lkit_type_dump(lkit_type_t *ty, int level)
     case LKIT_STRUCT:
         {
             lkit_struct_t *ts;
-            unsigned char *dst;
+            char *dst;
             size_t sz;
             lkit_type_t **elty;
             array_iter_t it;
@@ -747,7 +747,7 @@ struct_field_name_cmp(bytes_t **a, bytes_t **b)
 }
 
 static int
-delim_cmp(const unsigned char *a, const unsigned char *b)
+delim_cmp(const char *a, const char *b)
 {
     if (a == NULL) {
         if (b != NULL) {
@@ -899,7 +899,7 @@ lkit_type_cmp(lkit_type_t *a, lkit_type_t *b)
 static int
 parse_array_quals(array_t *form,
                    array_iter_t *it,
-                   unsigned char *qual,
+                   char *qual,
                    lkit_array_t *ta)
 {
     char *s = (char *)qual;
@@ -908,7 +908,7 @@ parse_array_quals(array_t *form,
     ta->delim = NULL;
 
     if (strcmp(s, ":parser") == 0) {
-        unsigned char *parser = NULL;
+        char *parser = NULL;
 
         if (lparse_next_word(form, it, &parser, 1) == 0) {
             if (strcmp((char *) parser, "delim") == 0) {
@@ -957,7 +957,7 @@ parse_array_quals(array_t *form,
 static int
 parse_dict_quals(array_t *form,
                  array_iter_t *it,
-                 unsigned char *qual,
+                 char *qual,
                  lkit_dict_t *td)
 {
     char *s = (char *)qual;
@@ -967,7 +967,7 @@ parse_dict_quals(array_t *form,
     td->fdelim = NULL;
 
     if (strcmp(s, ":parser") == 0) {
-        unsigned char *parser = NULL;
+        char *parser = NULL;
 
         if (lparse_next_word(form, it, &parser, 1) == 0) {
             if (strcmp((char *) parser, "delim") == 0) {
@@ -1002,7 +1002,7 @@ parse_dict_quals(array_t *form,
 static int
 parse_struct_quals(array_t *form,
                    array_iter_t *it,
-                   unsigned char *qual,
+                   char *qual,
                    lkit_struct_t *ts)
 {
     char *s = (char *)qual;
@@ -1011,7 +1011,7 @@ parse_struct_quals(array_t *form,
     ts->delim = NULL;
 
     if (strcmp(s, ":parser") == 0) {
-        unsigned char *parser = NULL;
+        char *parser = NULL;
 
         if (lparse_next_word(form, it, &parser, 1) == 0) {
             if (strcmp((char *) parser, "delim") == 0) {

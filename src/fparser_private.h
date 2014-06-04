@@ -8,7 +8,7 @@ extern "C" {
 struct _fparser_datum;
 
 struct tokenizer_ctx {
-    const unsigned char *tokstart;
+    const char *tokstart;
     int indent;
     struct _fparser_datum *form;
 };

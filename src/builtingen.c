@@ -1523,6 +1523,7 @@ compile_dynamic_initializer(lkit_expr_t *ectx,
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
     LLVMDisposeBuilder(builder);
     LLVMSetLinkage(v, LLVMPrivateLinkage);
+    LLVMSetLinkage(fn, LLVMLinkOnceODRLinkage);
     return 0;
 }
 

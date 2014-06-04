@@ -10,14 +10,14 @@ extern "C" {
 
 typedef int (* quals_parser_t)(array_t *,
                                array_iter_t *,
-                               unsigned char *,
+                               char *,
                                void *);
 
-int lparse_first_word(array_t *, array_iter_t *, unsigned char **, int);
+int lparse_first_word(array_t *, array_iter_t *, char **, int);
 int lparse_first_word_bytes(array_t *, array_iter_t *, bytes_t **, int);
-int lparse_next_word(array_t *, array_iter_t *, unsigned char **, int);
+int lparse_next_word(array_t *, array_iter_t *, char **, int);
 int lparse_next_word_bytes(array_t *, array_iter_t *, bytes_t **, int);
-int lparse_next_str(array_t *, array_iter_t *, unsigned char **, int);
+int lparse_next_str(array_t *, array_iter_t *, char **, int);
 int lparse_first_int(array_t *, array_iter_t *, int64_t *, int);
 int lparse_next_int(array_t *, array_iter_t *, int64_t *, int);
 int lparse_first_double(array_t *, array_iter_t *, double *, int);

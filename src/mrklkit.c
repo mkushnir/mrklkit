@@ -13,7 +13,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -66,7 +66,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
         switch (FPARSER_DATUM_TAG(*fnode)) {
             array_t *nform;
             array_iter_t nit;
-            unsigned char *first = NULL;
+            char *first = NULL;
 
         case FPARSER_SEQ:
             nform = (array_t *)((*fnode)->body);
@@ -76,7 +76,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
                 if (strcmp((char *)first, "mode") == 0) {
                     TRACE("mode ...");
                 } else if (strcmp((char *)first, "pragma") == 0) {
-                    unsigned char *arg = NULL;
+                    char *arg = NULL;
 
                     if (lparse_next_word(nform, &nit, &arg, 1) == 0) {
                         //TRACE("pragma arg: %s", arg);

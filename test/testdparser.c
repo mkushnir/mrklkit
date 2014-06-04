@@ -169,7 +169,7 @@ test_qstr(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
     lkit_type_t *ty; \
     void **fty; \
     arty = (lkit_array_t *)lkit_type_get(mctx, LKIT_ARRAY); \
-    arty->delim = (unsigned char *)","; \
+    arty->delim = (char *)","; \
     fty = array_incr(&arty->fields); \
     *fty = lkit_type_get(mctx, tag); \
     while (SPOS(bs) < br->end) { \
@@ -236,8 +236,8 @@ test_array_str(bytestream_t *bs, const byterange_t *br, void *udata)
     lkit_type_t *ty; \
     void **fty; \
     dcty = (lkit_dict_t *)lkit_type_get(mctx, LKIT_DICT); \
-    dcty->kvdelim = (unsigned char *)":"; \
-    dcty->fdelim = (unsigned char *)","; \
+    dcty->kvdelim = (char *)":"; \
+    dcty->fdelim = (char *)","; \
     fty = array_incr(&dcty->fields); \
     *fty = lkit_type_get(mctx, tag); \
     while (SPOS(bs) < br->end) { \
@@ -361,7 +361,7 @@ test_struct_00(void)
      * (type foo (struct (fint int) (ffloat float) (fstr str)))
      */
     stty = (lkit_struct_t *)lkit_type_get(LKIT_STRUCT);
-    stty->delim = (unsigned char *)" ";
+    stty->delim = (char *)" ";
     stty->init = struct_00_init;
     stty->fini = struct_00_fini;
 

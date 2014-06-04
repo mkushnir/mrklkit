@@ -13,6 +13,7 @@
 #include "fparser_private.h"
 
 #define BLOCKSZ (4096 * 8)
+//#define BLOCKSZ (1024)
 #define NEEDMORE (-1)
 
 static int fparser_datum_init(fparser_datum_t *, fparser_tag_t);
@@ -21,7 +22,7 @@ static int fparser_datum_form_add(fparser_datum_t *, fparser_datum_t *);
 
 
 static ssize_t
-unesc(unsigned char *dst, const unsigned char *src, ssize_t sz)
+unesc(char *dst, const char *src, ssize_t sz)
 {
     ssize_t res = 0;
     ssize_t i;
@@ -45,9 +46,9 @@ unesc(unsigned char *dst, const unsigned char *src, ssize_t sz)
 }
 
 void
-fparser_escape(unsigned char *dst,
+fparser_escape(char *dst,
                size_t dst_sz,
-               const unsigned char *src,
+               const char *src,
                size_t src_sz)
 {
     size_t i, j;
@@ -65,10 +66,9 @@ fparser_escape(unsigned char *dst,
 
 static int
 compile_value(struct tokenizer_ctx *ctx,
-              const unsigned char *buf,
-              ssize_t idx,
+              bytestream_t *bs,
               int state,
-              int (*cb)(const unsigned char *,
+              int (*cb)(const char *,
                         fparser_datum_t *,
                         void *),
               void *udata)
@@ -76,13 +76,13 @@ compile_value(struct tokenizer_ctx *ctx,
     fparser_datum_t *dat = NULL;
 
     if (state == LEX_TOKIN) {
-        ctx->tokstart = buf + idx;
+        ctx->tokstart = SPDATA(bs);
 
     } else if (state == LEX_QSTRIN) {
-        ctx->tokstart = buf + idx + 1;
+        ctx->tokstart = SPDATA(bs) + 1;
 
     } else if (state & (LEX_QSTROUT)) {
-        ssize_t sz = buf + idx - ctx->tokstart;
+        ssize_t sz = SPDATA(bs) - ctx->tokstart;
         bytes_t *value;
         ssize_t escaped;
 
@@ -95,7 +95,7 @@ compile_value(struct tokenizer_ctx *ctx,
         value->hash = 0;
         value->sz = (size_t)sz + 1;
 
-        escaped = unesc(value->data, ctx->tokstart, sz);
+        escaped = unesc((char *)value->data, ctx->tokstart, sz);
         value->sz -= escaped;
 
         if (fparser_datum_form_add(ctx->form, dat) != 0) {
@@ -109,8 +109,8 @@ compile_value(struct tokenizer_ctx *ctx,
         //LTRACE(ctx->indent, " '%s'", dat->body);
 
     } else if (state & (LEX_TOKOUT)) {
-        unsigned char ch = ctx->tokstart[0];
-        ssize_t sz = buf + idx - ctx->tokstart;
+        char ch = ctx->tokstart[0];
+        ssize_t sz = SPDATA(bs) - ctx->tokstart;
 #define _NUMKIND_INT 1
 #define _NUMKIND_FLOAT 2
 #define _NUMKIND_BOOL 3
@@ -257,18 +257,19 @@ compile_value(struct tokenizer_ctx *ctx,
 
 static int
 tokenize(struct tokenizer_ctx *ctx,
-         const unsigned char *buf, ssize_t buflen,
-         int(*cb)(const unsigned char *, fparser_datum_t *, void *),
+         bytestream_t *bs,
+         int(*cb)(const char *,
+                  fparser_datum_t *,
+                  void *),
          void *udata)
 {
-    unsigned char ch;
-    ssize_t i;
+    char ch;
     int state = LEX_SPACE;
 
     //D8(buf, buflen);
 
-    for (i = 0; i < buflen; ++i) {
-        ch = *(buf + i);
+    for (; SPOS(bs) < SEOD(bs); SINCR(bs)) {
+        ch = SPCHR(bs);
         if (ch == '(') {
             if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
                 state = LEX_SEQIN;
@@ -276,7 +277,7 @@ tokenize(struct tokenizer_ctx *ctx,
             } else if (state & LEX_TOK) {
                 state = LEX_TOKOUT;
                 /* extra call back */
-                if (compile_value(ctx, buf, i, state, cb, udata) != 0) {
+                if (compile_value(ctx, bs, state, cb, udata) != 0) {
                     TRRET(TOKENIZE + 1);
                 }
                 state = LEX_SEQIN;
@@ -298,7 +299,7 @@ tokenize(struct tokenizer_ctx *ctx,
             } else if (state & LEX_TOK) {
                 state = LEX_TOKOUT;
                 /* extra call back */
-                if (compile_value(ctx, buf, i, state, cb, udata) != 0) {
+                if (compile_value(ctx, bs, state, cb, udata) != 0) {
                     TRRET(TOKENIZE + 2);
                 }
                 state = LEX_SEQOUT;
@@ -386,7 +387,7 @@ tokenize(struct tokenizer_ctx *ctx,
             } else if (state & LEX_TOK) {
                 state = LEX_TOKOUT;
                 /* extra call back */
-                if (compile_value(ctx, buf, i, state, cb, udata) != 0) {
+                if (compile_value(ctx, bs, state, cb, udata) != 0) {
                     TRRET(TOKENIZE + 3);
                 }
                 state = LEX_COMIN;
@@ -420,13 +421,13 @@ tokenize(struct tokenizer_ctx *ctx,
         }
 
         if (state & LEX_FOUNDVAL) {
-            if (compile_value(ctx, buf, i, state, cb, udata) != 0) {
+            if (compile_value(ctx, bs, state, cb, udata) != 0) {
                 TRRET(TOKENIZE + 4);
             }
         }
     }
 
-    return NEEDMORE;
+    return 0;
 }
 
 
@@ -576,7 +577,7 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
 
     } else if (rdat->tag == FPARSER_STR) {
         bytes_t *v;
-        unsigned char *dst;
+        char *dst;
         size_t sz;
         v = (bytes_t *)(rdat->body);
         sz = strlen((char *)(v->data));
@@ -584,7 +585,7 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
             FAIL("malloc");
         }
         memset(dst, '\0', sz * 2 + 1);
-        fparser_escape(dst, sz * 2, v->data, sz);
+        fparser_escape(dst, sz * 2, (char *)v->data, sz);
         if (rdat->error) {
             bytestream_nprintf(di->bs, sz * 2 + 10 + 9, "-->\"%s\"<--", dst);
         } else {
@@ -711,14 +712,14 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
 
 fparser_datum_t *
 fparser_parse(int fd,
-              int (*cb)(const unsigned char *,
+              int (*cb)(const char *,
                         fparser_datum_t *,
                         void *),
               void *udata)
 {
     int res;
     ssize_t nread;
-    unsigned char buf[BLOCKSZ];
+    bytestream_t bs;
     struct tokenizer_ctx ctx;
     fparser_datum_t *root = NULL;
 
@@ -733,21 +734,20 @@ fparser_parse(int fd,
         TRRETNULL(FPARSER_PARSE + 2);
     }
 
+    bytestream_init(&bs, BLOCKSZ);
+
     ctx.form = root;
 
-    while (1) {
-        if ((nread = read(fd, buf, BLOCKSZ)) <= 0) {
-            if (nread < 0) {
-                TRRETNULL(FPARSER_PARSE + 3);
-            } else {
-                break;
-            }
-
+    while (SNEEDMORE(&bs)) {
+        if (SPOS(&bs) > 0) {
+            (void)bytestream_recycle(&bs, 0, SDPOS(&bs, ctx.tokstart));
+        }
+        nread = bytestream_read_more(&bs, fd, BLOCKSZ);
+        if (nread <= 0) {
+            break;
         }
 
-        if ((res = tokenize(&ctx, buf, nread, cb, udata)) == NEEDMORE) {
-            continue;
-        }
+        (void)tokenize(&ctx, &bs, cb, udata);
     }
 
     return root;
