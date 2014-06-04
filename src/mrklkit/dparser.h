@@ -5,6 +5,10 @@
  * strings, configurable field and end-of-record single-character delimiters.
  */
 
+#include <limits.h>
+#ifndef OFF_MAX
+#   define OFF_MAX LONG_MAX
+#endif
 #include <unistd.h>
 
 #include <mrkcommon/bytestream.h>
