@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 /*
- * XXX check out compile_bytes_t(), builtin_compile_expr(), and ltype_compile()
+ * XXX check out compile_bytes_t(), lkit_compile_expr(), and ltype_compile()
  */
 typedef struct _bytes {
     ssize_t nref;

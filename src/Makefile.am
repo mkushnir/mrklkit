@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
 distdir = ../$(PACKAGE)-$(VERSION)/src
-dist_HEADERS = fparser_private.h builtin_private.h
+dist_HEADERS = fparser_private.h
 
 BUILT_SOURCES = diag.c diag.h
 EXTRA_DIST = diag.txt gen-diag

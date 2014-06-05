@@ -60,7 +60,6 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
         }
         ty->tag = LKIT_USER + 100;
         ty->name = "url";
-        ty->rtsz = 0;
         ty->dtor = NULL;
         ty->error = 0;
         ty = lkit_type_finalize(&tctx->mctx, ty);
@@ -832,7 +831,7 @@ _compile_trt(testrt_t *trt, void *udata)
 
         LLVMValueRef val, gep;
 
-        val = builtin_compile_expr(&tctx->builtin,
+        val = lkit_compile_expr(&tctx->builtin,
                                    module,
                                    builder,
                                    *expr);
@@ -888,7 +887,7 @@ _compile_trt(testrt_t *trt, void *udata)
                 case LKIT_INT:
                     val = LLVMBuildAdd(builder,
                                        val,
-                                       builtin_compile_expr(&tctx->builtin,
+                                       lkit_compile_expr(&tctx->builtin,
                                                             module,
                                                             builder,
                                                             *arg),
@@ -898,7 +897,7 @@ _compile_trt(testrt_t *trt, void *udata)
                 case LKIT_FLOAT:
                     val = LLVMBuildFAdd(builder,
                                         val,
-                                        builtin_compile_expr(&tctx->builtin,
+                                        lkit_compile_expr(&tctx->builtin,
                                                              module,
                                                              builder,
                                                              *arg),
@@ -959,7 +958,7 @@ _compile_trt(testrt_t *trt, void *udata)
 
         tblock = LLVMAppendBasicBlockInContext(lctx, fnmain, NEWVAR("L.if.true"));
         endblock = LLVMAppendBasicBlockInContext(lctx, fnmain, NEWVAR("L.if.end"));
-        res = builtin_compile_expr(&tctx->builtin, module, builder, *seecond);
+        res = lkit_compile_expr(&tctx->builtin, module, builder, *seecond);
         assert(res != NULL);
         LLVMBuildCondBr(builder, res, tblock, endblock);
         LLVMPositionBuilderAtEnd(builder, tblock);
@@ -976,7 +975,7 @@ _compile_trt(testrt_t *trt, void *udata)
     for (expr = array_first(&trt->otherexpr, &it);
          expr != NULL;
          expr = array_next(&trt->otherexpr, &it)) {
-        if (builtin_compile_expr(&tctx->builtin, module, builder, *expr) == NULL) {
+        if (lkit_compile_expr(&tctx->builtin, module, builder, *expr) == NULL) {
             res = TESTRT_COMPILE + 205;
             goto end;
         }
@@ -998,7 +997,7 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     LLVMBasicBlockRef bb;
 
     /* builtin */
-    if (builtin_sym_compile(&tctx->mctx, &tctx->builtin, module) != 0) {
+    if (lkit_expr_ctx_compile(&tctx->mctx, &tctx->builtin, module) != 0) {
         TRRET(TESTRT_COMPILE + 100);
     }
 
@@ -1017,7 +1016,7 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     LLVMPositionBuilderAtEnd(builder, bb);
 
     /* initialize all non-lazy variables */
-    builtin_call_eager_initializers(&tctx->builtin, module, builder);
+    lkit_expr_ctx_call_eager_initializers(&tctx->builtin, module, builder);
 
     /* compile all */
     if (array_traverse(&tctx->testrts,
@@ -1030,7 +1029,7 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     LLVMPositionBuilderAtEnd(builder, bb);
 
     /* builtin symbol postactions */
-    if (builtin_sym_compile_post(&tctx->builtin, module, builder) != 0) {
+    if (lkit_expr_ctx_compile_post(&tctx->builtin, module, builder) != 0) {
         TRRET(TESTRT_COMPILE + 103);
     }
 
@@ -1126,9 +1125,6 @@ testrt_target_hash(testrt_target_t *tgt)
              ty != NULL;
              ty = array_next(&tgt->type->fields, &it)) {
 
-            //TRACE("tag=%s rtsz=%ld iter=%u",
-            //      LKIT_TAG_STR((*ty)->tag), (*ty)->rtsz, it.iter);
-
             switch ((*ty)->tag) {
             case LKIT_INT:
                 {
@@ -1138,7 +1134,7 @@ testrt_target_hash(testrt_target_t *tgt)
                     } v;
 
                     v.i = mrklkit_rt_get_struct_item_int(tgt->value, it.iter);
-                    tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
+                    tgt->hash = fasthash(tgt->hash, &v.c, sizeof(int64_t));
                 }
                 break;
 
@@ -1150,7 +1146,7 @@ testrt_target_hash(testrt_target_t *tgt)
                     } v;
 
                     v.d = mrklkit_rt_get_struct_item_float(tgt->value, it.iter);
-                    tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
+                    tgt->hash = fasthash(tgt->hash, &v.c, sizeof(double));
                 }
                 break;
 
@@ -1162,7 +1158,7 @@ testrt_target_hash(testrt_target_t *tgt)
                     } v;
 
                     v.i = mrklkit_rt_get_struct_item_bool(tgt->value, it.iter);
-                    tgt->hash = fasthash(tgt->hash, &v.c, (*ty)->rtsz);
+                    tgt->hash = fasthash(tgt->hash, &v.c, sizeof(int64_t));
                 }
                 break;
 

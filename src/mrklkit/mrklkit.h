@@ -15,7 +15,6 @@
 extern "C" {
 #endif
 
-struct _lkit_expr_t;
 typedef struct _mrklkit_ctx {
     array_t *modules;
     fparser_datum_t *datum_root;

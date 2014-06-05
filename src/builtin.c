@@ -17,8 +17,6 @@
 #include <mrklkit/builtin.h>
 #include <mrklkit/util.h>
 
-#include "builtin_private.h"
-
 #include "diag.h"
 
 /*
@@ -707,81 +705,3 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
     }
     return 0;
 }
-
-
-static int
-_acb(lkit_gitem_t **gitem, void *udata)
-{
-    struct {
-        int (*cb)(mrklkit_ctx_t *, lkit_expr_t *, lkit_expr_t *);
-        mrklkit_ctx_t *mctx;
-        lkit_expr_t *ectx;
-    } *params = udata;
-    return params->cb(params->mctx, params->ectx, (*gitem)->expr);
-}
-
-
-int
-builtin_sym_compile(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, LLVMModuleRef module)
-{
-    struct {
-        int (*cb)(mrklkit_ctx_t *, lkit_expr_t *, lkit_expr_t *);
-        mrklkit_ctx_t *mctx;
-        lkit_expr_t *ectx;
-    } params = { builtin_remove_undef, mctx, ectx };
-    struct {
-        LLVMModuleRef module;
-        lkit_expr_t *ectx;
-    } params1 = { module, ectx };
-
-    if (array_traverse(&ectx->glist,
-                       (array_traverser_t)_acb,
-                       &params) != 0) {
-        TRRET(BUILTIN_SYM_COMPILE + 1);
-    }
-
-    if (array_traverse(&ectx->glist,
-                       (array_traverser_t)builtin_compile,
-                       &params1) != 0) {
-        TRRET(BUILTIN_SYM_COMPILE + 2);
-    }
-    return 0;
-}
-
-
-int
-builtin_call_eager_initializers(lkit_expr_t *ectx,
-                                LLVMModuleRef module,
-                                LLVMBuilderRef builder)
-{
-    struct {
-        LLVMModuleRef module;
-        LLVMBuilderRef builder;
-    } params = {module, builder};
-    if (array_traverse(&ectx->glist,
-                       (array_traverser_t)builtingen_call_eager_initializer,
-                       &params) != 0) {
-        TRRET(BUILTIN_SYM_COMPILE + 3);
-    }
-    return 0;
-}
-
-
-
-int
-builtin_sym_compile_post(lkit_expr_t *ectx,
-                         LLVMModuleRef module,
-                         LLVMBuilderRef builder)
-{
-    struct {
-        LLVMModuleRef module;
-        LLVMBuilderRef builder;
-    } params = {module, builder};
-    if (array_traverse(&ectx->glist,
-                       (array_traverser_t)builtin_call_lazy_finalizer,
-                       &params) != 0) {
-        TRRET(BUILTIN_SYM_COMPILE_POST + 1);
-    }
-    return 0;
-}
-

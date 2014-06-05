@@ -135,7 +135,6 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
                 }
 
                 bfields[it.iter] = (*field)->backend;
-                ts->base.rtsz += (*field)->rtsz;
             }
 
             //ts->deref_backend = LLVMStructTypeInContext(lctx,
@@ -526,7 +525,6 @@ ltype_link_methods(lkit_type_t *ty,
                 }
                 bytes_decref(&nnm);
             }
-
         }
         break;
 

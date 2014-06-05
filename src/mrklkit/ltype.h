@@ -79,8 +79,6 @@ typedef struct _lkit_type {
     /* weak ref */
     char *name;
     uint64_t hash;
-    /* run time size, or 0 if not known at compile time */
-    size_t rtsz;
     LLVMTypeRef backend;
     int error:1;
     lkit_type_dtor_t dtor;
