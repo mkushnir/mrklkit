@@ -5,7 +5,7 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/fasthash.h>
 #include <mrkcommon/util.h>
@@ -99,14 +99,6 @@ lkit_type_destroy(lkit_type_t **ty)
         free(*ty);
         *ty = NULL;
     }
-    return 0;
-}
-
-
-int
-lkit_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
-{
-    lkit_type_destroy(&key);
     return 0;
 }
 
@@ -342,7 +334,7 @@ lkit_type_new(lkit_tag_t tag)
 
 
 lkit_type_t *
-lkit_type_get(mrklkit_ctx_t *mctx, lkit_tag_t tag)
+lkit_type_get(mrklkit_ctx_t *mctx, int tag)
 {
     lkit_type_t *ty;
 
@@ -387,6 +379,7 @@ lkit_type_finalize(mrklkit_ctx_t *mctx, lkit_type_t *ty)
             ty = pty;
         }
     }
+
     return ty;
 }
 
@@ -890,7 +883,7 @@ lkit_type_cmp(lkit_type_t *a, lkit_type_t *b)
     diff = (int)(ha - hb);
 
     if (diff == 0) {
-        return type_cmp(&a, &b);
+        diff = type_cmp(&a, &b);
     }
     return diff;
 }
@@ -1162,6 +1155,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                 pty = probe->value;
                 ty = pty;
 
+            } else {
             }
             /*
              * either already registered type, or NULL, skip type
@@ -1346,7 +1340,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
 
             } else {
                 /* unknown */
-                TR(LKIT_TYPE_PARSE + 15);
+                //TR(LKIT_TYPE_PARSE + 15);
                 goto err;
             }
         }

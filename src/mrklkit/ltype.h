@@ -35,7 +35,11 @@ typedef enum _lkit_tag {
     LKIT_DICT,
     LKIT_STRUCT,
     LKIT_FUNC,
-    LKIT_USER,
+    LKIT_USER = 0x80000000,
+    /*
+     * for all user-defined types:
+     *  assert(tag & LKIT_USER)
+     */
 } lkit_tag_t;
 
 #define LKIT_TAG_STR(tag) ( \
@@ -71,7 +75,7 @@ struct _lkit_type;
 
 typedef void (*lkit_type_dtor_t)(void **);
 typedef struct _lkit_type {
-    lkit_tag_t tag;
+    int tag;
     /* weak ref */
     char *name;
     uint64_t hash;
@@ -167,7 +171,6 @@ void lkit_type_dump(lkit_type_t *);
 void lkit_type_str(lkit_type_t *, bytestream_t *);
 lkit_type_t * lkit_type_new(lkit_tag_t);
 int lkit_type_destroy(lkit_type_t **);
-int lkit_type_fini_dict(lkit_type_t *, lkit_type_t *);
 int lkit_parse_typedef(mrklkit_ctx_t *,
                        array_t *,
                        array_iter_t *);
@@ -179,7 +182,7 @@ void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *);
 lkit_type_t *lkit_typedef_get(mrklkit_ctx_t *, bytes_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);
-lkit_type_t *lkit_type_get(mrklkit_ctx_t *, lkit_tag_t);
+lkit_type_t *lkit_type_get(mrklkit_ctx_t *, int);
 lkit_type_t *lkit_array_get_element_type(lkit_array_t *);
 lkit_type_t *lkit_dict_get_element_type(lkit_dict_t *);
 lkit_type_t *lkit_struct_get_field_type(lkit_struct_t *, bytes_t *);

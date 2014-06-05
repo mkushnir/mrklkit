@@ -2,7 +2,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -1578,14 +1578,14 @@ builtin_compile_expr(lkit_expr_t *ectx,
                         FAIL("malloc");
                     }
 
-                    LLVMDumpValue(ref);
+                    //LLVMDumpValue(ref);
                     for (rand = array_first(&expr->subs, &it);
                          rand != NULL;
                          rand = array_next(&expr->subs, &it)) {
                         args[it.iter] =
                             builtin_compile_expr(ectx, module, builder, *rand);
                         assert(args[it.iter] != NULL);
-                        LLVMDumpValue(args[it.iter]);
+                        //LLVMDumpValue(args[it.iter]);
                     }
 
 

@@ -78,7 +78,7 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
 static int
 _cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
 {
-    if ((int)value->tag == (LKIT_USER + 100)) {
+    if (value->tag == (int)(LKIT_USER + 100)) {
         value->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
                                                               NULL,
                                                               0,

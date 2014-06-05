@@ -218,8 +218,10 @@ end_struct:
         break;
 
     default:
-        //lkit_type_dump(ty);
-        TRRET(LTYPE_COMPILE + 5);
+        /*
+         * tell llvm that all user-defined types are just opaque void *
+         */
+        ty->backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
     }
 
     return 0;

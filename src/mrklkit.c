@@ -355,11 +355,9 @@ mrklkit_call_void(mrklkit_ctx_t *ctx, const char *name)
 
 
 static int
-user_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
+lkit_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
 {
-    if (key != NULL && key->tag > LKIT_USER) {
-        lkit_type_destroy(&key);
-    }
+    lkit_type_destroy(&key);
     return 0;
 }
 
@@ -379,7 +377,7 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
     dict_init(&ctx->types, 101,
              (dict_hashfn_t)lkit_type_hash,
              (dict_item_comparator_t)lkit_type_cmp,
-             (dict_item_finalizer_t)user_type_fini_dict);
+             (dict_item_finalizer_t)lkit_type_fini_dict);
 
     /* builtin types */
 

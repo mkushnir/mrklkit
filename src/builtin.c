@@ -5,7 +5,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
