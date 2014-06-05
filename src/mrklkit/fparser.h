@@ -33,7 +33,7 @@ extern "C" {
 #define LEX_QSTR     (LEX_QSTRIN | LEX_QSTRMID)
 #define LEX_COM      (LEX_COMIN | LEX_COMMID)
 
-#define LEX_FOUNDVAL   (LEX_SEQ | LEX_TOKIN | LEX_TOKOUT | LEX_QSTRIN | LEX_QSTROUT)
+#define LEX_FOUNDVAL   (LEX_SEQ | LEX_TOKOUT | LEX_QSTROUT)
 
 #define LEXSTR(s) ( \
     (s) == LEX_SPACE ? "SPACE" : \

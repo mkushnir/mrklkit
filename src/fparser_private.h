@@ -1,6 +1,9 @@
 #ifndef FPARSER_PRIVATE_H
 #define FPARSER_PRIVATE_H
 
+#include <mrklkit/fparser.h>
+#include <mrkcommon/bytestream.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -8,7 +11,8 @@ extern "C" {
 struct _fparser_datum;
 
 struct tokenizer_ctx {
-    const char *tokstart;
+    fparser_tag_t state;
+    off_t tokstart;
     int indent;
     struct _fparser_datum *form;
 };
@@ -17,5 +21,4 @@ struct tokenizer_ctx {
 }
 #endif
 
-#include <mrklkit/fparser.h>
 #endif

@@ -12,9 +12,7 @@
 #include "diag.h"
 #include "fparser_private.h"
 
-#define BLOCKSZ (4096 * 8)
-//#define BLOCKSZ (1024)
-#define NEEDMORE (-1)
+#define BLOCKSZ (1024 * 1024)
 
 static int fparser_datum_init(fparser_datum_t *, fparser_tag_t);
 static int fparser_datum_fini(fparser_datum_t *);
@@ -44,6 +42,7 @@ unesc(char *dst, const char *src, ssize_t sz)
     *(dst + j) = '\0';
     return res;
 }
+
 
 void
 fparser_escape(char *dst,
@@ -75,14 +74,8 @@ compile_value(struct tokenizer_ctx *ctx,
 {
     fparser_datum_t *dat = NULL;
 
-    if (state == LEX_TOKIN) {
-        ctx->tokstart = SPDATA(bs);
-
-    } else if (state == LEX_QSTRIN) {
-        ctx->tokstart = SPDATA(bs) + 1;
-
-    } else if (state & (LEX_QSTROUT)) {
-        ssize_t sz = SPDATA(bs) - ctx->tokstart;
+    if (state & (LEX_QSTROUT)) {
+        ssize_t sz = SPOS(bs) - ctx->tokstart;
         bytes_t *value;
         ssize_t escaped;
 
@@ -95,22 +88,23 @@ compile_value(struct tokenizer_ctx *ctx,
         value->hash = 0;
         value->sz = (size_t)sz + 1;
 
-        escaped = unesc((char *)value->data, ctx->tokstart, sz);
+        escaped = unesc((char *)value->data, SDATA(bs, ctx->tokstart), sz);
         value->sz -= escaped;
 
         if (fparser_datum_form_add(ctx->form, dat) != 0) {
             TRRET(COMPILE_VALUE + 1);
         }
 
-        if (cb != NULL && cb(ctx->tokstart, dat, udata) != 0) {
+        if (cb != NULL && cb(SDATA(bs, ctx->tokstart), dat, udata) != 0) {
             TRRET(COMPILE_VALUE + 2);
         }
 
         //LTRACE(ctx->indent, " '%s'", dat->body);
 
     } else if (state & (LEX_TOKOUT)) {
-        char ch = ctx->tokstart[0];
-        ssize_t sz = SPDATA(bs) - ctx->tokstart;
+        char ch = SNCHR(bs, ctx->tokstart);
+        ssize_t sz = SPOS(bs) - ctx->tokstart;
+        char *s = SDATA(bs, ctx->tokstart);
 #define _NUMKIND_INT 1
 #define _NUMKIND_FLOAT 2
 #define _NUMKIND_BOOL 3
@@ -125,15 +119,15 @@ compile_value(struct tokenizer_ctx *ctx,
                 /* try number */
                 numkind = _NUMKIND_INT;
                 for (i = 1; i < sz; ++i) {
-                    if (ctx->tokstart[i] == '.') {
+                    if (s[i] == '.') {
                         numkind = _NUMKIND_FLOAT;
-                    } else if (ctx->tokstart[i] < '0' || ctx->tokstart[i] > '9') {
+                    } else if (s[i] < '0' || s[i] > '9') {
                         numkind = 0;
                         break;
                     }
                 }
             } else if (sz == 2 && ch == '#') {
-                ch = ctx->tokstart[1];
+                ch = SNCHR(bs, ctx->tokstart + 1);
                 if (ch == 't') {
                     char *value;
 
@@ -170,7 +164,7 @@ compile_value(struct tokenizer_ctx *ctx,
             }
             fparser_datum_init(dat, FPARSER_INT);
             value = (int64_t *)(dat->body);
-            *value = (int64_t)strtoll((const char *)ctx->tokstart, NULL, 10);
+            *value = (int64_t)strtoll((const char *)SDATA(bs, ctx->tokstart), NULL, 10);
 
         } else if (numkind == _NUMKIND_FLOAT) {
             double *value;
@@ -180,7 +174,7 @@ compile_value(struct tokenizer_ctx *ctx,
             }
             fparser_datum_init(dat, FPARSER_FLOAT);
             value = (double *)(dat->body);
-            *value = strtod((const char *)ctx->tokstart, NULL);
+            *value = strtod((const char *)SDATA(bs, ctx->tokstart), NULL);
 
         } else if (numkind == _NUMKIND_BOOL) {
             /* already done */
@@ -198,7 +192,7 @@ compile_value(struct tokenizer_ctx *ctx,
             value->hash = 0;
             value->sz = (size_t)sz + 1;
 
-            memcpy(value->data, ctx->tokstart, sz);
+            memcpy(value->data, SDATA(bs, ctx->tokstart), sz);
             *(value->data + sz) = '\0';
         }
 
@@ -206,7 +200,7 @@ compile_value(struct tokenizer_ctx *ctx,
             TRRET(COMPILE_VALUE + 3);
         }
 
-        if (cb != NULL && cb(ctx->tokstart, dat, udata) != 0) {
+        if (cb != NULL && cb(SDATA(bs, ctx->tokstart), dat, udata) != 0) {
             TRRET(COMPILE_VALUE + 4);
         }
 
@@ -228,7 +222,7 @@ compile_value(struct tokenizer_ctx *ctx,
         ctx->form = dat;
 
         ctx->form->seqout = 0;
-        if (cb != NULL && cb(ctx->tokstart, dat, udata) != 0) {
+        if (cb != NULL && cb(SDATA(bs, ctx->tokstart), dat, udata) != 0) {
             TRRET(COMPILE_VALUE + 6);
         }
 
@@ -245,7 +239,7 @@ compile_value(struct tokenizer_ctx *ctx,
             assert(0);
         }
         ctx->form->seqout = 1;
-        if (cb != NULL && cb(ctx->tokstart, ctx->form, udata) != 0) {
+        if (cb != NULL && cb(SDATA(bs, ctx->tokstart), ctx->form, udata) != 0) {
             TRRET(COMPILE_VALUE + 8);
         }
         ctx->form = ctx->form->parent;
@@ -254,6 +248,7 @@ compile_value(struct tokenizer_ctx *ctx,
 
     return 0;
 }
+
 
 static int
 tokenize(struct tokenizer_ctx *ctx,
@@ -264,51 +259,50 @@ tokenize(struct tokenizer_ctx *ctx,
          void *udata)
 {
     char ch;
-    int state = LEX_SPACE;
 
     //D8(buf, buflen);
 
     for (; SPOS(bs) < SEOD(bs); SINCR(bs)) {
         ch = SPCHR(bs);
         if (ch == '(') {
-            if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
-                state = LEX_SEQIN;
+            if (ctx->state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
+                ctx->state = LEX_SEQIN;
 
-            } else if (state & LEX_TOK) {
-                state = LEX_TOKOUT;
+            } else if (ctx->state & LEX_TOK) {
+                ctx->state = LEX_TOKOUT;
                 /* extra call back */
-                if (compile_value(ctx, bs, state, cb, udata) != 0) {
+                if (compile_value(ctx, bs, ctx->state, cb, udata) != 0) {
                     TRRET(TOKENIZE + 1);
                 }
-                state = LEX_SEQIN;
+                ctx->state = LEX_SEQIN;
 
-            } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-                state = LEX_QSTRMID;
+            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+                ctx->state = LEX_QSTRMID;
 
-            } else if (state & LEX_COMIN) {
-                state = LEX_COMMID;
+            } else if (ctx->state & LEX_COMIN) {
+                ctx->state = LEX_COMMID;
 
             } else {
                 /* noop */
             }
 
         } else if (ch == ')') {
-            if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
-                state = LEX_SEQOUT;
+            if (ctx->state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
+                ctx->state = LEX_SEQOUT;
 
-            } else if (state & LEX_TOK) {
-                state = LEX_TOKOUT;
+            } else if (ctx->state & LEX_TOK) {
+                ctx->state = LEX_TOKOUT;
                 /* extra call back */
-                if (compile_value(ctx, bs, state, cb, udata) != 0) {
+                if (compile_value(ctx, bs, ctx->state, cb, udata) != 0) {
                     TRRET(TOKENIZE + 2);
                 }
-                state = LEX_SEQOUT;
+                ctx->state = LEX_SEQOUT;
 
-            } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-                state = LEX_QSTRMID;
+            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+                ctx->state = LEX_QSTRMID;
 
-            } else if (state & LEX_COMIN) {
-                state = LEX_COMMID;
+            } else if (ctx->state & LEX_COMIN) {
+                ctx->state = LEX_COMMID;
 
             } else {
                 /* noop */
@@ -316,17 +310,17 @@ tokenize(struct tokenizer_ctx *ctx,
 
         } else if (ch == ' ' || ch == '\t') {
 
-            if (state & (LEX_SEQ | LEX_OUT)) {
-                state = LEX_SPACE;
+            if (ctx->state & (LEX_SEQ | LEX_OUT)) {
+                ctx->state = LEX_SPACE;
 
-            } else if (state & LEX_TOK) {
-                state = LEX_TOKOUT;
+            } else if (ctx->state & LEX_TOK) {
+                ctx->state = LEX_TOKOUT;
 
-            } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-                state = LEX_QSTRMID;
+            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+                ctx->state = LEX_QSTRMID;
 
-            } else if (state & LEX_COMIN) {
-                state = LEX_COMMID;
+            } else if (ctx->state & LEX_COMIN) {
+                ctx->state = LEX_COMMID;
 
             } else {
                 /* noop */
@@ -334,17 +328,17 @@ tokenize(struct tokenizer_ctx *ctx,
 
         } else if (ch == '\r' || ch == '\n') {
 
-            if (state & (LEX_SEQ | LEX_OUT)) {
-                state = LEX_SPACE;
+            if (ctx->state & (LEX_SEQ | LEX_OUT)) {
+                ctx->state = LEX_SPACE;
 
-            } else if (state & LEX_TOK) {
-                state = LEX_TOKOUT;
+            } else if (ctx->state & LEX_TOK) {
+                ctx->state = LEX_TOKOUT;
 
-            } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-                state = LEX_QSTRMID;
+            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+                ctx->state = LEX_QSTRMID;
 
-            } else if (state & LEX_COM) {
-                state = LEX_COMOUT;
+            } else if (ctx->state & LEX_COM) {
+                ctx->state = LEX_COMOUT;
 
             } else {
                 /* noop */
@@ -352,28 +346,29 @@ tokenize(struct tokenizer_ctx *ctx,
 
         } else if (ch == '"') {
 
-            if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
-                state = LEX_QSTRIN;
+            if (ctx->state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
+                ctx->state = LEX_QSTRIN;
+                ctx->tokstart = SPOS(bs) + 1;
 
-            } else if (state & LEX_QSTR) {
-                state = LEX_QSTROUT;
+            } else if (ctx->state & LEX_QSTR) {
+                ctx->state = LEX_QSTROUT;
 
-            } else if (state & LEX_QSTRESC) {
-                state = LEX_QSTRMID;
+            } else if (ctx->state & LEX_QSTRESC) {
+                ctx->state = LEX_QSTRMID;
 
-            } else if (state & LEX_COMIN) {
-                state = LEX_COMMID;
+            } else if (ctx->state & LEX_COMIN) {
+                ctx->state = LEX_COMMID;
 
             } else {
                 /* noop */
             }
 
         } else if (ch == '\\') {
-            if (state & LEX_QSTR) {
-                state = LEX_QSTRESC;
+            if (ctx->state & LEX_QSTR) {
+                ctx->state = LEX_QSTRESC;
 
-            } else if (state & LEX_QSTRESC) {
-                state = LEX_QSTRMID;
+            } else if (ctx->state & LEX_QSTRESC) {
+                ctx->state = LEX_QSTRMID;
 
             } else {
                 /* noop */
@@ -381,53 +376,106 @@ tokenize(struct tokenizer_ctx *ctx,
 
         } else if (ch == ';') {
 
-            if (state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
-                state = LEX_COMIN;
+            if (ctx->state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
+                ctx->state = LEX_COMIN;
 
-            } else if (state & LEX_TOK) {
-                state = LEX_TOKOUT;
+            } else if (ctx->state & LEX_TOK) {
+                ctx->state = LEX_TOKOUT;
                 /* extra call back */
-                if (compile_value(ctx, bs, state, cb, udata) != 0) {
+                if (compile_value(ctx, bs, ctx->state, cb, udata) != 0) {
                     TRRET(TOKENIZE + 3);
                 }
-                state = LEX_COMIN;
+                ctx->state = LEX_COMIN;
 
-            } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-                state = LEX_QSTRMID;
+            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+                ctx->state = LEX_QSTRMID;
 
-            } else if (state & LEX_COMIN) {
-                state = LEX_COMMID;
+            } else if (ctx->state & LEX_COMIN) {
+                ctx->state = LEX_COMMID;
 
             } else {
                 /* noop */
             }
 
         } else {
-            if (state & (LEX_SEQ | LEX_SPACE | LEX_OUT)) {
-                state = LEX_TOKIN;
+            if (ctx->state & (LEX_SEQ | LEX_SPACE | LEX_OUT)) {
+                ctx->state = LEX_TOKIN;
+                ctx->tokstart = SPOS(bs);
 
-            } else if (state & LEX_TOKIN) {
-                state = LEX_TOKMID;
+            } else if (ctx->state & LEX_TOKIN) {
+                ctx->state = LEX_TOKMID;
 
-            } else if (state & (LEX_QSTRIN | LEX_QSTRESC)) {
-                state = LEX_QSTRMID;
+            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+                ctx->state = LEX_QSTRMID;
 
-            } else if (state & LEX_COMIN) {
-                state = LEX_COMMID;
+            } else if (ctx->state & LEX_COMIN) {
+                ctx->state = LEX_COMMID;
 
             } else {
                 /* noop */
             }
         }
 
-        if (state & LEX_FOUNDVAL) {
-            if (compile_value(ctx, bs, state, cb, udata) != 0) {
+        if (ctx->state & LEX_FOUNDVAL) {
+            if (compile_value(ctx, bs, ctx->state, cb, udata) != 0) {
                 TRRET(TOKENIZE + 4);
             }
         }
     }
 
     return 0;
+}
+
+
+fparser_datum_t *
+fparser_parse(int fd,
+              int (*cb)(const char *,
+                        fparser_datum_t *,
+                        void *),
+              void *udata)
+{
+    int res;
+    ssize_t nread;
+    bytestream_t bs;
+    struct tokenizer_ctx ctx;
+    fparser_datum_t *root = NULL;
+
+    ctx.indent = 0;
+    res = 0;
+
+    if ((root = malloc(sizeof(fparser_datum_t) + sizeof(array_t))) == NULL) {
+        TRRETNULL(FPARSER_PARSE + 1);
+    }
+
+    if (fparser_datum_init(root, FPARSER_SEQ) != 0) {
+        TRRETNULL(FPARSER_PARSE + 2);
+    }
+
+    bytestream_init(&bs, BLOCKSZ);
+
+    ctx.form = root;
+    ctx.tokstart = SPOS(&bs);
+    ctx.state = LEX_SPACE;
+
+    while (SNEEDMORE(&bs)) {
+        //if (SPOS(&bs) > 0) {
+        //    (void)bytestream_recycle(&bs, 0, SDPOS(&bs, ctx.tokstart));
+        //}
+        nread = bytestream_read_more(&bs, fd, BLOCKSZ);
+        if (nread <= 0) {
+            break;
+        }
+
+        //D64(SPDATA(&bs), SEOD(&bs) - SPOS(&bs));
+        //if (ctx.state & (LEX_TOK | LEX_QSTR)) {
+        //    SPOS(&bs) = SDPOS(&bs, ctx.tokstart);
+        //}
+
+        (void)tokenize(&ctx, &bs, cb, udata);
+    }
+
+    bytestream_fini(&bs);
+    return root;
 }
 
 
@@ -454,6 +502,7 @@ fparser_datum_fini(fparser_datum_t *dat)
     }
     return 0;
 }
+
 
 int
 fparser_datum_dump(fparser_datum_t **dat, void *udata)
@@ -494,11 +543,13 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
     return 0;
 }
 
+
 struct _fparser_datum_dump_info {
     array_t *ar;
     int level;
     bytestream_t *bs;
 };
+
 
 static int
 checkseq(fparser_datum_t **dat, void *udata)
@@ -507,6 +558,7 @@ checkseq(fparser_datum_t **dat, void *udata)
     *pi = (*dat)->tag == FPARSER_SEQ;
     return *pi;
 }
+
 
 static int
 datum_dump_bytestream(fparser_datum_t **dat, void *udata)
@@ -637,6 +689,7 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
     return 0;
 }
 
+
 void
 fparser_datum_dump_bytestream(fparser_datum_t *dat, bytestream_t *bs)
 {
@@ -649,6 +702,7 @@ fparser_datum_dump_bytestream(fparser_datum_t *dat, bytestream_t *bs)
     //bytestream_cat(bs, 1, "\n");
 }
 
+
 void
 fparser_datum_dump_formatted(fparser_datum_t *dat)
 {
@@ -660,6 +714,7 @@ fparser_datum_dump_formatted(fparser_datum_t *dat)
     bytestream_fini(&bs);
 }
 
+
 void
 fparser_datum_destroy(fparser_datum_t **dat)
 {
@@ -669,6 +724,7 @@ fparser_datum_destroy(fparser_datum_t **dat)
         *dat = NULL;
     }
 }
+
 
 static int
 fparser_datum_init(fparser_datum_t *dat, fparser_tag_t tag)
@@ -692,6 +748,7 @@ fparser_datum_init(fparser_datum_t *dat, fparser_tag_t tag)
     return 0;
 }
 
+
 static int
 fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
 {
@@ -708,49 +765,6 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
     *entry = dat;
     dat->parent = parent;
     return 0;
-}
-
-fparser_datum_t *
-fparser_parse(int fd,
-              int (*cb)(const char *,
-                        fparser_datum_t *,
-                        void *),
-              void *udata)
-{
-    int res;
-    ssize_t nread;
-    bytestream_t bs;
-    struct tokenizer_ctx ctx;
-    fparser_datum_t *root = NULL;
-
-    ctx.indent = 0;
-    res = 0;
-
-    if ((root = malloc(sizeof(fparser_datum_t) + sizeof(array_t))) == NULL) {
-        TRRETNULL(FPARSER_PARSE + 1);
-    }
-
-    if (fparser_datum_init(root, FPARSER_SEQ) != 0) {
-        TRRETNULL(FPARSER_PARSE + 2);
-    }
-
-    bytestream_init(&bs, BLOCKSZ);
-
-    ctx.form = root;
-
-    while (SNEEDMORE(&bs)) {
-        if (SPOS(&bs) > 0) {
-            (void)bytestream_recycle(&bs, 0, SDPOS(&bs, ctx.tokstart));
-        }
-        nread = bytestream_read_more(&bs, fd, BLOCKSZ);
-        if (nread <= 0) {
-            break;
-        }
-
-        (void)tokenize(&ctx, &bs, cb, udata);
-    }
-
-    return root;
 }
 /*
  * vim:softtabstop=4
