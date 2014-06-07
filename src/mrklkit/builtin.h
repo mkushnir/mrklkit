@@ -32,10 +32,7 @@ int lkit_expr_ctx_compile(mrklkit_ctx_t *,
                           lkit_expr_t *,
                           LLVMModuleRef);
 
-int lkit_expr_ctx_call_eager_initializers(lkit_expr_t *,
-                                          LLVMModuleRef,
-                                          LLVMBuilderRef);
-
+int lkit_expr_ctx_compile_pre(lkit_expr_t *, LLVMModuleRef, LLVMBuilderRef);
 int lkit_expr_ctx_compile_post(lkit_expr_t *, LLVMModuleRef, LLVMBuilderRef);
 
 #ifdef __cplusplus

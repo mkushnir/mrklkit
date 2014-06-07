@@ -220,7 +220,11 @@ end_struct:
         /*
          * tell llvm that all user-defined types are just opaque void *
          */
-        ty->backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+        if (ty->compile != NULL) {
+            return ty->compile(ty, lctx);
+        } else {
+            ty->backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+        }
     }
 
     return 0;

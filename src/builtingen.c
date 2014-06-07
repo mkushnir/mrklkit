@@ -1806,12 +1806,13 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
 }
 
 
-int
-call_lazy_finalizer(lkit_gitem_t **gitem, void *udata)
+static int
+call_finalizer(lkit_gitem_t **gitem, void *udata)
 {
     bytes_t *name = (*gitem)->name;
     lkit_expr_t *expr = (*gitem)->expr;
     struct {
+        lkit_expr_t *ectx;
         LLVMModuleRef module;
         LLVMBuilderRef builder;
     } *params = udata;
@@ -1829,13 +1830,22 @@ call_lazy_finalizer(lkit_gitem_t **gitem, void *udata)
                  (char *)name->data);
 
         if ((v = LLVMGetNamedGlobal(params->module, buf)) == NULL) {
-            FAIL("call_lazy_finalizer");
+            FAIL("call_finalizer");
         }
 
         LLVMBuildStore(params->builder,
                        LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0),
                        v);
     }
+
+    if (expr->type->compile_cleanup != NULL) {
+        (void)expr->type->compile_cleanup(params->ectx,
+                                          params->module,
+                                          params->builder,
+                                          expr,
+                                          name);
+    }
+
     return 0;
 }
 
@@ -1936,9 +1946,9 @@ lkit_expr_ctx_compile(mrklkit_ctx_t *mctx,
 
 
 int
-lkit_expr_ctx_call_eager_initializers(lkit_expr_t *ectx,
-                                      LLVMModuleRef module,
-                                      LLVMBuilderRef builder)
+lkit_expr_ctx_compile_pre(lkit_expr_t *ectx,
+                          LLVMModuleRef module,
+                          LLVMBuilderRef builder)
 {
     struct {
         LLVMModuleRef module;
@@ -1960,11 +1970,12 @@ lkit_expr_ctx_compile_post(lkit_expr_t *ectx,
                            LLVMBuilderRef builder)
 {
     struct {
+        lkit_expr_t *ectx;
         LLVMModuleRef module;
         LLVMBuilderRef builder;
-    } params = {module, builder};
+    } params = {ectx, module, builder};
     if (array_traverse(&ectx->glist,
-                       (array_traverser_t)call_lazy_finalizer,
+                       (array_traverser_t)call_finalizer,
                        &params) != 0) {
         TRRET(LKIT_EXPR_CTX_COMPILE_POST + 1);
     }

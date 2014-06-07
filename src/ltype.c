@@ -116,7 +116,6 @@ lkit_type_new(lkit_tag_t tag)
         ty->tag = tag;
         ty->name = "undef";
         ty->error = 0;
-        ty->dtor = NULL;
         break;
 
     case LKIT_VOID:
@@ -129,7 +128,6 @@ lkit_type_new(lkit_tag_t tag)
             tv->base.tag = tag;
             tv->base.name = "void";
             LTYPE_ERROR(tv) = 0;
-            tv->base.dtor = NULL;
             ty = (lkit_type_t *)tv;
         }
         break;
@@ -148,7 +146,6 @@ lkit_type_new(lkit_tag_t tag)
                             (tag == LKIT_INT_MAX) ? "intM" :
                             "int";
             LTYPE_ERROR(ti) = 0;
-            ti->base.dtor = NULL;
             ty = (lkit_type_t *)ti;
         }
         break;
@@ -163,7 +160,6 @@ lkit_type_new(lkit_tag_t tag)
             tc->base.tag = tag;
             tc->base.name = "str";
             LTYPE_ERROR(tc) = 0;
-            tc->base.dtor = (lkit_type_dtor_t)mrklkit_bytes_decref;
             tc->deref_backend = NULL;
             ty = (lkit_type_t *)tc;
         }
@@ -183,7 +179,6 @@ lkit_type_new(lkit_tag_t tag)
                             (tag == LKIT_FLOAT_MAX) ? "floatM" :
                             "float";
             LTYPE_ERROR(tg) = 0;
-            tg->base.dtor = NULL;
             ty = (lkit_type_t *)tg;
         }
         break;
@@ -198,7 +193,6 @@ lkit_type_new(lkit_tag_t tag)
             tb->base.tag = tag;
             tb->base.name = "bool";
             LTYPE_ERROR(tb) = 0;
-            tb->base.dtor = NULL;
             ty = (lkit_type_t *)tb;
         }
         break;
@@ -213,7 +207,6 @@ lkit_type_new(lkit_tag_t tag)
             tn->base.tag = tag;
             tn->base.name = "any";
             LTYPE_ERROR(tn) = 0;
-            tn->base.dtor = NULL;
             ty = (lkit_type_t *)tn;
         }
         break;
@@ -228,7 +221,6 @@ lkit_type_new(lkit_tag_t tag)
             tv->base.tag = tag;
             tv->base.name = "...";
             LTYPE_ERROR(tv) = 0;
-            tv->base.dtor = NULL;
             ty = (lkit_type_t *)tv;
         }
         break;
@@ -247,7 +239,6 @@ lkit_type_new(lkit_tag_t tag)
             ta->parser = LKIT_PARSER_NONE;
             ta->delim = NULL;
             array_init(&ta->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
-            ta->base.dtor = (lkit_type_dtor_t)mrklkit_rt_array_destroy;
             ty = (lkit_type_t *)ta;
         }
         break;
@@ -265,7 +256,6 @@ lkit_type_new(lkit_tag_t tag)
             td->fini = NULL;
             td->kvdelim = NULL;
             td->fdelim = NULL;
-            td->base.dtor = (lkit_type_dtor_t)mrklkit_rt_dict_destroy;
             array_init(&td->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             ty = (lkit_type_t *)td;
         }
@@ -285,7 +275,6 @@ lkit_type_new(lkit_tag_t tag)
             ts->fini = NULL;
             ts->parser = LKIT_PARSER_NONE;
             ts->delim = NULL;
-            ts->base.dtor = (lkit_type_dtor_t)mrklkit_rt_struct_destroy;
             array_init(&ts->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             array_init(&ts->names, sizeof(bytes_t *), 0, NULL, NULL);
             ts->deref_backend = NULL;
@@ -302,7 +291,6 @@ lkit_type_new(lkit_tag_t tag)
             }
             tf->base.tag = tag;
             tf->base.name = "func";
-            tf->base.dtor = NULL;
             LTYPE_ERROR(tf) = 0;
             array_init(&tf->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             ty = (lkit_type_t *)tf;
@@ -316,6 +304,8 @@ lkit_type_new(lkit_tag_t tag)
 
     ty->hash = 0;
     ty->backend = NULL;
+    ty->compile = NULL;
+    ty->compile_cleanup = NULL;
 
     return ty;
 }
