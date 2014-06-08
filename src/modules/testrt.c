@@ -1465,6 +1465,7 @@ mrklkit_module_t testrt_module = {
     (mrklkit_expr_parser_t)_parse_expr,
     NULL,
     (mrklkit_type_compiler_t)_compile_type,
+    NULL,
     (mrklkit_module_compiler_t)_compile,
     (mrklkit_module_linker_t)_link,
 };
