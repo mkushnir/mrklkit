@@ -23,7 +23,8 @@ int builtin_remove_undef(mrklkit_ctx_t *,
                          lkit_expr_t *,
                          lkit_expr_t *);
 
-LLVMValueRef lkit_compile_expr(lkit_expr_t *,
+LLVMValueRef lkit_compile_expr(mrklkit_ctx_t *,
+                               lkit_expr_t *,
                                LLVMModuleRef,
                                LLVMBuilderRef,
                                lkit_expr_t *);

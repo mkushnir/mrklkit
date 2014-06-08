@@ -2,7 +2,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -50,6 +50,7 @@ static char *fnames[] = {
     "split",
     "dp-info",
 };
+
 UNUSED static int
 check_function(bytes_t *name)
 {
@@ -69,7 +70,8 @@ check_function(bytes_t *name)
  * LLVM IR emitter.
  */
 static LLVMValueRef
-compile_if(lkit_expr_t *ectx,
+compile_if(mrklkit_ctx_t *mctx,
+           lkit_expr_t *ectx,
            LLVMModuleRef module,
            LLVMBuilderRef builder,
            lkit_expr_t *cexpr,
@@ -98,7 +100,7 @@ compile_if(lkit_expr_t *ectx,
     fblock = LLVMInsertBasicBlockInContext(lctx, endblock, NEWVAR("C.false"));
 
     /**/
-    cond = lkit_compile_expr(ectx, module, builder, cexpr);
+    cond = lkit_compile_expr(mctx, ectx, module, builder, cexpr);
     assert(cond != NULL);
     LLVMBuildCondBr(builder, cond, tblock, fblock);
 
@@ -106,7 +108,7 @@ compile_if(lkit_expr_t *ectx,
     LLVMPositionBuilderAtEnd(builder, tblock);
 
     if (texpr != NULL) {
-        texp = lkit_compile_expr(ectx, module, builder, texpr);
+        texp = lkit_compile_expr(mctx, ectx, module, builder, texpr);
         assert(texp != NULL);
         res = LLVMBuildBr(builder, endblock);
         assert(res != NULL);
@@ -118,7 +120,7 @@ compile_if(lkit_expr_t *ectx,
     LLVMPositionBuilderAtEnd(builder, fblock);
 
     if (fexpr != NULL) {
-        fexp = lkit_compile_expr(ectx, module, builder, fexpr);
+        fexp = lkit_compile_expr(mctx, ectx, module, builder, fexpr);
         assert(fexp != NULL);
         res = LLVMBuildBr(builder, endblock);
         assert(res != NULL);
@@ -143,7 +145,8 @@ compile_if(lkit_expr_t *ectx,
 
 
 static LLVMValueRef
-compile_cmp(lkit_expr_t *ectx,
+compile_cmp(mrklkit_ctx_t *mctx,
+            lkit_expr_t *ectx,
             LLVMModuleRef module,
             LLVMBuilderRef builder,
             lkit_expr_t *expr,
@@ -159,13 +162,21 @@ compile_cmp(lkit_expr_t *ectx,
     lctx = LLVMGetModuleContext(module);
 
     arg = array_first(&expr->subs, &it);
-    if ((v = lkit_compile_expr(ectx, module, builder, *arg)) == NULL) {
+    if ((v = lkit_compile_expr(mctx,
+                               ectx,
+                               module,
+                               builder,
+                               *arg)) == NULL) {
         TR(COMPILE_CMP + 1);
         goto end;
     }
 
     arg = array_next(&expr->subs, &it);
-    if ((rand = lkit_compile_expr(ectx, module, builder, *arg)) == NULL) {
+    if ((rand = lkit_compile_expr(mctx,
+                                  ectx,
+                                  module,
+                                  builder,
+                                  *arg)) == NULL) {
         TR(COMPILE_CMP + 2);
         goto end;
     }
@@ -239,7 +250,8 @@ end:
 #define COMPILE_GET_GET 0x01
 #define COMPILE_GET_PARSE 0x02
 static LLVMValueRef
-compile_get(lkit_expr_t *ectx,
+compile_get(mrklkit_ctx_t *mctx,
+            lkit_expr_t *ectx,
             LLVMModuleRef module,
             LLVMBuilderRef builder,
             lkit_expr_t *expr,
@@ -258,10 +270,11 @@ compile_get(lkit_expr_t *ectx,
         FAIL("array_get");
     }
 
-    if ((args[0] = lkit_compile_expr(ectx,
-                                        module,
-                                        builder,
-                                        *cont)) == NULL) {
+    if ((args[0] = lkit_compile_expr(mctx,
+                                     ectx,
+                                     module,
+                                     builder,
+                                     *cont)) == NULL) {
         TR(COMPILE_GET + 1);
         goto err;
     }
@@ -276,10 +289,11 @@ compile_get(lkit_expr_t *ectx,
         if ((arg = array_get(&expr->subs, 2)) == NULL) {
             FAIL("array_get");
         }
-        if ((args[2] = lkit_compile_expr(ectx,
-                                            module,
-                                            builder,
-                                            *arg)) == NULL) {
+        if ((args[2] = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         *arg)) == NULL) {
             TR(COMPILE_GET + 2);
             goto err;
         }
@@ -299,10 +313,11 @@ compile_get(lkit_expr_t *ectx,
             if ((arg = array_get(&expr->subs, 1)) == NULL) {
                 FAIL("array_get");
             }
-            if ((args[1] = lkit_compile_expr(ectx,
-                                                module,
-                                                builder,
-                                                *arg)) == NULL) {
+            if ((args[1] = lkit_compile_expr(mctx,
+                                             ectx,
+                                             module,
+                                             builder,
+                                             *arg)) == NULL) {
                 TR(COMPILE_GET + 100);
                 goto err;
             }
@@ -340,10 +355,11 @@ compile_get(lkit_expr_t *ectx,
             if ((arg = array_get(&expr->subs, 1)) == NULL) {
                 FAIL("array_get");
             }
-            if ((args[1] = lkit_compile_expr(ectx,
-                                                module,
-                                                builder,
-                                                *arg)) == NULL) {
+            if ((args[1] = lkit_compile_expr(mctx,
+                                             ectx,
+                                             module,
+                                             builder,
+                                             *arg)) == NULL) {
                 TR(COMPILE_GET + 200);
                 goto err;
             }
@@ -442,7 +458,8 @@ err:
 
 
 static LLVMValueRef
-compile_str_join(lkit_expr_t *ectx,
+compile_str_join(mrklkit_ctx_t *mctx,
+                 lkit_expr_t *ectx,
                  LLVMContextRef lctx,
                  LLVMModuleRef module,
                  LLVMBuilderRef builder,
@@ -477,7 +494,7 @@ compile_str_join(lkit_expr_t *ectx,
     for (arg = array_first(&expr->subs, &it);
          arg != NULL;
          arg = array_next(&expr->subs, &it)) {
-        av[it.iter] = lkit_compile_expr(ectx, module, builder, *arg);
+        av[it.iter] = lkit_compile_expr(mctx, ectx, module, builder, *arg);
         assert(av[it.iter] != NULL);
         asz[it.iter] = LLVMBuildStructGEP(builder,
                                           av[it.iter],
@@ -524,7 +541,8 @@ compile_str_join(lkit_expr_t *ectx,
 #define COMPILE_STRSTR_START 0
 #define COMPILE_STRSTR_END 1
 static LLVMValueRef
-compile_strstr(lkit_expr_t *ectx,
+compile_strstr(mrklkit_ctx_t *mctx,
+               lkit_expr_t *ectx,
                LLVMContextRef lctx,
                LLVMModuleRef module,
                LLVMBuilderRef builder,
@@ -541,7 +559,7 @@ compile_strstr(lkit_expr_t *ectx,
 
     arg = array_get(&expr->subs, 0);
     assert(arg != NULL);
-    a0 = lkit_compile_expr(ectx, module, builder, *arg);
+    a0 = lkit_compile_expr(mctx, ectx, module, builder, *arg);
     assert(a0 != NULL);
     tmp = LLVMBuildStructGEP(builder, a0, BYTES_DATA_IDX, NEWVAR("gep"));
     fnparam = LLVMGetParam(fn, 0);
@@ -549,7 +567,7 @@ compile_strstr(lkit_expr_t *ectx,
 
     arg = array_get(&expr->subs, 1);
     assert(arg != NULL);
-    a1 = lkit_compile_expr(ectx, module, builder, *arg);
+    a1 = lkit_compile_expr(mctx, ectx, module, builder, *arg);
     assert(a1 != NULL);
     tmp = LLVMBuildStructGEP(builder, a1, BYTES_DATA_IDX, NEWVAR("gep"));
     fnparam = LLVMGetParam(fn, 1);
@@ -588,7 +606,8 @@ compile_strstr(lkit_expr_t *ectx,
 
 
 static LLVMValueRef
-compile_function(lkit_expr_t *ectx,
+compile_function(mrklkit_ctx_t *mctx,
+                 lkit_expr_t *ectx,
                  LLVMModuleRef module,
                  LLVMBuilderRef builder,
                  lkit_expr_t *expr)
@@ -618,7 +637,14 @@ compile_function(lkit_expr_t *ectx,
         fexpr = array_get(&expr->subs, 2);
         assert(fexpr != NULL);
         //TRACE("%p %p %p", cexpr, texpr, fexpr);
-        v = compile_if(ectx, module, builder, *cexpr, *texpr, *fexpr, expr->type);
+        v = compile_if(mctx,
+                       ectx,
+                       module,
+                       builder,
+                       *cexpr,
+                       *texpr,
+                       *fexpr,
+                       expr->type);
 
     } else if (strcmp(name, ",") == 0) {
         lkit_expr_t **arg;
@@ -629,10 +655,11 @@ compile_function(lkit_expr_t *ectx,
              arg != NULL;
              arg = array_next(&expr->subs, &it)) {
 
-            if ((v = lkit_compile_expr(ectx,
-                                          module,
-                                          builder,
-                                          *arg)) == NULL) {
+            if ((v = lkit_compile_expr(mctx,
+                                       ectx,
+                                       module,
+                                       builder,
+                                       *arg)) == NULL) {
                 TR(COMPILE_FUNCTION + 200);
                 goto err;
             }
@@ -653,10 +680,11 @@ compile_function(lkit_expr_t *ectx,
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                if ((v = lkit_compile_expr(ectx,
-                                              module,
-                                              builder,
-                                              *arg)) == NULL) {
+                if ((v = lkit_compile_expr(mctx,
+                                           ectx,
+                                           module,
+                                           builder,
+                                           *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 301);
                     goto err;
                 }
@@ -742,10 +770,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 400);
                     goto err;
                 }
@@ -764,10 +793,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 401);
                     goto err;
                 }
@@ -775,7 +805,7 @@ compile_function(lkit_expr_t *ectx,
                 v = LLVMBuildFAdd(builder, v, rand, NEWVAR("plus"));
             }
         } else if (expr->type->tag == LKIT_STR) {
-            v = compile_str_join(ectx, lctx, module, builder, expr);
+            v = compile_str_join(mctx, ectx, lctx, module, builder, expr);
         } else {
             TR(COMPILE_FUNCTION + 402);
             goto err;
@@ -792,10 +822,11 @@ compile_function(lkit_expr_t *ectx,
          * (- 1 2 3 4) -> (- 0 1 2 3 4) -> -10
          */
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 500);
             goto err;
         }
@@ -809,10 +840,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 501);
                     goto err;
                 }
@@ -829,10 +861,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 502);
                     goto err;
                 }
@@ -850,10 +883,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym / (func undef undef ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 600);
             goto err;
         }
@@ -867,10 +901,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 601);
                     goto err;
                 }
@@ -887,10 +922,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 602);
                     goto err;
                 }
@@ -919,10 +955,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 700);
                     goto err;
                 }
@@ -941,10 +978,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 701);
                     goto err;
                 }
@@ -962,10 +1000,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym % (func undef undef ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 800);
             goto err;
         }
@@ -980,10 +1019,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 801);
                     goto err;
                 }
@@ -1000,10 +1040,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 802);
                     goto err;
                 }
@@ -1021,8 +1062,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym min (func undef undef ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module, builder, *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 900);
             goto err;
         }
@@ -1037,7 +1081,7 @@ compile_function(lkit_expr_t *ectx,
 
             LLVMValueRef rand;
 
-            if ((rand = lkit_compile_expr(ectx, module, builder, *arg)) == NULL) {
+            if ((rand = lkit_compile_expr(mctx, ectx, module, builder, *arg)) == NULL) {
                 TR(COMPILE_FUNCTION + 901);
                 goto err;
             }
@@ -1063,10 +1107,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 902);
                     goto err;
                 }
@@ -1090,10 +1135,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 903);
                     goto err;
                 }
@@ -1118,10 +1164,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym max (func undef undef ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1000);
             goto err;
         }
@@ -1136,10 +1183,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 1001);
                     goto err;
                 }
@@ -1163,10 +1211,11 @@ compile_function(lkit_expr_t *ectx,
 
                 LLVMValueRef rand, cond;
 
-                if ((rand = lkit_compile_expr(ectx,
-                                                 module,
-                                                 builder,
-                                                 *arg)) == NULL) {
+                if ((rand = lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *arg)) == NULL) {
                     TR(COMPILE_FUNCTION + 1002);
                     goto err;
                 }
@@ -1191,10 +1240,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym and (func bool bool ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1100);
             goto err;
         }
@@ -1205,10 +1255,11 @@ compile_function(lkit_expr_t *ectx,
 
             LLVMValueRef rand;
 
-            if ((rand = lkit_compile_expr(ectx,
-                                             module,
-                                             builder,
-                                             *arg)) == NULL) {
+            if ((rand = lkit_compile_expr(mctx,
+                                          ectx,
+                                          module,
+                                          builder,
+                                          *arg)) == NULL) {
                 TR(COMPILE_FUNCTION + 1101);
                 goto err;
             }
@@ -1222,10 +1273,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym or (func bool bool ...))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1200);
             goto err;
         }
@@ -1236,10 +1288,11 @@ compile_function(lkit_expr_t *ectx,
 
             LLVMValueRef rand;
 
-            if ((rand = lkit_compile_expr(ectx,
-                                             module,
-                                             builder,
-                                             *arg)) == NULL) {
+            if ((rand = lkit_compile_expr(mctx,
+                                          ectx,
+                                          module,
+                                          builder,
+                                          *arg)) == NULL) {
                 TR(COMPILE_FUNCTION + 1201);
                 goto err;
             }
@@ -1253,10 +1306,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym not (func bool bool))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1300);
             goto err;
         }
@@ -1264,35 +1318,71 @@ compile_function(lkit_expr_t *ectx,
 
     } else if (strcmp(name , "==") == 0 || strcmp(name , "=") == 0) {
         //(sym == (func bool undef undef)) done
-        v = compile_cmp(ectx, module, builder, expr, LLVMIntEQ, LLVMRealUEQ);
+        v = compile_cmp(mctx,
+                        ectx,
+                        module,
+                        builder,
+                        expr,
+                        LLVMIntEQ,
+                        LLVMRealUEQ);
 
     } else if (strcmp(name , "!=") == 0) {
         //(sym != (func bool undef undef)) done
-        v = compile_cmp(ectx, module, builder, expr, LLVMIntNE, LLVMRealUNE);
+        v = compile_cmp(mctx,
+                        ectx,
+                        module,
+                        builder,
+                        expr,
+                        LLVMIntNE,
+                        LLVMRealUNE);
 
     } else if (strcmp(name , "<") == 0) {
         //(sym < (func bool undef undef)) done
-        v = compile_cmp(ectx, module, builder, expr, LLVMIntSLT, LLVMRealULT);
+        v = compile_cmp(mctx,
+                        ectx,
+                        module,
+                        builder,
+                        expr,
+                        LLVMIntSLT,
+                        LLVMRealULT);
 
     } else if (strcmp(name , "<=") == 0) {
         //(sym <= (func bool undef undef)) done
-        v = compile_cmp(ectx, module, builder, expr, LLVMIntSLE, LLVMRealULE);
+        v = compile_cmp(mctx,
+                        ectx,
+                        module,
+                        builder,
+                        expr,
+                        LLVMIntSLE,
+                        LLVMRealULE);
 
     } else if (strcmp(name , ">") == 0) {
         //(sym > (func bool undef undef)) done
-        v = compile_cmp(ectx, module, builder, expr, LLVMIntSGT, LLVMRealUGT);
+        v = compile_cmp(mctx,
+                        ectx,
+                        module,
+                        builder,
+                        expr,
+                        LLVMIntSGT,
+                        LLVMRealUGT);
 
     } else if (strcmp(name , ">=") == 0) {
         //(sym >= (func bool undef undef)) done
-        v = compile_cmp(ectx, module, builder, expr, LLVMIntSGE, LLVMRealUGE);
+        v = compile_cmp(mctx,
+                        ectx,
+                        module,
+                        builder,
+                        expr,
+                        LLVMIntSGE,
+                        LLVMRealUGE);
 
     } else if (strcmp(name , "get") == 0) {
         //(sym get (func undef undef undef under)) done
-        v = compile_get(ectx, module, builder, expr, COMPILE_GET_GET);
+        v = compile_get(mctx, ectx, module, builder, expr, COMPILE_GET_GET);
 
     } else if (strcmp(name , "parse") == 0) {
         //(sym parse (func undef undef undef under)) done
-        v = compile_get(ectx, module, builder, expr, COMPILE_GET_PARSE);
+        v = compile_get(mctx, ectx, module, builder, expr, COMPILE_GET_PARSE);
 
     } else if (strcmp(name , "itof") == 0) {
         lkit_expr_t **arg;
@@ -1300,10 +1390,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym itof (func float int))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1400);
             goto err;
         }
@@ -1318,10 +1409,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym ftoi (func int float))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1500);
             goto err;
         }
@@ -1331,7 +1423,8 @@ compile_function(lkit_expr_t *ectx,
                             NEWVAR("ftoi"));
 
     } else if (strcmp(name , "startswith") == 0) {
-        v = compile_strstr(ectx,
+        v = compile_strstr(mctx,
+                           ectx,
                            lctx,
                            module,
                            builder,
@@ -1339,7 +1432,8 @@ compile_function(lkit_expr_t *ectx,
                            COMPILE_STRSTR_START);
 
     } else if (strcmp(name , "endswith") == 0) {
-        v = compile_strstr(ectx,
+        v = compile_strstr(mctx,
+                           ectx,
                            lctx,
                            module,
                            builder,
@@ -1352,10 +1446,11 @@ compile_function(lkit_expr_t *ectx,
 
         //(sym tostr (func str undef))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(ectx,
-                                      module,
-                                      builder,
-                                      *arg)) == NULL) {
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg)) == NULL) {
             TR(COMPILE_FUNCTION + 1600);
             goto err;
         }
@@ -1393,10 +1488,11 @@ compile_function(lkit_expr_t *ectx,
                 goto err;
             }
 
-            if ((args[0] = lkit_compile_expr(ectx,
-                                                module,
-                                                builder,
-                                                *cont)) == NULL) {
+            if ((args[0] = lkit_compile_expr(mctx,
+                                             ectx,
+                                             module,
+                                             builder,
+                                             *cont)) == NULL) {
                 TR(COMPILE_FUNCTION + 4901);
                 goto err;
             }
@@ -1419,6 +1515,7 @@ compile_function(lkit_expr_t *ectx,
 
     } else {
         TR(COMPILE_FUNCTION + 5000);
+        lkit_expr_dump(expr);
         goto err;
     }
 
@@ -1432,10 +1529,11 @@ err:
 
 
 LLVMValueRef
-lkit_compile_expr(lkit_expr_t *ectx,
-                     LLVMModuleRef module,
-                     LLVMBuilderRef builder,
-                     lkit_expr_t *expr)
+lkit_compile_expr(mrklkit_ctx_t *mctx,
+                  lkit_expr_t *ectx,
+                  LLVMModuleRef module,
+                  LLVMBuilderRef builder,
+                  lkit_expr_t *expr)
 {
     LLVMContextRef lctx;
     LLVMValueRef v;
@@ -1450,7 +1548,11 @@ lkit_compile_expr(lkit_expr_t *ectx,
             assert(builder != NULL);
 
             /* first try pre-defined functions */
-            if ((v = compile_function(ectx, module, builder, expr)) == NULL) {
+            if ((v = compile_function(mctx,
+                                      ectx,
+                                      module,
+                                      builder,
+                                      expr)) == NULL) {
                 LLVMValueRef ref;
 
                 /* then user-defined */
@@ -1485,8 +1587,14 @@ lkit_compile_expr(lkit_expr_t *ectx,
                     for (rand = array_first(&expr->subs, &it);
                          rand != NULL;
                          rand = array_next(&expr->subs, &it)) {
+
                         args[it.iter] =
-                            lkit_compile_expr(ectx, module, builder, *rand);
+                            lkit_compile_expr(mctx,
+                                              ectx,
+                                              module,
+                                              builder,
+                                              *rand);
+
                         assert(args[it.iter] != NULL);
                         //LLVMDumpValue(args[it.iter]);
                     }
@@ -1649,7 +1757,8 @@ lkit_compile_expr(lkit_expr_t *ectx,
 
 
 static int
-compile_dynamic_initializer(lkit_expr_t *ectx,
+compile_dynamic_initializer(mrklkit_ctx_t *mctx,
+                            lkit_expr_t *ectx,
                             LLVMModuleRef module,
                             bytes_t *name,
                             lkit_expr_t *value)
@@ -1695,10 +1804,11 @@ compile_dynamic_initializer(lkit_expr_t *ectx,
 
         LLVMPositionBuilderAtEnd(builder, tblock);
 
-        if ((storedv = lkit_compile_expr(ectx,
-                                            module,
-                                            builder,
-                                            value)) == NULL) {
+        if ((storedv = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         value)) == NULL) {
             TRRET(COMPILE_DYNAMIC_INITIALIZER + 1);
         }
 
@@ -1728,10 +1838,11 @@ compile_dynamic_initializer(lkit_expr_t *ectx,
     } else {
         bb = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("D.dyninit"));
         LLVMPositionBuilderAtEnd(builder, bb);
-        if ((storedv = lkit_compile_expr(ectx,
-                                            module,
-                                            builder,
-                                            value)) == NULL) {
+        if ((storedv = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         value)) == NULL) {
             TRRET(COMPILE_DYNAMIC_INITIALIZER + 2);
         }
 
@@ -1749,29 +1860,6 @@ compile_dynamic_initializer(lkit_expr_t *ectx,
     LLVMSetLinkage(v, LLVMPrivateLinkage);
     LLVMSetLinkage(fn, LLVMLinkOnceODRLinkage);
     return 0;
-}
-
-
-static LLVMValueRef
-compile_decl(LLVMModuleRef module, bytes_t *name, lkit_type_t *type)
-{
-    LLVMValueRef fn;
-
-    //lkit_type_dump(type);
-    assert(type->backend != NULL);
-    //assert(type->tag == LKIT_FUNC);
-
-    switch (type->tag) {
-    case LKIT_FUNC:
-        fn = LLVMAddFunction(module, (char *)name->data, type->backend);
-        LLVMAddFunctionAttr(fn, LLVMNoUnwindAttribute);
-        break;
-
-    default:
-        fn = LLVMAddGlobal(module, type->backend, (char *)name->data);
-        //FAIL("compile_decl: not implemented");
-    }
-    return fn;
 }
 
 
@@ -1862,8 +1950,9 @@ static int
 _compile(lkit_gitem_t **gitem, void *udata)
 {
     struct {
-        LLVMModuleRef module;
+        mrklkit_ctx_t *mctx;
         lkit_expr_t *ectx;
+        LLVMModuleRef module;
     } *params = udata;
     bytes_t *name = (*gitem)->name;
     lkit_expr_t *expr = (*gitem)->expr;
@@ -1881,7 +1970,8 @@ _compile(lkit_gitem_t **gitem, void *udata)
     }
 
     if (expr->isref) {
-        if (compile_dynamic_initializer(params->ectx,
+        if (compile_dynamic_initializer(params->mctx,
+                                        params->ectx,
                                         params->module,
                                         name,
                                         expr) != 0) {
@@ -1891,10 +1981,11 @@ _compile(lkit_gitem_t **gitem, void *udata)
         if (expr->value.literal != NULL) {
             LLVMValueRef initv, v;
 
-            initv = lkit_compile_expr(params->ectx,
-                                         params->module,
-                                         NULL,
-                                         expr);
+            initv = lkit_compile_expr(params->mctx,
+                                      params->ectx,
+                                      params->module,
+                                      NULL,
+                                      expr);
             assert(initv != NULL);
             v = LLVMAddGlobal(params->module,
                               LLVMTypeOf(initv),
@@ -1904,8 +1995,26 @@ _compile(lkit_gitem_t **gitem, void *udata)
             //LLVMDumpValue(initv);
             LLVMSetInitializer(v, initv);
         } else {
+            LLVMValueRef fn;
+
             /* declaration, */
-            compile_decl(params->module, name, expr->type);
+            //lkit_type_dump(type);
+            assert(expr->type->backend != NULL);
+
+            switch (expr->type->tag) {
+            case LKIT_FUNC:
+                fn = LLVMAddFunction(params->module,
+                                     (char *)name->data,
+                                     expr->type->backend);
+                LLVMAddFunctionAttr(fn, LLVMNoUnwindAttribute);
+                break;
+
+            default:
+                fn = LLVMAddGlobal(params->module,
+                                   expr->type->backend,
+                                   (char *)name->data);
+                //FAIL("compile_decl: not implemented");
+            }
         }
     }
 
@@ -1936,9 +2045,10 @@ lkit_expr_ctx_compile(mrklkit_ctx_t *mctx,
         lkit_expr_t *ectx;
     } params_remove_undef = { builtin_remove_undef, mctx, ectx };
     struct {
-        LLVMModuleRef module;
+        mrklkit_ctx_t *mctx;
         lkit_expr_t *ectx;
-    } params_compile = { module, ectx };
+        LLVMModuleRef module;
+    } params_compile = { mctx, ectx, module };
 
     if (array_traverse(&ectx->glist,
                        (array_traverser_t)_cb1,

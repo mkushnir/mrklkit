@@ -6,7 +6,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
-//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
@@ -468,7 +468,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                                     if (lkit_type_cmp(*paramtype, argtype) != 0) {
                                         lkit_type_dump(*paramtype);
                                         lkit_type_dump(argtype);
-                                        //lkit_expr_dump(expr);
+                                        lkit_expr_dump(expr);
                                         TR(LKIT_EXPR_PARSE + 10);
                                         goto err;
                                     }
