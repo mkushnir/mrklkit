@@ -26,7 +26,8 @@ int
 builtin_parse_exprdef(mrklkit_ctx_t *mctx,
                      lkit_expr_t *ectx,
                      array_t *form,
-                     array_iter_t *it)
+                     array_iter_t *it,
+                     int isbuiltin)
 {
     int res = 0;
     bytes_t *name = NULL;
@@ -64,6 +65,8 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
         TR(LKIT_PARSE_EXPRDEF + 4);
         goto err;
     }
+
+    (*expr)->isbuiltin = isbuiltin;
 
     dict_set_item(&ectx->ctx, name, *expr);
     if ((gitem = array_incr(&ectx->glist)) == NULL) {
@@ -649,6 +652,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
          * (func ty )
          */
         if (strcmp(name, "==") == 0 ||
+                   strcmp(name, "=") == 0 ||
                    strcmp(name, "!=") == 0 ||
                    strcmp(name, "<") == 0 ||
                    strcmp(name, "<=") == 0 ||

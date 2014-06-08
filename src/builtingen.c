@@ -28,22 +28,29 @@ static char *fnames[] = {
     "or",
     "not",
     "==",
+    "=", /* the same as == */
     "!=",
     "<",
     "<=",
     ">",
     ">=",
-    "get",
     "parse",
+    "get",
     "set",
     "del",
+    "has",
     "itof",
     "ftoi",
     "startswith",
     "endswith",
     "tostr",
+    "in",
+    "substr",
+    "strfind",
+    "split",
+    "dp-info",
 };
-static int
+UNUSED static int
 check_function(bytes_t *name)
 {
     char *n = (char *)name->data;
@@ -1255,7 +1262,7 @@ compile_function(lkit_expr_t *ectx,
         }
         v = LLVMBuildNot(builder, v, NEWVAR("not"));
 
-    } else if (strcmp(name , "==") == 0) {
+    } else if (strcmp(name , "==") == 0 || strcmp(name , "=") == 0) {
         //(sym == (func bool undef undef)) done
         v = compile_cmp(ectx, module, builder, expr, LLVMIntEQ, LLVMRealUEQ);
 
@@ -1866,7 +1873,10 @@ _compile(lkit_gitem_t **gitem, void *udata)
     //lkit_expr_dump(expr);
 
     /* check for function */
-    if (check_function(name) == 0) {
+    //if (check_function(name) == 0) {
+    //    return 0;
+    //}
+    if (expr->isbuiltin) {
         return 0;
     }
 

@@ -33,6 +33,7 @@ typedef struct _mrklkit_ctx {
     LLVMExecutionEngineRef ee;
 } mrklkit_ctx_t;
 
+extern const char *mrklkit_meta;
 const char *mrklkit_diag_str(int);
 
 #define MRKLKIT_COMPILE_DUMP0 0x01

@@ -110,7 +110,7 @@ _compile_type(testrt_ctx_t *tctx, LLVMContextRef lctx)
 static int
 _parse_builtin(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
 {
-    return builtin_parse_exprdef(&tctx->mctx, &tctx->builtin, form, it);
+    return builtin_parse_exprdef(&tctx->mctx, &tctx->builtin, form, it, 1);
 }
 
 /**

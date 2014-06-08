@@ -48,6 +48,7 @@ typedef struct _lkit_expr {
     struct _lkit_expr *parent;
 
     int isref:1;
+    int isbuiltin:1;
     int error:1;
     int lazy_init:1;
     int lazy_init_referenced:1;

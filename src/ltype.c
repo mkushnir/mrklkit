@@ -1300,6 +1300,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                                                       *node,
                                                       1)) == NULL) {
                         TR(LKIT_TYPE_PARSE + 12);
+                        fparser_datum_dump(node, NULL);
                         goto err;
                     }
                     /* no function params or return values */
