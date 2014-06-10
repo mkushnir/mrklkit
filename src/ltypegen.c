@@ -14,15 +14,73 @@
 
 #include <mrklkit/mrklkit.h>
 #include <mrklkit/ltype.h>
+#include <mrklkit/lexpr.h>
 #include <mrklkit/ltypegen.h>
 
 #include "diag.h"
 
-
-/**
- * Generators
- *
+/*
+ * XXX unify compile/link methods with compile setup/cleanup for
+ * XXX structures.
  */
+
+static int
+bytes_compile_setup(UNUSED lkit_expr_t *ectx,
+                    LLVMModuleRef module,
+                    LLVMBuilderRef builder,
+                    UNUSED lkit_expr_t * expr,
+                    bytes_t *name)
+{
+    LLVMValueRef v, fn, arg;
+
+    if (LKIT_EXPR_CONSTANT(expr)) {
+        return 0;
+    }
+
+    if ((fn = LLVMGetNamedFunction(module, "mrklkit_bytes_incref")) == NULL) {
+        FAIL("bytes_compile_setup");
+    }
+
+    if ((arg = LLVMGetNamedGlobal(module, (char *)name->data)) == NULL) {
+        FAIL("bytes_compile_setup");
+    }
+
+    arg = LLVMBuildLoad(builder, arg, NEWVAR("load"));
+    v = LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
+
+    return 0;
+}
+
+
+static int
+bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
+                      LLVMModuleRef module,
+                      LLVMBuilderRef builder,
+                      UNUSED lkit_expr_t * expr,
+                      bytes_t *name)
+{
+    LLVMValueRef v, fn, arg;
+
+    if (LKIT_EXPR_CONSTANT(expr)) {
+        return 0;
+    }
+
+    if ((fn = LLVMGetNamedFunction(module, "mrklkit_bytes_decref_fast")) == NULL) {
+        FAIL("bytes_compile_cleanup");
+    }
+
+    if ((arg = LLVMGetNamedGlobal(module, (char *)name->data)) == NULL) {
+        FAIL("bytes_compile_cleanup");
+    }
+
+    arg = LLVMBuildLoad(builder, arg, NEWVAR("load"));
+    //LLVMDumpValue(fn);
+    //LLVMDumpValue(arg);
+    v = LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
+
+    return 0;
+}
+
 
 int
 ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
@@ -68,6 +126,8 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
                               countof(fields),
                               0);
             ty->backend = LLVMPointerType(tc->deref_backend, 0);
+            ty->compile_setup = bytes_compile_setup;
+            ty->compile_cleanup = bytes_compile_cleanup;
         }
         break;
 
@@ -124,7 +184,9 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
                  field != NULL;
                  field = array_next(&ts->fields, &it)) {
 
-                if ((*field)->tag == LKIT_UNDEF || (*field)->tag == LKIT_VARARG) {
+                if ((*field)->tag == LKIT_UNDEF ||
+                    (*field)->tag == LKIT_VARARG) {
+
                     free(bfields);
                     goto end_struct;
                 }
@@ -141,7 +203,8 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
             //                                            bfields,
             //                                            ts->fields.elnum,
             //                                            0);
-            ts->deref_backend = LLVMStructCreateNamed(lctx, NEWVAR("rt_struct_t"));
+            ts->deref_backend = LLVMStructCreateNamed(lctx,
+                                                      NEWVAR("rt_struct_t"));
             LLVMStructSetBody(ts->deref_backend,
                               bfields,
                               ts->fields.elnum,
@@ -160,7 +223,8 @@ end_struct:
 
             tf = (lkit_func_t *)ty;
             if ((bfields =
-                    malloc(sizeof(LLVMTypeRef) * tf->fields.elnum - 1)) == NULL) {
+                    malloc(sizeof(LLVMTypeRef) *
+                           tf->fields.elnum - 1)) == NULL) {
                 FAIL("malloc");
             }
 

@@ -81,12 +81,16 @@ typedef struct _lkit_type {
     uint64_t hash;
     LLVMTypeRef backend;
     int (*compile)(struct _lkit_type *, LLVMContextRef);
+    int (*compile_setup)(struct _lkit_expr *,
+                         LLVMModuleRef,
+                         LLVMBuilderRef,
+                         struct _lkit_expr *,
+                         bytes_t *);
     int (*compile_cleanup)(struct _lkit_expr *,
                            LLVMModuleRef,
                            LLVMBuilderRef,
                            struct _lkit_expr *,
                            bytes_t *);
-    int error:1;
 } lkit_type_t;
 
 #define LTYPE_ERROR(pty) (((lkit_type_t *)(pty))->error)

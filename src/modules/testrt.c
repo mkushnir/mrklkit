@@ -60,7 +60,6 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
         }
         ty->tag = LKIT_USER + 100;
         ty->name = "url";
-        ty->error = 0;
         ty = lkit_type_finalize(&tctx->mctx, ty);
         lkit_register_typedef(&tctx->mctx, ty, typename);
     } else {

@@ -483,11 +483,6 @@ compile_str_join(mrklkit_ctx_t *mctx,
     LLVMValueRef *av, *asz;
     LLVMValueRef const0, const1;
 
-    //sz = LLVMBuildAlloca(builder, LLVMInt64TypeInContext(lctx), NEWVAR("sz"));
-    //LLVMBuildStore(builder,
-    //               LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0),
-    //               sz);
-    //accum = LLVMBuildLoad(builder, sz, NEWVAR("load"));
     const0 = LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0);
     const1 = LLVMConstInt(LLVMInt64TypeInContext(lctx), 1, 0);
     accum = const0;
@@ -518,7 +513,6 @@ compile_str_join(mrklkit_ctx_t *mctx,
                                            NEWVAR("cast"));
         (void)LLVMBuildCall(builder, bifn, av + it.iter, 1, NEWVAR("call"));
     }
-    //LLVMBuildStore(builder, accum, sz);
     if ((bnfn = LLVMGetNamedFunction(module,
                                      "mrklkit_bytes_new")) == NULL) {
         FAIL("LLVMGetNamedFunction");
@@ -1657,6 +1651,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
         case LKIT_ARRAY:
         case LKIT_DICT:
         case LKIT_STRUCT:
+        default:
             {
                 LLVMValueRef ref;
                 char buf[1024];
@@ -1705,26 +1700,26 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
             }
             break;
 
-        default:
-            {
-                mrklkit_module_t **mod;
-                array_iter_t it;
+        //default:
+            //{
+            //    mrklkit_module_t **mod;
+            //    array_iter_t it;
 
-                for (mod = array_first(mctx->modules, &it);
-                     mod != NULL;
-                     mod = array_next(mctx->modules, &it)) {
+            //    for (mod = array_first(mctx->modules, &it);
+            //         mod != NULL;
+            //         mod = array_next(mctx->modules, &it)) {
 
-                    if ((*mod)->compile_expr != NULL) {
-                        v = (*mod)->compile_expr(mctx,
-                                                 ectx,
-                                                 module,
-                                                 builder,
-                                                 expr);
-                        break;
-                    }
-                }
-            }
-            break;
+            //        if ((*mod)->compile_expr != NULL) {
+            //            v = (*mod)->compile_expr(mctx,
+            //                                     ectx,
+            //                                     module,
+            //                                     builder,
+            //                                     expr);
+            //            break;
+            //        }
+            //    }
+            //}
+            //break;
 
         }
 
@@ -1810,7 +1805,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
                             lkit_expr_t *ectx,
                             LLVMModuleRef module,
                             bytes_t *name,
-                            lkit_expr_t *value)
+                            lkit_expr_t *expr)
 {
     char buf[1024];
     LLVMContextRef lctx;
@@ -1819,8 +1814,8 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
     LLVMValueRef v, chkv, fn, storedv;
 
     /* dynamic initializer */
-    //lkit_type_dump(value->type);
-    //lkit_expr_dump(value);
+    //lkit_type_dump(expr->type);
+    //lkit_expr_dump(expr);
 
     lctx = LLVMGetModuleContext(module);
 
@@ -1834,7 +1829,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
                                           0));
     builder = LLVMCreateBuilderInContext(lctx);
 
-    if (value->lazy_init) {
+    if (expr->lazy_init) {
         LLVMValueRef UNUSED res, cond;
         LLVMBasicBlockRef currblock, endblock, tblock, fblock;
 
@@ -1857,7 +1852,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
                                          ectx,
                                          module,
                                          builder,
-                                         value)) == NULL) {
+                                         expr)) == NULL) {
             TRRET(COMPILE_DYNAMIC_INITIALIZER + 1);
         }
 
@@ -1869,6 +1864,15 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
         LLVMBuildStore(builder,
                        LLVMConstInt(LLVMInt1TypeInContext(lctx), 1, 0),
                        chkv);
+        if (expr->type->compile_setup != NULL) {
+            if (expr->type->compile_setup(ectx,
+                                          module,
+                                          builder,
+                                          expr,
+                                          name) != 0) {
+                TRRET(COMPILE_DYNAMIC_INITIALIZER + 2);
+            }
+        }
         res = LLVMBuildBr(builder, endblock);
 
         LLVMPositionBuilderAtEnd(builder, fblock);
@@ -1891,8 +1895,8 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
                                          ectx,
                                          module,
                                          builder,
-                                         value)) == NULL) {
-            TRRET(COMPILE_DYNAMIC_INITIALIZER + 2);
+                                         expr)) == NULL) {
+            TRRET(COMPILE_DYNAMIC_INITIALIZER + 3);
         }
 
         v = LLVMAddGlobal(module, LLVMTypeOf(storedv), (char *)name->data);
@@ -1902,6 +1906,15 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
         //LLVMDumpValue(storedv);
         //LLVMDumpValue(v);
         LLVMBuildStore(builder, storedv, v);
+        if (expr->type->compile_setup != NULL) {
+            if (expr->type->compile_setup(ectx,
+                                          module,
+                                          builder,
+                                          expr,
+                                          name) != 0) {
+                TRRET(COMPILE_DYNAMIC_INITIALIZER + 4);
+            }
+        }
     }
 
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
