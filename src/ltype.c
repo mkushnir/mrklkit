@@ -261,7 +261,7 @@ lkit_type_new(lkit_tag_t tag)
             ts->base.tag = tag;
             ts->base.name = "struct";
             ts->init = NULL;
-            //ts->fini = NULL;
+            ts->fini = NULL;
             ts->parser = LKIT_PARSER_NONE;
             ts->delim = NULL;
             array_init(&ts->fields, sizeof(lkit_type_t *), 0, NULL, NULL);

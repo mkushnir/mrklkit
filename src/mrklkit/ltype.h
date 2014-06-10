@@ -126,7 +126,7 @@ typedef struct _lkit_str {
 
 typedef struct _lkit_array {
     struct _lkit_type base;
-    array_finalizer_t fini;
+    //array_finalizer_t fini;
     lkit_parser_t parser;
     /* weak ref, will use delim[0] */
     char *delim;
@@ -136,7 +136,7 @@ typedef struct _lkit_array {
 
 typedef struct _lkit_dict {
     struct _lkit_type base;
-    dict_item_finalizer_t fini;
+    //dict_item_finalizer_t fini;
     lkit_parser_t parser;
     /* weak ref, will use kvdelim[0] */
     char *kvdelim;

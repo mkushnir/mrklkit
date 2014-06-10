@@ -138,7 +138,7 @@ mrklkit_rt_array_new(lkit_array_t *ty)
     }
     res->nref = 0;
     res->type = ty;
-    array_init(&res->fields, sizeof(void *), 0, NULL, ty->fini);
+    array_init(&res->fields, sizeof(void *), 0, NULL, NULL);
     return res;
 }
 
@@ -313,7 +313,7 @@ mrklkit_rt_dict_new(lkit_dict_t *ty)
               17,
               (dict_hashfn_t)bytes_hash,
               (dict_item_comparator_t)bytes_cmp,
-              ty->fini);
+              NULL);
 
     return res;
 }

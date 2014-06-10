@@ -326,8 +326,8 @@ ltype_compile_methods(lkit_type_t *ty,
             b1 = LLVMCreateBuilderInContext(lctx);
             b2 = LLVMCreateBuilderInContext(lctx);
 
-            snprintf(buf1, name->sz + 64, ".mrklkit.init.%s", name->data);
-            snprintf(buf2, name->sz + 64, ".mrklkit.fini.%s", name->data);
+            snprintf(buf1, name->sz + 64, "_mrklkit.%s.init", name->data);
+            snprintf(buf2, name->sz + 64, "_mrklkit.%s.fini", name->data);
 
             if (LLVMGetNamedFunction(module, buf1) != NULL) {
                 TRRET(LTYPE_COMPILE_METHODS + 1);
@@ -544,7 +544,7 @@ ltype_link_methods(lkit_type_t *ty,
 
             ts = (lkit_struct_t *)ty;
 
-            snprintf(buf, name->sz + 64, ".mrklkit.init.%s", name->data);
+            snprintf(buf, name->sz + 64, "_mrklkit.%s.init", name->data);
             if (LLVMFindFunction(ee, buf, &g) != 0) {
                 TRRET(LTYPE_LINK_METHODS + 1);
             }
@@ -554,7 +554,7 @@ ltype_link_methods(lkit_type_t *ty,
             //TRACE("%s:%p", buf, p);
             ts->init = p;
 
-            snprintf(buf, name->sz + 64, ".mrklkit.fini.%s", name->data);
+            snprintf(buf, name->sz + 64, "_mrklkit.%s.fini", name->data);
             if (LLVMFindFunction(ee, buf, &g) != 0) {
                 TRRET(LTYPE_LINK_METHODS + 3);
             }

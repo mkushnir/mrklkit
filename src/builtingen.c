@@ -1672,12 +1672,12 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                     }
                     snprintf(buf,
                              sizeof(buf),
-                             ".mrklkit.init.%s",
+                             "_mrklkit.%s.init",
                              (char *)qual_name->data);
                 } else {
                     snprintf(buf,
                              sizeof(buf),
-                             ".mrklkit.init.%s",
+                             "_mrklkit.%s.init",
                              (char *)expr->name->data);
                 }
 
@@ -1686,6 +1686,15 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                 if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
                     if (expr->value.ref->lazy_init) {
                         expr->value.ref->lazy_init_referenced = 1;
+#ifdef MRKLKIT_LLVM_C_PATCH_VOID
+                        if (LLVMBuildCall(builder,
+                                          fn,
+                                          NULL,
+                                          0,
+                                          "") == NULL) {
+                            TR(LKIT_COMPILE_EXPR + 4);
+                        }
+#else
                         if (LLVMBuildCall(builder,
                                           fn,
                                           NULL,
@@ -1693,6 +1702,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                           NEWVAR("tmp")) == NULL) {
                             TR(LKIT_COMPILE_EXPR + 4);
                         }
+#endif
                     }
                 }
 
@@ -1819,21 +1829,30 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
 
     lctx = LLVMGetModuleContext(module);
 
-    snprintf(buf, sizeof(buf), ".mrklkit.init.%s", (char *)name->data);
+    snprintf(buf, sizeof(buf), "_mrklkit.%s.init", (char *)name->data);
 
+#ifdef MRKLKIT_LLVM_C_PATCH_VOID
+    fn = LLVMAddFunction(module,
+                         buf,
+                         LLVMFunctionType(LLVMVoidTypeInContext(lctx),
+                                          NULL,
+                                          0,
+                                          0));
+#else
     fn = LLVMAddFunction(module,
                          buf,
                          LLVMFunctionType(LLVMInt64TypeInContext(lctx),
                                           NULL,
                                           0,
                                           0));
+#endif
     builder = LLVMCreateBuilderInContext(lctx);
 
     if (expr->lazy_init) {
         LLVMValueRef UNUSED res, cond;
         LLVMBasicBlockRef currblock, endblock, tblock, fblock;
 
-        snprintf(buf, sizeof(buf), ".mrklkit.init.done.%s", (char *)name->data);
+        snprintf(buf, sizeof(buf), "_mrklkit.%s.init.done", (char *)name->data);
         chkv = LLVMAddGlobal(module, LLVMInt1TypeInContext(lctx), buf);
         LLVMSetLinkage(chkv, LLVMPrivateLinkage);
         LLVMSetInitializer(chkv,
@@ -1917,7 +1936,11 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
         }
     }
 
+#ifdef MRKLKIT_LLVM_C_PATCH_VOID
+    LLVMBuildRetVoid(builder);
+#else
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
+#endif
     LLVMDisposeBuilder(builder);
     LLVMSetLinkage(v, LLVMPrivateLinkage);
     LLVMSetLinkage(fn, LLVMLinkOnceODRLinkage);
@@ -1937,7 +1960,7 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
     char buf[1024];
     LLVMValueRef fn;
 
-    snprintf(buf, sizeof(buf), ".mrklkit.init.%s", (char *)name->data);
+    snprintf(buf, sizeof(buf), "_mrklkit.%s.init", (char *)name->data);
 
     //TRACE("eager: %s %s lazy=%s",
     //      buf,
@@ -1946,6 +1969,15 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
 
     if ((fn = LLVMGetNamedFunction(params->module, buf)) != NULL) {
         if (!expr->lazy_init) {
+#ifdef MRKLKIT_LLVM_C_PATCH_VOID
+            if (LLVMBuildCall(params->builder,
+                              fn,
+                              NULL,
+                              0,
+                              "") == NULL) {
+                TR(CALL_EAGER_INITIALIZER + 1);
+            }
+#else
             if (LLVMBuildCall(params->builder,
                               fn,
                               NULL,
@@ -1953,6 +1985,7 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
                               NEWVAR("tmp")) == NULL) {
                 TR(CALL_EAGER_INITIALIZER + 1);
             }
+#endif
         } else {
             //TRACE("not calling");
         }
@@ -1983,7 +2016,7 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
 
         snprintf(buf,
                  sizeof(buf),
-                 ".mrklkit.init.done.%s",
+                 "_mrklkit.%s.init.done",
                  (char *)name->data);
 
         if ((v = LLVMGetNamedGlobal(params->module, buf)) == NULL) {
