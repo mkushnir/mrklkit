@@ -226,7 +226,7 @@ lkit_type_new(lkit_tag_t tag)
             }
             ta->base.tag = tag;
             ta->base.name = "array";
-            ta->fini = NULL;
+            //ta->fini = NULL;
             ta->parser = LKIT_PARSER_NONE;
             ta->delim = NULL;
             array_init(&ta->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
@@ -243,7 +243,7 @@ lkit_type_new(lkit_tag_t tag)
             }
             td->base.tag = tag;
             td->base.name = "dict";
-            td->fini = NULL;
+            //td->fini = NULL;
             td->kvdelim = NULL;
             td->fdelim = NULL;
             array_init(&td->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
@@ -261,7 +261,7 @@ lkit_type_new(lkit_tag_t tag)
             ts->base.tag = tag;
             ts->base.name = "struct";
             ts->init = NULL;
-            ts->fini = NULL;
+            //ts->fini = NULL;
             ts->parser = LKIT_PARSER_NONE;
             ts->delim = NULL;
             array_init(&ts->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
@@ -667,7 +667,7 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
  *
  */
 
-static int
+UNUSED static int
 rt_array_bytes_fini(bytes_t **value, UNUSED void *udata)
 {
     BYTES_DECREF(value);
@@ -675,7 +675,7 @@ rt_array_bytes_fini(bytes_t **value, UNUSED void *udata)
 }
 
 
-static int
+UNUSED static int
 rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
 {
     //TRACE("%ld %s", key != NULL ? key->nref : -2, key != NULL ? key->data : NULL);
@@ -685,7 +685,7 @@ rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
     return 0;
 }
 
-static int
+UNUSED static int
 rt_dict_fini_keyval(bytes_t *key, void *val)
 {
     if (key != NULL) {
@@ -1171,12 +1171,12 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
 
                 switch ((*elemtype)->tag) {
                 case LKIT_STR:
-                    ta->fini = (array_finalizer_t)rt_array_bytes_fini;
+                    //ta->fini = (array_finalizer_t)rt_array_bytes_fini;
                     break;
 
                 case LKIT_INT:
                 case LKIT_FLOAT:
-                    ta->fini = NULL;
+                    //ta->fini = NULL;
 
                 default:
                     TR(LKIT_TYPE_PARSE + 4);
@@ -1216,12 +1216,12 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
 
                 switch ((*elemtype)->tag) {
                 case LKIT_STR:
-                    td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval;
+                    //td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval;
                     break;
 
                 case LKIT_INT:
                 case LKIT_FLOAT:
-                    td->fini = (dict_item_finalizer_t)rt_dict_fini_keyonly;
+                    //td->fini = (dict_item_finalizer_t)rt_dict_fini_keyonly;
                     break;
 
                 default:

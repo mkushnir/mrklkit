@@ -10,7 +10,72 @@
 
 #include "diag.h"
 
-//UNUSED static array_t objects;
+static array_t bytes_gc;
+static array_iter_t bytes_gc_it;
+static array_t array_gc;
+static array_iter_t array_gc_it;
+static array_t dict_gc;
+static array_iter_t dict_gc_it;
+static array_t struct_gc;
+static array_iter_t struct_gc_it;
+
+
+static void
+mrklkit_rt_gc_init(void)
+{
+    array_init(&bytes_gc, sizeof(bytes_t *), 0, NULL, NULL);
+    bytes_gc_it.iter = 0;
+    array_init(&array_gc, sizeof(rt_array_t *), 0, NULL, NULL);
+    array_gc_it.iter = 0;
+    array_init(&dict_gc, sizeof(rt_dict_t *), 0, NULL, NULL);
+    dict_gc_it.iter = 0;
+    array_init(&struct_gc, sizeof(rt_struct_t *), 0, NULL, NULL);
+    struct_gc_it.iter = 0;
+}
+
+
+static void
+mrklkit_rt_gc_fini(void)
+{
+    array_fini(&bytes_gc);
+    array_fini(&array_gc);
+    array_fini(&dict_gc);
+    array_fini(&struct_gc);
+}
+
+
+/**
+ * str
+ */
+bytes_t *
+mrklkit_rt_bytes_new(size_t sz)
+{
+    bytes_t **res;
+
+    if ((res = array_get_iter(&bytes_gc, &bytes_gc_it)) == NULL) {
+        res = array_incr(&bytes_gc);
+    }
+    ++bytes_gc_it.iter;
+    *res = mrklkit_bytes_new(sz);
+    return *res;
+}
+
+
+static void
+mrklkit_rt_bytes_do_gc(void)
+{
+    size_t i;
+
+    for (i = 0; i < bytes_gc_it.iter; ++i) {
+        bytes_t **v;
+
+        if ((v = array_get(&bytes_gc, i)) == NULL) {
+            FAIL("array_get");
+        }
+        BYTES_DECREF_FAST(*v);
+    }
+    bytes_gc_it.iter = 0;
+}
 
 
 /**
@@ -75,6 +140,37 @@ mrklkit_rt_array_new(lkit_array_t *ty)
     res->type = ty;
     array_init(&res->fields, sizeof(void *), 0, NULL, ty->fini);
     return res;
+}
+
+
+rt_array_t *
+mrklkit_rt_array_new_gc(lkit_array_t *ty)
+{
+    rt_array_t **res;
+
+    if ((res = array_get_iter(&array_gc, &array_gc_it)) == NULL) {
+        res = array_incr(&array_gc);
+    }
+    ++array_gc_it.iter;
+    *res = mrklkit_rt_array_new(ty);
+    return *res;
+}
+
+
+static void
+mrklkit_rt_array_do_gc(void)
+{
+    size_t i;
+
+    for (i = 0; i < array_gc_it.iter; ++i) {
+        rt_array_t **v;
+
+        if ((v = array_get(&array_gc, i)) == NULL) {
+            FAIL("array_get");
+        }
+        ARRAY_DECREF_FAST(*v);
+    }
+    array_gc_it.iter = 0;
 }
 
 
@@ -223,6 +319,37 @@ mrklkit_rt_dict_new(lkit_dict_t *ty)
 }
 
 
+rt_dict_t *
+mrklkit_rt_dict_new_gc(lkit_dict_t *ty)
+{
+    rt_dict_t **res;
+
+    if ((res = array_get_iter(&dict_gc, &dict_gc_it)) == NULL) {
+        res = array_incr(&dict_gc);
+    }
+    ++dict_gc_it.iter;
+    *res = mrklkit_rt_dict_new(ty);
+    return *res;
+}
+
+
+static void
+mrklkit_rt_dict_do_gc(void)
+{
+    size_t i;
+
+    for (i = 0; i < dict_gc_it.iter; ++i) {
+        rt_dict_t **v;
+
+        if ((v = array_get(&dict_gc, i)) == NULL) {
+            FAIL("array_get");
+        }
+        DICT_DECREF_FAST(*v);
+    }
+    dict_gc_it.iter = 0;
+}
+
+
 void
 mrklkit_rt_dict_destroy(rt_dict_t **value)
 {
@@ -307,6 +434,37 @@ mrklkit_rt_struct_new(lkit_struct_t *ty)
         ty->init(v->fields);
     }
     return v;
+}
+
+
+rt_struct_t *
+mrklkit_rt_struct_new_gc(lkit_struct_t *ty)
+{
+    rt_struct_t **res;
+
+    if ((res = array_get_iter(&struct_gc, &struct_gc_it)) == NULL) {
+        res = array_incr(&struct_gc);
+    }
+    ++struct_gc_it.iter;
+    *res = mrklkit_rt_struct_new(ty);
+    return *res;
+}
+
+
+static void
+mrklkit_rt_struct_do_gc(void)
+{
+    size_t i;
+
+    for (i = 0; i < struct_gc_it.iter; ++i) {
+        rt_struct_t **v;
+
+        if ((v = array_get(&struct_gc, i)) == NULL) {
+            FAIL("array_get");
+        }
+        STRUCT_DECREF_FAST(*v);
+    }
+    struct_gc_it.iter = 0;
 }
 
 
@@ -550,12 +708,24 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
 
 
 void
+mrklkit_rt_do_gc(void)
+{
+    mrklkit_rt_bytes_do_gc();
+    mrklkit_rt_array_do_gc();
+    mrklkit_rt_dict_do_gc();
+    mrklkit_rt_struct_do_gc();
+}
+
+
+void
 lruntime_init(void)
 {
+    mrklkit_rt_gc_init();
 }
 
 
 void
 lruntime_fini(void)
 {
+    mrklkit_rt_gc_fini();
 }

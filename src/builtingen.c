@@ -511,7 +511,7 @@ compile_str_join(mrklkit_ctx_t *mctx,
                                            av[it.iter],
                                            expr->type->backend,
                                            NEWVAR("cast"));
-        (void)LLVMBuildCall(builder, bifn, av + it.iter, 1, NEWVAR("call"));
+        //(void)LLVMBuildCall(builder, bifn, av + it.iter, 1, NEWVAR("call"));
     }
     if ((bnfn = LLVMGetNamedFunction(module,
                                      "mrklkit_bytes_new")) == NULL) {
@@ -534,7 +534,7 @@ compile_str_join(mrklkit_ctx_t *mctx,
         args[1] = av[i];
         args[2] = tmp;
         (void)LLVMBuildCall(builder, bcfn, args, countof(args), NEWVAR("call"));
-        (void)LLVMBuildCall(builder, bdfn, args + 1, 1, NEWVAR("call"));
+        //(void)LLVMBuildCall(builder, bdfn, args + 1, 1, NEWVAR("call"));
         tmp = LLVMBuildAdd(builder, tmp, asz[i], NEWVAR("plus"));
         tmp = LLVMBuildSub(builder, tmp, const1, NEWVAR("dec")); /* zero term */
     }

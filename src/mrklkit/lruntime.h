@@ -31,6 +31,15 @@ do { \
     } \
 } while (0)
 
+#define ARRAY_DECREF_FAST(ar) \
+do { \
+    --(ar)->nref; \
+    if ((ar)->nref <= 0) { \
+        array_fini(&(ar)->fields); \
+        free(ar); \
+    } \
+} while (0)
+
 typedef struct _rt_dict {
     ssize_t nref;
     lkit_dict_t *type;
@@ -48,6 +57,15 @@ do { \
             free(*(dc)); \
         } \
         *(dc) = NULL; \
+    } \
+} while (0)
+
+#define DICT_DECREF_FAST(dc) \
+do { \
+    --(dc)->nref; \
+    if ((dc)->nref <= 0) { \
+        dict_fini(&(dc)->fields); \
+        free(dc); \
     } \
 } while (0)
 
@@ -89,6 +107,17 @@ do { \
     } \
 } while (0)
 
+#define STRUCT_DECREF_FAST(st) \
+do { \
+    --(st)->nref; \
+    if ((st)->nref <= 0) { \
+        if ((st)->type->fini != NULL) { \
+            (st)->type->fini((st)->fields); \
+        } \
+        free(st); \
+    } \
+} while (0)
+
 rt_array_t *mrklkit_rt_array_new(lkit_array_t *);
 void mrklkit_rt_array_destroy(rt_array_t **);
 void mrklkit_rt_array_dump(rt_array_t *);
@@ -122,6 +151,7 @@ void mrklkit_rt_set_struct_item_str(rt_struct_t *, int64_t, bytes_t *);
 
 void mrklkit_rt_struct_shallow_copy(rt_struct_t *, rt_struct_t *);
 
+void mrklkit_rt_do_gc(void);
 void lruntime_init(void);
 void lruntime_fini(void);
 

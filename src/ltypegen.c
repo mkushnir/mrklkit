@@ -24,7 +24,7 @@
  * XXX structures.
  */
 
-static int
+UNUSED static int
 bytes_compile_setup(UNUSED lkit_expr_t *ectx,
                     LLVMModuleRef module,
                     LLVMBuilderRef builder,
@@ -52,7 +52,7 @@ bytes_compile_setup(UNUSED lkit_expr_t *ectx,
 }
 
 
-static int
+UNUSED static int
 bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
                       LLVMModuleRef module,
                       LLVMBuilderRef builder,
@@ -65,7 +65,8 @@ bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
         return 0;
     }
 
-    if ((fn = LLVMGetNamedFunction(module, "mrklkit_bytes_decref_fast")) == NULL) {
+    if ((fn = LLVMGetNamedFunction(module,
+                                   "mrklkit_bytes_decref_fast")) == NULL) {
         FAIL("bytes_compile_cleanup");
     }
 
@@ -117,17 +118,14 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
             fields[2] = LLVMInt64TypeInContext(lctx);
             fields[3] = LLVMArrayType(LLVMInt8TypeInContext(lctx), 0);
             tc = (lkit_str_t *)ty;
-            //tc->deref_backend = LLVMStructTypeInContext(lctx,
-            //                                            fields,
-            //                                            countof(fields), 0);
             tc->deref_backend = LLVMStructCreateNamed(lctx, "bytes_t");
             LLVMStructSetBody(tc->deref_backend,
                               fields,
                               countof(fields),
                               0);
             ty->backend = LLVMPointerType(tc->deref_backend, 0);
-            ty->compile_setup = bytes_compile_setup;
-            ty->compile_cleanup = bytes_compile_cleanup;
+            //ty->compile_setup = bytes_compile_setup;
+            //ty->compile_cleanup = bytes_compile_cleanup;
         }
         break;
 
@@ -385,11 +383,12 @@ ltype_compile_methods(lkit_type_t *ty,
 
 #               define BUILDCODE \
                     { \
-                        LLVMValueRef pnull, dtor, dparam; \
+                        UNUSED LLVMValueRef pnull, dtor, dparam; \
                         /* ctor, just set NULL */ \
                         pnull = LLVMConstPointerNull((*fty)->backend); \
                         LLVMBuildStore(b1, pnull, gep1); \
                         /* dtor, call mrklkit_rt_NNN_destroy() */ \
+                        /* \
                         if ((dtor = LLVMGetNamedFunction(module, \
                                 dtor_name)) == NULL) { \
                             TRACE("no name: %s", dtor_name); \
@@ -401,6 +400,7 @@ ltype_compile_methods(lkit_type_t *ty,
                                                     LLVMTypeOf(dparam), \
                                                     NEWVAR("cast")); \
                         LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
+                        */ \
                     }
 
                 switch ((*fty)->tag) {
