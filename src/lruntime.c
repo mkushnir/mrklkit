@@ -57,6 +57,22 @@ mrklkit_rt_bytes_new_gc(size_t sz)
     }
     ++bytes_gc_it.iter;
     *res = mrklkit_bytes_new(sz);
+    //TRACE("GC>>> %p", *res);
+    return *res;
+}
+
+
+bytes_t *
+mrklkit_rt_bytes_new_from_str_gc(const char *s)
+{
+    bytes_t **res;
+
+    if ((res = array_get_iter(&bytes_gc, &bytes_gc_it)) == NULL) {
+        res = array_incr(&bytes_gc);
+    }
+    ++bytes_gc_it.iter;
+    *res = mrklkit_bytes_new_from_str(s);
+    //TRACE("GC>>> %p", *res);
     return *res;
 }
 
@@ -72,6 +88,7 @@ mrklkit_rt_bytes_do_gc(void)
         if ((v = array_get(&bytes_gc, i)) == NULL) {
             FAIL("array_get");
         }
+        //TRACE("GC<<< %p %ld", *v, (*v)->nref);
         BYTES_DECREF_FAST(*v);
     }
     bytes_gc_it.iter = 0;
@@ -153,6 +170,7 @@ mrklkit_rt_array_new_gc(lkit_array_t *ty)
     }
     ++array_gc_it.iter;
     *res = mrklkit_rt_array_new(ty);
+    //TRACE("GC>>> %p", *res);
     return *res;
 }
 
@@ -168,6 +186,7 @@ mrklkit_rt_array_do_gc(void)
         if ((v = array_get(&array_gc, i)) == NULL) {
             FAIL("array_get");
         }
+        //TRACE("GC<<< %p %ld", *v, (*v)->nref);
         ARRAY_DECREF_FAST(*v);
     }
     array_gc_it.iter = 0;
@@ -329,6 +348,7 @@ mrklkit_rt_dict_new_gc(lkit_dict_t *ty)
     }
     ++dict_gc_it.iter;
     *res = mrklkit_rt_dict_new(ty);
+    //TRACE("GC>>> %p", *res);
     return *res;
 }
 
@@ -344,6 +364,7 @@ mrklkit_rt_dict_do_gc(void)
         if ((v = array_get(&dict_gc, i)) == NULL) {
             FAIL("array_get");
         }
+        //TRACE("GC<<< %p %ld", *v, (*v)->nref);
         DICT_DECREF_FAST(*v);
     }
     dict_gc_it.iter = 0;
@@ -447,6 +468,7 @@ mrklkit_rt_struct_new_gc(lkit_struct_t *ty)
     }
     ++struct_gc_it.iter;
     *res = mrklkit_rt_struct_new(ty);
+    //TRACE("GC>>> %p", *res);
     return *res;
 }
 
@@ -462,6 +484,7 @@ mrklkit_rt_struct_do_gc(void)
         if ((v = array_get(&struct_gc, i)) == NULL) {
             FAIL("array_get");
         }
+        //TRACE("GC<<< %p %ld", *v, (*v)->nref);
         STRUCT_DECREF_FAST(*v);
     }
     struct_gc_it.iter = 0;

@@ -63,7 +63,7 @@ mrklkit_bytes_new(size_t sz)
     res->nref = 0;
     res->sz = sz;
     res->hash = 0;
-    //TRACE("%p", res);
+    //TRACE("B>>> %p %ld %ld", res, res->nref, res->sz);
     return res;
 }
 
@@ -99,7 +99,7 @@ mrklkit_bytes_new_from_str(const char *s)
     res->nref = 0;
     res->sz = sz;
     res->hash = 0;
-    //TRACE("%p sz=%ld data=%s", res, res->sz, res->data);
+    //TRACE("B>>> %p %ld %ld '%s'", res, res->nref, res->sz, res->data);
     return res;
 }
 

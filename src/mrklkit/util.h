@@ -25,15 +25,15 @@ typedef struct _bytes {
 #define BYTES_INCREF(b) \
 do { \
     (++(b)->nref); \
-    /* TRACE(">>> %p nref=%ld sz=%ld data=%p", (b), (b)->nref, (b)->sz, (b)->data); */ \
+    /* TRACE("B>>> %p %ld", (b), (b)->nref); */ \
 } while (0)
 
 #define BYTES_DECREF(pb) \
 do { \
     if (*(pb) != NULL) { \
         --(*(pb))->nref; \
-        /* TRACE("<<< %p nref=%ld sz=%ld data=%s", *(pb), (*(pb))->nref, (*(pb))->sz, (*(pb))->data); */ \
         if ((*(pb))->nref <= 0) { \
+            /* TRACE("B<<< %p %ld '%s'", *(pb), (*(pb))->nref, (*(pb))->data); */ \
             free(*(pb)); \
         } \
         *(pb) = NULL; \
@@ -43,8 +43,8 @@ do { \
 #define BYTES_DECREF_FAST(b) \
 do { \
     --((b))->nref; \
-    /* TRACE("<<< %p nref=%ld sz=%ld data=%s", (b), ((b))->nref, ((b))->sz, ((b))->data); */ \
     if (((b))->nref <= 0) { \
+        /* TRACE("B<<< %p %ld '%s'", b, (b)->nref, (b)->data); */ \
         free((b)); \
     } \
 } while (0)
