@@ -118,7 +118,10 @@ do { \
     } \
 } while (0)
 
+bytes_t *mrklkit_rt_bytes_new_gc(size_t);
+
 rt_array_t *mrklkit_rt_array_new(lkit_array_t *);
+rt_array_t *mrklkit_rt_array_new_gc(lkit_array_t *);
 void mrklkit_rt_array_destroy(rt_array_t **);
 void mrklkit_rt_array_dump(rt_array_t *);
 int64_t mrklkit_rt_get_array_item_int(rt_array_t *, int64_t, int64_t);
@@ -126,6 +129,7 @@ double mrklkit_rt_get_array_item_float(rt_array_t *, int64_t, double);
 bytes_t *mrklkit_rt_get_array_item_str(rt_array_t *, int64_t, bytes_t *);
 
 rt_dict_t *mrklkit_rt_dict_new(lkit_dict_t *);
+rt_dict_t *mrklkit_rt_dict_new_gc(lkit_dict_t *);
 void mrklkit_rt_dict_destroy(rt_dict_t **);
 void mrklkit_rt_dict_dump(rt_dict_t *);
 int64_t mrklkit_rt_get_dict_item_int(rt_dict_t *, bytes_t *, int64_t);
@@ -133,6 +137,7 @@ double mrklkit_rt_get_dict_item_float(rt_dict_t *, bytes_t *, double);
 bytes_t *mrklkit_rt_get_dict_item_str(rt_dict_t *, bytes_t *, bytes_t *);
 
 rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
+rt_struct_t *mrklkit_rt_struct_new_gc(lkit_struct_t *);
 void mrklkit_rt_struct_destroy(rt_struct_t **);
 void mrklkit_rt_struct_dump(rt_struct_t *);
 void **mrklkit_rt_get_struct_item_addr(rt_struct_t *, int64_t);

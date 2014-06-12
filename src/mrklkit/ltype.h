@@ -65,10 +65,11 @@ typedef enum _lkit_tag {
 
 typedef enum _lkit_parser {
     LKIT_PARSER_NONE,
-    LKIT_PARSER_DELIM,
-    LKIT_PARSER_MDELIM,
-    LKIT_PARSER_SDELIM,
-    LKIT_PARSER_SMDELIM,
+    LKIT_PARSER_DELIM, /* normal single */
+    LKIT_PARSER_MDELIM, /* normal multiple */
+    LKIT_PARSER_SDELIM, /* sequential single */
+    LKIT_PARSER_SMDELIM, /* sequential multiple */
+    LKIT_PARSER_SMARTDELIM, /* smart for dictionaries and arrays */
 } lkit_parser_t;
 
 struct _lkit_type;

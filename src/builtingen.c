@@ -432,16 +432,39 @@ compile_get(mrklkit_ctx_t *mctx,
                          "mrklkit_rt_get_struct_item_%s",
                          fty->name);
             } else {
-                snprintf(buf,
-                         sizeof(buf),
-                         "dparse_struct_item_%s",
-                         fty->name);
+                lkit_struct_t *ts;
+
+                ts = (lkit_struct_t *)(*cont)->type;
+
+                if (ts->parser == LKIT_PARSER_NONE ||
+                    ts->parser == LKIT_PARSER_DELIM ||
+                    ts->parser == LKIT_PARSER_MDELIM) {
+
+                    (void)snprintf(buf,
+                                   sizeof(buf),
+                                   "dparse_struct_item_ra_%s",
+                                   fty->name);
+
+                } else if (ts->parser == LKIT_PARSER_SDELIM ||
+                           ts->parser == LKIT_PARSER_SMDELIM) {
+
+                    (void)snprintf(buf,
+                                   sizeof(buf),
+                                   "dparse_struct_item_seq_%s",
+                                   fty->name);
+
+                } else {
+                    //TRACE("ts->parser=%d", ts->parser);
+                    //lkit_type_dump((*cont)->type);
+                    TR(COMPILE_GET + 302);
+                    goto err;
+                }
             }
 
             args[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx), idx, 1);
 
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
-                TR(COMPILE_GET + 302);
+                TR(COMPILE_GET + 303);
                 goto err;
             }
             //LLVMDumpValue(fn);
@@ -514,7 +537,7 @@ compile_str_join(mrklkit_ctx_t *mctx,
         //(void)LLVMBuildCall(builder, bifn, av + it.iter, 1, NEWVAR("call"));
     }
     if ((bnfn = LLVMGetNamedFunction(module,
-                                     "mrklkit_bytes_new")) == NULL) {
+                                     "mrklkit_rt_bytes_new_gc")) == NULL) {
         FAIL("LLVMGetNamedFunction");
     }
     if ((bcfn = LLVMGetNamedFunction(module,
@@ -1396,11 +1419,11 @@ compile_function(mrklkit_ctx_t *mctx,
                         LLVMIntSGE,
                         LLVMRealUGE);
 
-    } else if (strcmp(name , "get") == 0) {
+    } else if (strcmp(name, "get") == 0) {
         //(sym get (func undef undef undef under)) done
         v = compile_get(mctx, ectx, module, builder, expr, COMPILE_GET_GET);
 
-    } else if (strcmp(name , "parse") == 0) {
+    } else if (strcmp(name, "parse") == 0) {
         //(sym parse (func undef undef undef under)) done
         v = compile_get(mctx, ectx, module, builder, expr, COMPILE_GET_PARSE);
 
@@ -1586,8 +1609,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                 /* then user-defined */
                 ref = LLVMGetNamedFunction(module, (char *)expr->name->data);
                 if (ref == NULL) {
-                    LLVMDumpModule(module);
-                    lkit_expr_dump(expr);
+                    //LLVMDumpModule(module);
+                    //lkit_expr_dump(expr);
                     TRACE("failed to find builtin (normally must be "
                           "mrklkit_rt_* or a standard C library, found %s)",
                           (char *)expr->name->data);
@@ -1625,6 +1648,16 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
                         assert(args[it.iter] != NULL);
                         //LLVMDumpValue(args[it.iter]);
+
+                        if ((*rand)->type->tag == LKIT_STR) {
+                            LLVMTypeRef ty;
+
+                            ty = LLVMTypeOf(LLVMGetParam(ref, it.iter));
+                            args[it.iter] = LLVMBuildPointerCast(builder,
+                                                           args[it.iter],
+                                                           ty,
+                                                           NEWVAR("cast"));
+                        }
                     }
 
 

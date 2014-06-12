@@ -48,7 +48,7 @@ mrklkit_rt_gc_fini(void)
  * str
  */
 bytes_t *
-mrklkit_rt_bytes_new(size_t sz)
+mrklkit_rt_bytes_new_gc(size_t sz)
 {
     bytes_t **res;
 

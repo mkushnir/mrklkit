@@ -32,13 +32,21 @@ extern "C" {
 
 
 void dparse_rt_struct_dump(rt_struct_t *);
-int64_t dparse_struct_item_int(rt_struct_t *, int64_t);
-double dparse_struct_item_float(rt_struct_t *, int64_t);
-int64_t dparse_struct_item_bool(rt_struct_t *, int64_t);
-bytes_t *dparse_struct_item_str(rt_struct_t *, int64_t);
-rt_array_t *dparse_struct_item_array(rt_struct_t *, int64_t);
-rt_dict_t *dparse_struct_item_dict(rt_struct_t *, int64_t);
-rt_struct_t *dparse_struct_item_struct(rt_struct_t *, int64_t);
+int64_t dparse_struct_item_seq_int(rt_struct_t *, int64_t);
+int64_t dparse_struct_item_ra_int(rt_struct_t *, int64_t);
+double dparse_struct_item_seq_float(rt_struct_t *, int64_t);
+double dparse_struct_item_ra_float(rt_struct_t *, int64_t);
+int64_t dparse_struct_item_seq_bool(rt_struct_t *, int64_t);
+int64_t dparse_struct_item_ra_bool(rt_struct_t *, int64_t);
+bytes_t *dparse_struct_item_seq_str(rt_struct_t *, int64_t);
+bytes_t *dparse_struct_item_seq_qstr(rt_struct_t *, int64_t);
+bytes_t *dparse_struct_item_ra_str(rt_struct_t *, int64_t);
+rt_array_t *dparse_struct_item_seq_array(rt_struct_t *, int64_t);
+rt_array_t *dparse_struct_item_ra_array(rt_struct_t *, int64_t);
+rt_dict_t *dparse_struct_item_seq_dict(rt_struct_t *, int64_t);
+rt_dict_t *dparse_struct_item_ra_dict(rt_struct_t *, int64_t);
+rt_struct_t *dparse_struct_item_seq_struct(rt_struct_t *, int64_t);
+rt_struct_t *dparse_struct_item_ra_struct(rt_struct_t *, int64_t);
 
 void dparser_reach_delim(bytestream_t *, char, off_t);
 void dparser_reach_value(bytestream_t *,

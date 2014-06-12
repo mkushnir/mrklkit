@@ -262,7 +262,7 @@ dparse_str(bytestream_t *bs,
     dparser_reach_delim(bs, delim, epos);
     br.end = SPOS(bs);
 
-    *val = bytes_new(br.end - br.start + 1);
+    *val = mrklkit_rt_bytes_new_gc(br.end - br.start + 1);
     memcpy((*val)->data, SDATA(bs, br.start), (*val)->sz - 1);
     *((*val)->data + (*val)->sz - 1) = '\0';
     BYTES_INCREF(*val);
@@ -339,7 +339,7 @@ end:
     //      (state == QSTR_ST_OUT) ? "OUT" :
     //      "...");
 
-    *value = bytes_new(br.end - br.start + 1);
+    *value = mrklkit_rt_bytes_new_gc(br.end - br.start + 1);
     BYTES_INCREF(*value);
     /* unescape starting from next by initial " */
     qstr_unescape((char *)(*value)->data,
@@ -610,7 +610,7 @@ dparse_struct(bytestream_t *bs,
         case LKIT_ARRAY:
             {
                 lkit_array_t *arty = (lkit_array_t *)*fty;
-                *val = mrklkit_rt_array_new(arty);
+                *val = mrklkit_rt_array_new_gc(arty);
                 ARRAY_INCREF((rt_array_t *)*val);
                 if (dparse_array(bs,
                                  sdelim,
@@ -626,7 +626,7 @@ dparse_struct(bytestream_t *bs,
         case LKIT_DICT:
             {
                 lkit_dict_t *dcty = (lkit_dict_t *)*fty;
-                *val = mrklkit_rt_dict_new(dcty);
+                *val = mrklkit_rt_dict_new_gc(dcty);
                 DICT_INCREF((rt_dict_t *)*val);
                 if (dparse_dict(bs,
                                 sdelim,
@@ -645,7 +645,7 @@ dparse_struct(bytestream_t *bs,
                 char sch;
 
                 ts = (lkit_struct_t *)*fty;
-                *val = mrklkit_rt_struct_new(ts);
+                *val = mrklkit_rt_struct_new_gc(ts);
                 STRUCT_INCREF((rt_struct_t *)*val);
                 if (dparse_struct(bs,
                                   sdelim,
@@ -761,7 +761,7 @@ dparse_str_pos(bytestream_t *bs,
         ;
     }
 
-    *val = bytes_new(i - spos + 1);
+    *val = mrklkit_rt_bytes_new_gc(i - spos + 1);
     memcpy((*val)->data, SDATA(bs, spos), (*val)->sz - 1);
     *((*val)->data + (*val)->sz - 1) = '\0';
     BYTES_INCREF(*val);
@@ -912,10 +912,56 @@ dparse_struct_pi_pos(rt_struct_t *value)
 }
 
 
-static void **
-dparse_struct_item_gen(rt_struct_t *value,
+/**
+ * struct item sequential access, implies "loose" delimiter grammar
+ */
+UNUSED static void **
+dparse_struct_item_seq(rt_struct_t *value,
                        int64_t idx,
-                       dparse_struct_item_cb_t cb)
+                       UNUSED dparse_struct_item_cb_t cb)
+{
+    void **val;
+    int nidx = idx + 1;
+
+    if (nidx >= value->next_delim) {
+        off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t);
+        bytestream_t *bs;
+        char delim;
+
+        bs = value->parser_info.bs;
+        delim = value->type->delim[0];
+
+        if (value->type->parser == LKIT_PARSER_SMDELIM) {
+            _dparser_reach_value = dparser_reach_value_m_pos;
+        } else {
+            _dparser_reach_value = dparser_reach_value_pos;
+        }
+
+        for (; value->next_delim < nidx; ++value->next_delim) {
+            off_t pos;
+
+            pos = value->parser_info.pos;
+
+            pos = _dparser_reach_value(bs,
+                                       delim,
+                                       pos,
+                                       value->parser_info.br.end);
+        }
+    }
+
+    val = MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);
+
+    return val;
+}
+
+
+/**
+ * struct item random access, implies "strict" delimiter grammar
+ */
+static void **
+dparse_struct_item_ra(rt_struct_t *value,
+                      int64_t idx,
+                      dparse_struct_item_cb_t cb)
 {
     void **val;
     assert(idx < (ssize_t)value->type->fields.elnum);
@@ -992,11 +1038,11 @@ dparse_struct_item_gen(rt_struct_t *value,
 
         switch ((*fty)->tag) {
         case LKIT_ARRAY:
-            *val = mrklkit_rt_array_new((lkit_array_t *)*fty);
+            *val = mrklkit_rt_array_new_gc((lkit_array_t *)*fty);
             break;
 
         case LKIT_DICT:
-            *val = mrklkit_rt_dict_new((lkit_dict_t *)*fty);
+            *val = mrklkit_rt_dict_new_gc((lkit_dict_t *)*fty);
             break;
 
         case LKIT_STRUCT:
@@ -1005,7 +1051,7 @@ dparse_struct_item_gen(rt_struct_t *value,
 
                 br.start = spos;
                 br.end = epos;
-                *val = mrklkit_rt_struct_new((lkit_struct_t *)*fty);
+                *val = mrklkit_rt_struct_new_gc((lkit_struct_t *)*fty);
                 dparse_struct_setup(bs, &br, *val);
             }
             break;
@@ -1027,19 +1073,31 @@ dparse_struct_item_gen(rt_struct_t *value,
 
 
 int64_t
-dparse_struct_item_int(rt_struct_t *value, int64_t idx)
+dparse_struct_item_seq_int(rt_struct_t *value, int64_t idx)
 {
     int64_t *val;
 
     assert(sizeof(int64_t) == sizeof(void *));
-    val = (int64_t *)dparse_struct_item_gen(value,
+    val = (int64_t *)dparse_struct_item_seq(value,
+            idx, (dparse_struct_item_cb_t)dparse_int_pos);
+    return *val;
+}
+
+
+int64_t
+dparse_struct_item_ra_int(rt_struct_t *value, int64_t idx)
+{
+    int64_t *val;
+
+    assert(sizeof(int64_t) == sizeof(void *));
+    val = (int64_t *)dparse_struct_item_ra(value,
             idx, (dparse_struct_item_cb_t)dparse_int_pos);
     return *val;
 }
 
 
 double
-dparse_struct_item_float(rt_struct_t *value, int64_t idx)
+dparse_struct_item_seq_float(rt_struct_t *value, int64_t idx)
 {
     union {
         void **v;
@@ -1047,68 +1105,145 @@ dparse_struct_item_float(rt_struct_t *value, int64_t idx)
     } u;
 
     assert(sizeof(double) == sizeof(void *));
-    u.v = dparse_struct_item_gen(value,
+    u.v = dparse_struct_item_seq(value,
+            idx, (dparse_struct_item_cb_t)dparse_float_pos);
+    return *u.d;
+}
+
+
+double
+dparse_struct_item_ra_float(rt_struct_t *value, int64_t idx)
+{
+    union {
+        void **v;
+        double *d;
+    } u;
+
+    assert(sizeof(double) == sizeof(void *));
+    u.v = dparse_struct_item_ra(value,
             idx, (dparse_struct_item_cb_t)dparse_float_pos);
     return *u.d;
 }
 
 
 int64_t
-dparse_struct_item_bool(rt_struct_t *value, int64_t idx)
+dparse_struct_item_seq_bool(rt_struct_t *value, int64_t idx)
 {
     UNUSED int64_t *val;
 
     assert(sizeof(int64_t) == sizeof(void *));
-    val = (int64_t *)dparse_struct_item_gen(value,
+    val = (int64_t *)dparse_struct_item_seq(value,
+            idx, (dparse_struct_item_cb_t)dparse_int_pos);
+    return *val;
+}
+
+
+int64_t
+dparse_struct_item_ra_bool(rt_struct_t *value, int64_t idx)
+{
+    UNUSED int64_t *val;
+
+    assert(sizeof(int64_t) == sizeof(void *));
+    val = (int64_t *)dparse_struct_item_ra(value,
             idx, (dparse_struct_item_cb_t)dparse_int_pos);
     return *val;
 }
 
 
 bytes_t *
-dparse_struct_item_str(rt_struct_t *value, int64_t idx)
+dparse_struct_item_seq_str(rt_struct_t *value, int64_t idx)
 {
     UNUSED bytes_t **val;
 
     assert(sizeof(bytes_t *) == sizeof(void *));
-    val = (bytes_t **)dparse_struct_item_gen(value,
+    val = (bytes_t **)dparse_struct_item_seq(value,
+            idx, (dparse_struct_item_cb_t)dparse_str_pos);
+    return *(bytes_t **)(value->fields + idx);
+}
+
+
+bytes_t *
+dparse_struct_item_ra_str(rt_struct_t *value, int64_t idx)
+{
+    UNUSED bytes_t **val;
+
+    assert(sizeof(bytes_t *) == sizeof(void *));
+    val = (bytes_t **)dparse_struct_item_ra(value,
             idx, (dparse_struct_item_cb_t)dparse_str_pos);
     return *(bytes_t **)(value->fields + idx);
 }
 
 
 rt_array_t *
-dparse_struct_item_array(rt_struct_t *value, int64_t idx)
+dparse_struct_item_seq_array(rt_struct_t *value, int64_t idx)
 {
     UNUSED rt_array_t **val;
 
     assert(sizeof(rt_array_t *) == sizeof(void *));
-    val = (rt_array_t **)dparse_struct_item_gen(value,
+    val = (rt_array_t **)dparse_struct_item_seq(value,
+            idx, (dparse_struct_item_cb_t)dparse_array_pos);
+    return *(rt_array_t **)(value->fields + idx);
+}
+
+
+rt_array_t *
+dparse_struct_item_ra_array(rt_struct_t *value, int64_t idx)
+{
+    UNUSED rt_array_t **val;
+
+    assert(sizeof(rt_array_t *) == sizeof(void *));
+    val = (rt_array_t **)dparse_struct_item_ra(value,
             idx, (dparse_struct_item_cb_t)dparse_array_pos);
     return *(rt_array_t **)(value->fields + idx);
 }
 
 
 rt_dict_t *
-dparse_struct_item_dict(rt_struct_t *value, int64_t idx)
+dparse_struct_item_seq_dict(rt_struct_t *value, int64_t idx)
 {
     UNUSED rt_dict_t **val;
 
     assert(sizeof(rt_dict_t *) == sizeof(void *));
-    val = (rt_dict_t **)dparse_struct_item_gen(value,
+    val = (rt_dict_t **)dparse_struct_item_seq(value,
+            idx, (dparse_struct_item_cb_t)dparse_dict_pos);
+    return *(rt_dict_t **)(value->fields + idx);
+}
+
+
+rt_dict_t *
+dparse_struct_item_ra_dict(rt_struct_t *value, int64_t idx)
+{
+    UNUSED rt_dict_t **val;
+
+    assert(sizeof(rt_dict_t *) == sizeof(void *));
+    val = (rt_dict_t **)dparse_struct_item_ra(value,
             idx, (dparse_struct_item_cb_t)dparse_dict_pos);
     return *(rt_dict_t **)(value->fields + idx);
 }
 
 
 rt_struct_t *
-dparse_struct_item_struct(rt_struct_t *value, int64_t idx)
+dparse_struct_item_seq_struct(rt_struct_t *value, int64_t idx)
 {
     UNUSED rt_struct_t **val;
 
     assert(sizeof(rt_struct_t *) == sizeof(void *));
 
-    val = (rt_struct_t **)dparse_struct_item_gen(value,
+    val = (rt_struct_t **)dparse_struct_item_seq(value,
+            idx, (dparse_struct_item_cb_t)dparse_struct_pos);
+    //TRACE("val=%p", val);
+    return *(rt_struct_t **)(value->fields + idx);
+}
+
+
+rt_struct_t *
+dparse_struct_item_ra_struct(rt_struct_t *value, int64_t idx)
+{
+    UNUSED rt_struct_t **val;
+
+    assert(sizeof(rt_struct_t *) == sizeof(void *));
+
+    val = (rt_struct_t **)dparse_struct_item_ra(value,
             idx, (dparse_struct_item_cb_t)dparse_struct_pos);
     //TRACE("val=%p", val);
     return *(rt_struct_t **)(value->fields + idx);
@@ -1130,35 +1265,35 @@ dparse_rt_struct_dump(rt_struct_t *value)
 
         switch ((*fty)->tag) {
         case LKIT_INT:
-            TRACEC("%ld ", dparse_struct_item_int(value, it.iter));
+            TRACEC("%ld ", dparse_struct_item_seq_int(value, it.iter));
             break;
 
         case LKIT_FLOAT:
-            TRACEC("%lf ", dparse_struct_item_float(value, it.iter));
+            TRACEC("%lf ", dparse_struct_item_seq_float(value, it.iter));
             break;
 
         case LKIT_STR:
             {
                 bytes_t *v;
 
-                v = dparse_struct_item_str(value, it.iter);
+                v = dparse_struct_item_seq_str(value, it.iter);
                 TRACEC("'%s' ", v != NULL ? v->data : NULL);
             }
             break;
 
         case LKIT_ARRAY:
             mrklkit_rt_array_dump(
-                dparse_struct_item_array(value, it.iter));
+                dparse_struct_item_seq_array(value, it.iter));
             break;
 
         case LKIT_DICT:
             mrklkit_rt_dict_dump(
-                dparse_struct_item_dict(value, it.iter));
+                dparse_struct_item_seq_dict(value, it.iter));
             break;
 
         case LKIT_STRUCT:
             dparse_rt_struct_dump(
-                dparse_struct_item_struct(value, it.iter));
+                dparse_struct_item_seq_struct(value, it.iter));
             break;
 
         default:
