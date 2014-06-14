@@ -768,7 +768,7 @@ dparse_str_pos(bytestream_t *bs,
     return i;
 }
 
-UNUSED static off_t
+static off_t
 dparse_str_pos_brushdown(bytestream_t *bs,
                          char delim,
                          off_t spos,
@@ -851,11 +851,18 @@ dparse_dict_pos(bytestream_t *bs,
     char kvdelim;
     char fdelim;
     lkit_type_t *dfty;
+    off_t (*_dparse_str_pos)(bytestream_t *, char, off_t, off_t, bytes_t **);
 
     kvdelim = (*val)->type->kvdelim[0];
     fdelim = (*val)->type->fdelim[0];
     if ((dfty = lkit_dict_get_element_type((*val)->type)) == NULL) {
         FAIL("lkit_dict_get_element_type");
+    }
+
+    if ((*val)->type->parser == LKIT_PARSER_SMARTDELIM) {
+        _dparse_str_pos = dparse_str_pos_brushdown;
+    } else {
+        _dparse_str_pos = dparse_str_pos;
     }
 
 #define DPARSE_DICT_CASE(ty, fn) \
@@ -868,7 +875,7 @@ dparse_dict_pos(bytestream_t *bs,
                 ty x; \
             } u; \
             kvpos = dparser_reach_delim_pos(bs, kvdelim, spos, epos); \
-            (void)dparse_str_pos(bs, kvdelim, spos, kvpos, &key); \
+            (void)_dparse_str_pos(bs, kvdelim, spos, kvpos, &key); \
             spos = dparser_reach_value_pos(bs, kvdelim, kvpos, epos); \
             if ((it = dict_get_item(&(*val)->fields, key)) == NULL) { \
                 fpos = fn(bs, fdelim, spos, epos, &u.x); \

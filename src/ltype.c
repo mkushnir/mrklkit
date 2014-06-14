@@ -928,6 +928,12 @@ parse_array_quals(array_t *form,
                     /* delim requires a string argument */
                     TRRET(PARSE_ARRAY_QUALS + 4);
                 }
+            } else if (strcmp((char *) parser, "smartdelim") == 0) {
+                ta->parser = LKIT_PARSER_SMARTDELIM;
+                if (lparse_next_str(form, it, &ta->delim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_ARRAY_QUALS + 4);
+                }
             } else if (strcmp((char *) parser, "none") == 0) {
                 ta->parser = LKIT_PARSER_NONE;
             } else {
@@ -965,6 +971,16 @@ parse_dict_quals(array_t *form,
         if (lparse_next_word(form, it, &parser, 1) == 0) {
             if (strcmp((char *) parser, "delim") == 0) {
                 td->parser = LKIT_PARSER_DELIM;
+                if (lparse_next_str(form, it, &td->kvdelim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_DICT_QUALS + 1);
+                }
+                if (lparse_next_str(form, it, &td->fdelim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_DICT_QUALS + 2);
+                }
+            } else if (strcmp((char *) parser, "smartdelim") == 0) {
+                td->parser = LKIT_PARSER_SMARTDELIM;
                 if (lparse_next_str(form, it, &td->kvdelim, 1) != 0) {
                     /* delim requires a string argument */
                     TRRET(PARSE_DICT_QUALS + 1);
