@@ -8,6 +8,7 @@
 #include <mrklkit/fparser.h>
 
 #include "unittest.h"
+#include "diag.h"
 
 static int
 mycb(UNUSED const char *buf,

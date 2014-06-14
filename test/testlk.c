@@ -47,6 +47,7 @@ test1(void)
     int fd;
     int res;
     bytestream_t bs;
+    byterange_t br;
     size_t nlines = 0;
 
     if ((fd = open(prog, O_RDONLY)) == -1) {
@@ -75,8 +76,16 @@ test1(void)
     }
 
     bytestream_init(&bs, 1024*1024);
+    br.start= 0;
+    br.end = OFF_MAX;
 
-    if (dparser_read_lines(fd, &bs, (dparser_read_lines_cb_t)testrt_run_once, NULL, &tctx, &nlines) != 0) {
+    if (dparser_read_lines(fd,
+                           &bs,
+                           &br,
+                           (dparser_read_lines_cb_t)testrt_run_once,
+                           NULL,
+                           &tctx,
+                           &nlines) != 0) {
         TRACE("error");
     }
 

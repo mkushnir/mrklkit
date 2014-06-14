@@ -441,6 +441,7 @@ main(int argc, char *argv[])
     if (argc > 2) {
         int fd;
         bytestream_t bs;
+        byterange_t br;
         size_t nlines = 0;
 
         dtype = argv[1];
@@ -452,28 +453,30 @@ main(int argc, char *argv[])
 
 
         bytestream_init(&bs, 1024*1024);
+        br.start = 0;
+        br.end = OFF_MAX;
 
 
         if (strcmp(dtype, "int") == 0) {
-            dparser_read_lines(fd, &bs, test_int, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_int, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "float") == 0) {
-            dparser_read_lines(fd, &bs, test_float, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_float, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "qstr") == 0) {
-            dparser_read_lines(fd, &bs, test_qstr, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_qstr, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "str") == 0) {
-            dparser_read_lines(fd, &bs, test_str, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_str, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "aint") == 0) {
-            dparser_read_lines(fd, &bs, test_array_int, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_array_int, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "afloat") == 0) {
-            dparser_read_lines(fd, &bs, test_array_float, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_array_float, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "astr") == 0) {
-            dparser_read_lines(fd, &bs, test_array_str, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_array_str, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "dint") == 0) {
-            dparser_read_lines(fd, &bs, test_dict_int, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_dict_int, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "dfloat") == 0) {
-            dparser_read_lines(fd, &bs, test_dict_float, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_dict_float, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "dstr") == 0) {
-            dparser_read_lines(fd, &bs, test_dict_str, NULL, &mctx, &nlines);
+            dparser_read_lines(fd, &bs, &br, test_dict_str, NULL, &mctx, &nlines);
         //} else if (strcmp(dtype, "st00") == 0) {
         //    test_struct_00();
         } else {
