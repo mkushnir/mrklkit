@@ -764,7 +764,7 @@ dparse_str_pos(bytestream_t *bs,
     *val = mrklkit_rt_bytes_new_gc(i - spos + 1);
     memcpy((*val)->data, SDATA(bs, spos), (*val)->sz - 1);
     *((*val)->data + (*val)->sz - 1) = '\0';
-    BYTES_INCREF(*val);
+    //BYTES_INCREF(*val);
     return i;
 }
 
@@ -801,16 +801,16 @@ dparse_array_pos(bytestream_t *bs,
     }
 
     switch (afty->tag) {
+    case LKIT_STR:
+        DPARSE_ARRAY_CASE(bytes_t *, dparse_str_pos);
+        break;
+
     case LKIT_INT:
         DPARSE_ARRAY_CASE(int64_t, dparse_int_pos);
         break;
 
     case LKIT_FLOAT:
         DPARSE_ARRAY_CASE(double, dparse_float_pos);
-        break;
-
-    case LKIT_STR:
-        DPARSE_ARRAY_CASE(bytes_t *, dparse_str_pos);
         break;
 
     default:
@@ -854,23 +854,23 @@ dparse_dict_pos(bytestream_t *bs,
                 dict_set_item(&(*val)->fields, key, u.v); \
                 fpos = dparser_reach_delim_pos(bs, fdelim, fpos, epos); \
             } else { \
-                BYTES_DECREF(&key); \
+                /* BYTES_DECREF(&key); */ \
                 fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos); \
             } \
             spos = dparser_reach_value_pos(bs, fdelim, fpos, epos); \
         }
 
     switch (dfty->tag) {
+    case LKIT_STR:
+        DPARSE_DICT_CASE(bytes_t *, dparse_str_pos);
+        break;
+
     case LKIT_INT:
         DPARSE_DICT_CASE(int64_t, dparse_int_pos);
         break;
 
     case LKIT_FLOAT:
         DPARSE_DICT_CASE(double, dparse_float_pos);
-        break;
-
-    case LKIT_STR:
-        DPARSE_DICT_CASE(bytes_t *, dparse_str_pos);
         break;
 
     default:
@@ -1311,6 +1311,7 @@ dparse_rt_struct_dump(rt_struct_t *value)
 int
 dparser_read_lines(int fd,
                    bytestream_t *bs,
+                   byterange_t *br,
                    dparser_read_lines_cb_t cb,
                    dparser_bytestream_recycle_cb_t rcb,
                    void *udata,
@@ -1318,42 +1319,40 @@ dparser_read_lines(int fd,
 {
     int res = 0;
     UNUSED ssize_t nread;
-    byterange_t br;
 
     nread = 0xffffffff;
-    br.start = 0;
-    br.end = OFF_MAX;
+    //br->end = OFF_MAX;
 
     while (1) {
 
         //sleep(1);
 
-        br.start = SPOS(bs);
+        br->start = SPOS(bs);
         if (dparser_reach_delim_readmore(bs,
                                          fd,
                                          '\n',
-                                         br.end) == DPARSE_EOD) {
+                                         br->end) == DPARSE_EOD) {
             break;
         }
 
-        br.end = SPOS(bs);
+        br->end = SPOS(bs);
 
-        //TRACE("start=%ld end=%ld", br.start, br.end);
-        //D32(SPDATA(bs), br.end - br.start);
+        //TRACE("start=%ld end=%ld sz=%ld", br->start, br->end, br->end - br->start);
+        //D32(SDATA(bs, br->start), br->end - br->start);
 
-        if ((res = cb(bs, &br, udata)) != 0) {
+        if ((res = cb(bs, br, udata)) != 0) {
             ++(*nlines);
             break;
         }
 
         dparser_reach_value(bs, '\n', SEOD(bs));
-        br.end = SEOD(bs);
+        br->end = SEOD(bs);
 
         if (SPOS(bs) >= bs->growsz - 8192) {
             UNUSED off_t recycled;
 
             recycled = bytestream_recycle(bs, 0, SPOS(bs));
-            br.end = SEOD(bs);
+            br->end = SEOD(bs);
 
             if (rcb != NULL && rcb(udata) != 0) {
                 res = DPARSER_READ_LINES + 1;

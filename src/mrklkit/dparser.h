@@ -100,10 +100,13 @@ dparse_struct_setup(bytestream_t *,
 
 off_t dparse_struct_pi_pos(rt_struct_t *);
 
-typedef int (*dparser_read_lines_cb_t)(bytestream_t *, const byterange_t *, void *);
+typedef int (*dparser_read_lines_cb_t)(bytestream_t *,
+                                       const byterange_t *,
+                                       void *);
 typedef int (*dparser_bytestream_recycle_cb_t)(void *);
 int dparser_read_lines(int,
                        bytestream_t *,
+                       byterange_t *,
                        dparser_read_lines_cb_t,
                        dparser_bytestream_recycle_cb_t,
                        void *,
