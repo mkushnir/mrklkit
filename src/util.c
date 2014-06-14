@@ -76,6 +76,52 @@ mrklkit_bytes_copy(bytes_t *dst, bytes_t *src, size_t off)
 }
 
 
+void
+mrklkit_bytes_brushdown(bytes_t *str)
+{
+    unsigned char *src, *dst;
+    unsigned char *end;
+
+    /*
+     * expect alpha-numeric words optionally surrounded by spaces
+     */
+    end = str->data + str->sz;
+    for (src = str->data, dst = str->data;
+         src < end;
+         ++src, ++dst) {
+        if (*src == '%' && (src + 2) < end) {
+            ++src;
+            if (*src >= '0' && *src <= '9') {
+                *dst = (*src - '0') << 4;
+            } else if (*src >= 'A' && *src <= 'F') {
+                *dst = (*src - '7') << 4;
+            } else if (*src >= 'a' && *src <= 'f') {
+                *dst = (*src - 'w') << 4;
+            } else {
+                /* ignore invalid sequence */
+            }
+            ++src;
+            if (*src >= '0' && *src <= '9') {
+                *dst = (*src - '0');
+            } else if (*src >= 'A' && *src <= 'F') {
+                *dst = (*src - '7');
+            } else if (*src >= 'a' && *src <= 'f') {
+                *dst = (*src - 'w');
+            } else {
+                /* ignore invalid sequence */
+            }
+            if (*dst == ' ') {
+                /* discard SPACE */
+                --dst;
+            }
+        }
+    }
+    *(dst - 1) = '\0';
+    str->sz = (intptr_t)(dst - str->data + 1);
+    str->hash = 0;
+}
+
+
 bytes_t *
 mrklkit_bytes_new_from_str(const char *s)
 {

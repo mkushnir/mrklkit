@@ -65,6 +65,8 @@ int mrklkit_bytes_cmp(bytes_t *, bytes_t *);
 #define bytes_cmp mrklkit_bytes_cmp
 void mrklkit_bytes_copy(bytes_t *, bytes_t *, size_t);
 #define bytes_copy mrklkit_bytes_copy
+void mrklkit_bytes_brushdown(bytes_t *);
+#define bytes_brushdown mrklkit_bytes_brushdown
 
 char *newvar(char *, size_t, const char *);
 

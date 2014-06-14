@@ -768,6 +768,27 @@ dparse_str_pos(bytestream_t *bs,
     return i;
 }
 
+UNUSED static off_t
+dparse_str_pos_brushdown(bytestream_t *bs,
+                         char delim,
+                         off_t spos,
+                         off_t epos,
+                         bytes_t **val)
+{
+    off_t i;
+
+    for (i = spos; i < epos && SNCHR(bs, i) != delim; ++i) {
+        ;
+    }
+
+    *val = mrklkit_rt_bytes_new_gc(i - spos + 1);
+    memcpy((*val)->data, SDATA(bs, spos), (*val)->sz - 1);
+    *((*val)->data + (*val)->sz - 1) = '\0';
+    bytes_brushdown(*val);
+    //BYTES_INCREF(*val);
+    return i;
+}
+
 static void
 dparse_array_pos(bytestream_t *bs,
                  char delim,
