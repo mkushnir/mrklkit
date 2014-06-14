@@ -1311,48 +1311,49 @@ dparse_rt_struct_dump(rt_struct_t *value)
 int
 dparser_read_lines(int fd,
                    bytestream_t *bs,
-                   byterange_t *br,
                    dparser_read_lines_cb_t cb,
                    dparser_bytestream_recycle_cb_t rcb,
                    void *udata,
                    size_t *nlines)
 {
     int res = 0;
-    UNUSED ssize_t nread;
+    off_t diff;
+    byterange_t br;
 
-    nread = 0xffffffff;
-    //br->end = OFF_MAX;
+    br.end = OFF_MAX;
+    bytestream_rewind(bs);
 
     while (1) {
 
+
         //sleep(1);
 
-        br->start = SPOS(bs);
+        br.start = SPOS(bs);
         if (dparser_reach_delim_readmore(bs,
                                          fd,
                                          '\n',
-                                         br->end) == DPARSE_EOD) {
+                                         br.end) == DPARSE_EOD) {
             break;
         }
 
-        br->end = SPOS(bs);
+        br.end = SPOS(bs);
 
-        //TRACE("start=%ld end=%ld sz=%ld", br->start, br->end, br->end - br->start);
-        //D32(SDATA(bs, br->start), br->end - br->start);
+        //TRACE("start=%ld end=%ld sz=%ld", br.start, br.end, br.end - br.start);
+        //D32(SDATA(bs, br.start), br.end - br.start);
 
-        if ((res = cb(bs, br, udata)) != 0) {
+        if ((res = cb(bs, &br, udata)) != 0) {
             ++(*nlines);
             break;
         }
 
         dparser_reach_value(bs, '\n', SEOD(bs));
-        br->end = SEOD(bs);
+        br.end = SEOD(bs);
 
         if (SPOS(bs) >= bs->growsz - 8192) {
             UNUSED off_t recycled;
 
             recycled = bytestream_recycle(bs, 0, SPOS(bs));
-            br->end = SEOD(bs);
+            br.end = SEOD(bs);
 
             if (rcb != NULL && rcb(udata) != 0) {
                 res = DPARSER_READ_LINES + 1;
@@ -1361,6 +1362,16 @@ dparser_read_lines(int fd,
             }
         }
         ++(*nlines);
+    }
+
+    diff = SPOS(bs) - SEOD(bs);
+    assert(diff <= 0);
+
+    /* shift back ... */
+    if (diff < 0) {
+        if (lseek(fd, diff, SEEK_CUR) < 0) {
+            res = DPARSER_READ_LINES + 2;
+        }
     }
 
     TRRET(res);

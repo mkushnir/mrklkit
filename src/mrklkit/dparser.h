@@ -106,7 +106,6 @@ typedef int (*dparser_read_lines_cb_t)(bytestream_t *,
 typedef int (*dparser_bytestream_recycle_cb_t)(void *);
 int dparser_read_lines(int,
                        bytestream_t *,
-                       byterange_t *,
                        dparser_read_lines_cb_t,
                        dparser_bytestream_recycle_cb_t,
                        void *,
