@@ -93,31 +93,39 @@ mrklkit_bytes_brushdown(bytes_t *str)
             ++src;
             if (*src >= '0' && *src <= '9') {
                 *dst = (*src - '0') << 4;
+                //TRACE("*dst='%02hhd'", *dst);
             } else if (*src >= 'A' && *src <= 'F') {
                 *dst = (*src - '7') << 4;
+                //TRACE("*dst='%02hhd'", *dst);
             } else if (*src >= 'a' && *src <= 'f') {
                 *dst = (*src - 'w') << 4;
+                //TRACE("*dst='%02hhd'", *dst);
             } else {
                 /* ignore invalid sequence */
             }
             ++src;
             if (*src >= '0' && *src <= '9') {
-                *dst = (*src - '0');
+                *dst |= (*src - '0');
+                //TRACE("*dst='%02hhd'", *dst);
             } else if (*src >= 'A' && *src <= 'F') {
-                *dst = (*src - '7');
+                *dst |= (*src - '7');
+                //TRACE("*dst='%02hhd'", *dst);
             } else if (*src >= 'a' && *src <= 'f') {
-                *dst = (*src - 'w');
+                *dst |= (*src - 'w');
+                //TRACE("*dst='%02hhd'", *dst);
             } else {
                 /* ignore invalid sequence */
             }
-            if (*dst == ' ') {
-                /* discard SPACE */
-                --dst;
-            }
+        } else {
+            *dst = *src;
+        }
+        if (*dst == ' ') {
+            /* discard SPACE */
+            --dst;
         }
     }
     *(dst - 1) = '\0';
-    str->sz = (intptr_t)(dst - str->data + 1);
+    str->sz = (intptr_t)(dst - str->data);
     str->hash = 0;
 }
 
