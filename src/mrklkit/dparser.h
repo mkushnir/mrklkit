@@ -24,8 +24,7 @@ extern "C" {
 
 #define DPARSE_NEEDMORE (-1)
 #define DPARSE_ERRORVALUE (-2)
-#define DPARSE_READ (-3)
-#define DPARSE_EOD (-4)
+#define DPARSE_EOD (-3)
 
 #define DPARSE_MERGEDELIM 0x01
 #define DPARSE_RESETONERROR 0x02

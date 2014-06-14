@@ -1333,6 +1333,7 @@ dparser_read_lines(int fd,
                                          fd,
                                          '\n',
                                          br.end) == DPARSE_EOD) {
+            res = DPARSE_EOD;
             break;
         }
 
