@@ -155,6 +155,7 @@ void mrklkit_rt_set_struct_item_bool(rt_struct_t *, int64_t, int64_t);
 void mrklkit_rt_set_struct_item_str(rt_struct_t *, int64_t, bytes_t *);
 
 void mrklkit_rt_struct_shallow_copy(rt_struct_t *, rt_struct_t *);
+void mrklkit_rt_struct_deep_copy(rt_struct_t *, rt_struct_t *);
 
 void mrklkit_rt_do_gc(void);
 void lruntime_init(void);

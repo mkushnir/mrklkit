@@ -321,6 +321,39 @@ lkit_type_get(mrklkit_ctx_t *mctx, int tag)
     return ty;
 }
 
+lkit_array_t *
+lkit_type_get_array(mrklkit_ctx_t *mctx, int ftag)
+{
+    lkit_array_t *ty;
+    lkit_type_t **fty;
+
+    ty = (lkit_array_t *)lkit_type_get(mctx, LKIT_ARRAY);
+
+    if ((fty = array_incr(&ty->fields)) == NULL) {
+        FAIL("array_incr");
+    }
+
+    *fty = lkit_type_get(mctx, ftag);
+    return (lkit_array_t *)lkit_type_finalize(mctx, (lkit_type_t *)ty);
+}
+
+
+lkit_dict_t *
+lkit_type_get_dict(mrklkit_ctx_t *mctx, int ftag)
+{
+    lkit_dict_t *ty;
+    lkit_type_t **fty;
+
+    ty = (lkit_dict_t *)lkit_type_get(mctx, LKIT_DICT);
+
+    if ((fty = array_incr(&ty->fields)) == NULL) {
+        FAIL("array_incr");
+    }
+
+    *fty = lkit_type_get(mctx, ftag);
+    return (lkit_dict_t *)lkit_type_finalize(mctx, (lkit_type_t *)ty);
+}
+
 
 lkit_type_t *
 lkit_type_finalize(mrklkit_ctx_t *mctx, lkit_type_t *ty)
@@ -1286,7 +1319,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                                                       *node,
                                                       1)) == NULL) {
                         TR(LKIT_TYPE_PARSE + 12);
-                        fparser_datum_dump(node, NULL);
+                        //fparser_datum_dump(node, NULL);
                         goto err;
                     }
                     /* no function params or return values */

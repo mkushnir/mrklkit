@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-int ltype_compile(lkit_type_t *, LLVMContextRef);
+int ltype_compile(lkit_type_t *, LLVMModuleRef);
 int ltype_compile_methods(lkit_type_t *,
                           LLVMModuleRef,
                           bytes_t *);

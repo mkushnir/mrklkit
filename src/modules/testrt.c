@@ -73,8 +73,12 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
 }
 
 static int
-_cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
+_cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMModuleRef module)
 {
+    LLVMContextRef lctx;
+
+    lctx = LLVMGetModuleContext(module);
+
     if (value->tag == (int)(LKIT_USER + 100)) {
         value->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
                                                               NULL,
@@ -86,11 +90,11 @@ _cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
 
 
 static int
-_cb1(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
+_cb1(UNUSED bytes_t *key, lkit_type_t *value, LLVMModuleRef module)
 {
     int res;
 
-    res = ltype_compile(value, lctx);
+    res = ltype_compile(value, module);
     if (res != 0) {
         //TRACE("Could not compile this type:");
         //lkit_type_dump(value);
@@ -100,10 +104,10 @@ _cb1(UNUSED bytes_t *key, lkit_type_t *value, LLVMContextRef lctx)
 
 
 static int
-_compile_type(testrt_ctx_t *tctx, LLVMContextRef lctx)
+_compile_type(testrt_ctx_t *tctx, LLVMModuleRef module)
 {
-    (void)dict_traverse(&tctx->mctx.typedefs, (dict_traverser_t)_cb0, lctx);
-    return dict_traverse(&tctx->mctx.types, (dict_traverser_t)_cb1, lctx);
+    (void)dict_traverse(&tctx->mctx.typedefs, (dict_traverser_t)_cb0, module);
+    return dict_traverse(&tctx->mctx.types, (dict_traverser_t)_cb1, module);
 }
 
 static int

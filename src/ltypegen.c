@@ -75,8 +75,6 @@ bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
     }
 
     arg = LLVMBuildLoad(builder, arg, NEWVAR("load"));
-    //LLVMDumpValue(fn);
-    //LLVMDumpValue(arg);
     v = LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
 
     return 0;
@@ -84,8 +82,9 @@ bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
 
 
 int
-ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
+ltype_compile(lkit_type_t *ty, LLVMModuleRef module)
 {
+    LLVMContextRef lctx;
     LLVMTypeRef retty;
     lkit_type_t **field;
     array_iter_t it;
@@ -93,6 +92,8 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
     if (ty->backend != NULL) {
         return 0;
     }
+
+    lctx = LLVMGetModuleContext(module);
 
     switch (ty->tag) {
     case LKIT_VOID:
@@ -124,8 +125,6 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
                               countof(fields),
                               0);
             ty->backend = LLVMPointerType(tc->deref_backend, 0);
-            //ty->compile_setup = bytes_compile_setup;
-            //ty->compile_cleanup = bytes_compile_cleanup;
         }
         break;
 
@@ -148,23 +147,35 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
         break;
 
     case LKIT_ARRAY:
-        //ty->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
-        //                                                      NULL,
-        //                                                      0,
-        //                                                      0), 0);
-        ty->backend = LLVMStructCreateNamed(lctx, "rt_array_t");
-        LLVMStructSetBody(ty->backend, NULL, 0, 0);
-        ty->backend = LLVMPointerType(ty->backend, 0);
+        {
+            char buf[1024];
+
+            snprintf(buf,
+                     sizeof(buf),
+                     "rt_array_t__%s",
+                     lkit_array_get_element_type((lkit_array_t *)ty)->name);
+            if ((ty->backend = LLVMGetTypeByName(module, buf)) == NULL) {
+                ty->backend = LLVMStructCreateNamed(lctx, buf);
+                LLVMStructSetBody(ty->backend, NULL, 0, 0);
+            }
+            ty->backend = LLVMPointerType(ty->backend, 0);
+        }
         break;
 
     case LKIT_DICT:
-        //ty->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
-        //                                                      NULL,
-        //                                                      0,
-        //                                                      0), 0);
-        ty->backend = LLVMStructCreateNamed(lctx, "rt_dict_t");
-        LLVMStructSetBody(ty->backend, NULL, 0, 0);
-        ty->backend = LLVMPointerType(ty->backend, 0);
+        {
+            char buf[1024];
+
+            snprintf(buf,
+                     sizeof(buf),
+                     "rt_dict_t__%s",
+                     lkit_dict_get_element_type((lkit_dict_t *)ty)->name);
+            if ((ty->backend = LLVMGetTypeByName(module, buf)) == NULL) {
+                ty->backend = LLVMStructCreateNamed(lctx, buf);
+                LLVMStructSetBody(ty->backend, NULL, 0, 0);
+            }
+            ty->backend = LLVMPointerType(ty->backend, 0);
+        }
         break;
 
     case LKIT_STRUCT:
@@ -189,7 +200,7 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
                     goto end_struct;
                 }
 
-                if (ltype_compile(*field, lctx) != 0) {
+                if (ltype_compile(*field, module) != 0) {
                     free(bfields);
                     TRRET(LTYPE_COMPILE + 1);
                 }
@@ -197,10 +208,6 @@ ltype_compile(lkit_type_t *ty, LLVMContextRef lctx)
                 bfields[it.iter] = (*field)->backend;
             }
 
-            //ts->deref_backend = LLVMStructTypeInContext(lctx,
-            //                                            bfields,
-            //                                            ts->fields.elnum,
-            //                                            0);
             ts->deref_backend = LLVMStructCreateNamed(lctx,
                                                       NEWVAR("rt_struct_t"));
             LLVMStructSetBody(ts->deref_backend,
@@ -236,7 +243,7 @@ end_struct:
                 free(bfields);
                 TRRET(LTYPE_COMPILE + 2);
             }
-            if (ltype_compile(*field, lctx) != 0) {
+            if (ltype_compile(*field, module) != 0) {
                 free(bfields);
                 TRRET(LTYPE_COMPILE + 3);
             }
@@ -251,7 +258,7 @@ end_struct:
                     break;
                 }
 
-                if (ltype_compile(*field, lctx) != 0) {
+                if (ltype_compile(*field, module) != 0) {
                     free(bfields);
                     TRRET(LTYPE_COMPILE + 4);
                 }
@@ -350,12 +357,6 @@ ltype_compile_methods(lkit_type_t *ty,
                                                    &argty,
                                                    1,
                                                    0));
-
-            //lkit_type_dump(ty);
-            //TRACE("ts->base.backend=%p", ts->base.backend);
-            //LLVMDumpType(ts->base.backend);
-            //TRACE();
-            //LLVMDumpValue(fn1);
 
             bb = LLVMAppendBasicBlockInContext(lctx, fn1, NEWVAR("L"));
             LLVMPositionBuilderAtEnd(b1, bb);

@@ -20,7 +20,7 @@ typedef void (*mrklkit_module_finalizer_t)(void *);
 typedef int (*mrklkit_type_parser_t)(void *, array_t *,
                                      array_iter_t *);
 
-typedef int (*mrklkit_type_compiler_t)(void *, LLVMContextRef);
+typedef int (*mrklkit_type_compiler_t)(void *, LLVMModuleRef);
 
 typedef int (*mrklkit_expr_parser_t)(void *,
                                      const char *,

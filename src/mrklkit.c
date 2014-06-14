@@ -35,6 +35,7 @@ const char *mrklkit_meta = "; libc\n"
 "(sym printf (func int any ...))\n"
 "(sym strcmp (func int any any))\n"
 "(sym strstr (func any any any))\n"
+"\n"
 "; mrklkit backend\n"
 "(sym dparse_struct_item_ra_int (func int undef int))\n"
 "(sym dparse_struct_item_ra_float (func float undef int))\n"
@@ -58,17 +59,18 @@ const char *mrklkit_meta = "; libc\n"
 "(sym mrklkit_rt_get_struct_item_array (func any undef int))\n"
 "(sym mrklkit_rt_get_struct_item_struct (func any undef int))\n"
 "(sym mrklkit_rt_get_struct_item_dict (func any undef int))\n"
-"(sym mrklkit_rt_get_array_item_int (func int undef int int))\n"
-"(sym mrklkit_rt_get_array_item_float (func float undef int float))\n"
-"(sym mrklkit_rt_get_array_item_str (func str undef int str))\n"
-"(sym mrklkit_rt_get_dict_item_int (func int undef str int))\n"
-"(sym mrklkit_rt_get_dict_item_float (func float undef str float))\n"
-"(sym mrklkit_rt_get_dict_item_str (func str undef str str))\n"
+"(sym mrklkit_rt_get_array_item_int (func int (array int) int int))\n"
+"(sym mrklkit_rt_get_array_item_float (func float (array float) int float))\n"
+"(sym mrklkit_rt_get_array_item_str (func str (array str) int str))\n"
+"(sym mrklkit_rt_get_dict_item_int (func int (dict int) str int))\n"
+"(sym mrklkit_rt_get_dict_item_float (func float (dict float) str float))\n"
+"(sym mrklkit_rt_get_dict_item_str (func str (dict str) str str))\n"
 "(sym mrklkit_bytes_new (func str int))\n"
 "(sym mrklkit_bytes_copy (func int str str int))\n"
 ";(sym mrklkit_bytes_decref (func int any))\n"
 ";(sym mrklkit_bytes_decref_fast (func int str))\n"
 ";(sym mrklkit_bytes_incref (func int str))\n"
+"(sym mrklkit_rt_array_split_gc (func (array str) any str str))\n"
 "(sym mrklkit_rt_array_destroy (func int any))\n"
 "(sym mrklkit_rt_dict_destroy (func int any))\n"
 "(sym mrklkit_rt_struct_destroy (func int any))\n"
@@ -112,9 +114,11 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin in (func bool undef ...))\n"
 "(builtin substr (func str str int int))\n"
 "(builtin strfind (func int str str))\n"
-"(builtin split (func any str str))\n"
+"(builtin split (func (array str) str str))\n"
 "(builtin dp-info (func undef undef str))\n"
+"\n"
 "(pragma user)\n"
+"\n"
 ;
 
 /**
@@ -159,7 +163,11 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
             nform = (array_t *)((*fnode)->body);
 
             if (lparse_first_word(nform, &nit, &first, 1) == 0) {
-                /* statements */
+                /*
+                 * control statements:
+                 *  - mode
+                 *  - pragma
+                 */
                 if (strcmp((char *)first, "mode") == 0) {
                     TRACE("mode ...");
                 } else if (strcmp((char *)first, "pragma") == 0) {
@@ -175,6 +183,12 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
                     mrklkit_module_t **mod;
                     array_iter_t it;
 
+                    /*
+                     * required:
+                     *  - type
+                     *  - builtin
+                     *  - sym
+                     */
                     for (mod = array_first(ctx->modules, &it);
                          mod != NULL;
                          mod = array_next(ctx->modules, &it)) {
@@ -185,7 +199,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
                                                    nform,
                                                    &nit) != 0) {
                                 (*fnode)->error = 1;
-                                res = MRKLKIT_PARSE + 3;
+                                res = MRKLKIT_PARSE + 2;
                                 goto err;
                             }
                         }
@@ -193,7 +207,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
                 }
             } else {
                 /* ignore ? */
-                res = MRKLKIT_PARSE + 4;
+                res = MRKLKIT_PARSE + 3;
                 goto err;
             }
 
@@ -201,7 +215,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
 
         default:
             /* ignore ? */
-            res = MRKLKIT_PARSE + 5;
+            res = MRKLKIT_PARSE + 4;
             goto err;
         }
     }
@@ -302,7 +316,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
          mod = array_next(ctx->modules, &it)) {
 
         if ((*mod)->compile_type != NULL) {
-            if ((*mod)->compile_type(udata, ctx->lctx)) {
+            if ((*mod)->compile_type(udata, ctx->module)) {
                 TRRET(MRKLKIT_COMPILE + 5);
             }
         }

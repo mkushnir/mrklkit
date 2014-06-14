@@ -247,6 +247,37 @@ mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
 }
 
 
+rt_array_t *
+mrklkit_rt_array_split_gc(lkit_array_t *ty, bytes_t *str, bytes_t *delim)
+{
+    rt_array_t *res;
+    char ch;
+    char *s0, *s1;
+
+    res = mrklkit_rt_array_new_gc(ty);
+    ch = delim->data[0];
+    for (s0 = (char *)str->data, s1 = s0;
+         s0 < (char *)str->data + str->sz;
+         ++s1) {
+        if (*s1 == ch) {
+            bytes_t **item;
+            size_t sz;
+
+            if ((item = array_incr(&res->fields)) == NULL) {
+                FAIL("array_incr");
+            }
+            sz = s1 - s0;
+            *item = mrklkit_rt_bytes_new_gc(sz + 1);
+            memcpy((*item)->data, s0, sz);
+            (*item)->data[sz] = '\0';
+            s0 = s1 + 1;
+        }
+    }
+
+    //mrklkit_rt_array_dump(res);
+    return res;
+}
+
 /**
  * dict
  */
@@ -693,9 +724,6 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
 
     assert(dst->type->fields.elnum == src->type->fields.elnum);
 
-#define MRKLKIT_RT_STRUCT_SHALLOW_COPY_SLOW
-
-#ifdef MRKLKIT_RT_STRUCT_SHALLOW_COPY_SLOW
     for (fty = array_first(&dst->type->fields, &it);
          fty != NULL;
          fty = array_next(&dst->type->fields, &it)) {
@@ -723,10 +751,52 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
             break;
         }
     }
-#else
-    memcpy(dst->fields, src->fields, dst->type->fields.elnum * sizeof(void *));
-#endif
+}
 
+
+void
+mrklkit_rt_struct_deep_copy(rt_struct_t *dst,
+                            rt_struct_t *src)
+{
+    lkit_type_t **fty;
+    array_iter_t it;
+
+    assert(dst->type->fields.elnum == src->type->fields.elnum);
+
+    for (fty = array_first(&dst->type->fields, &it);
+         fty != NULL;
+         fty = array_next(&dst->type->fields, &it)) {
+
+
+        switch ((*fty)->tag) {
+        case LKIT_STR:
+            {
+                bytes_t *a, *b;
+
+                a = (bytes_t *)*(src->fields + it.iter);
+                b = mrklkit_bytes_new(a->sz);
+                BYTES_INCREF(b);
+                mrklkit_bytes_copy(b, a, 0);
+                *((bytes_t **)dst->fields + it.iter) = b;
+            }
+            break;
+
+        case LKIT_ARRAY:
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");
+            break;
+
+        case LKIT_DICT:
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");
+            break;
+
+        case LKIT_STRUCT:
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");
+            break;
+
+        default:
+            *(dst->fields + it.iter) = *(src->fields + it.iter);
+        }
+    }
 }
 
 

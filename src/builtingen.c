@@ -14,59 +14,6 @@
 #include "diag.h"
 
 
-static char *fnames[] = {
-    ",",
-    "if",
-    "print",
-    "+",
-    "-",
-    "*",
-    "/",
-    "%",
-    "min",
-    "max",
-    "and",
-    "or",
-    "not",
-    "==",
-    "=", /* the same as == */
-    "!=",
-    "<",
-    "<=",
-    ">",
-    ">=",
-    "parse",
-    "get",
-    "set",
-    "del",
-    "has",
-    "itof",
-    "ftoi",
-    "startswith",
-    "endswith",
-    "tostr",
-    "in",
-    "substr",
-    "strfind",
-    "split",
-    "dp-info",
-};
-
-UNUSED static int
-check_function(bytes_t *name)
-{
-    char *n = (char *)name->data;
-    size_t i;
-
-    for (i = 0; i < countof(fnames); ++i) {
-        if (strcmp(fnames[i], n) == 0) {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-
 /**
  * LLVM IR emitter.
  */
@@ -287,11 +234,14 @@ compile_get(mrklkit_ctx_t *mctx,
         TR(COMPILE_GET + 1);
         goto err;
     }
-    args[0] = LLVMBuildPointerCast(builder,
-                                   args[0],
-                                   LLVMPointerType(
-                                       LLVMInt8TypeInContext(lctx), 0),
-                                   NEWVAR("cast"));
+
+    if ((*cont)->type->tag == LKIT_STRUCT) {
+        args[0] = LLVMBuildPointerCast(builder,
+                                       args[0],
+                                       LLVMPointerType(
+                                           LLVMInt8TypeInContext(lctx), 0),
+                                       NEWVAR("cast"));
+    }
 
     if ((*cont)->type->tag != LKIT_STRUCT) {
         /* default */
@@ -306,11 +256,13 @@ compile_get(mrklkit_ctx_t *mctx,
             TR(COMPILE_GET + 2);
             goto err;
         }
+        if ((*arg)->type->tag == LKIT_STR) {
+            args[2] = LLVMBuildPointerCast(builder,
+                                           args[2],
+                                           (*arg)->type->backend,
+                                           NEWVAR("cast"));
+        }
     }
-
-    //TRACE("--------");
-    //LLVMDumpValue(args[0]);
-    //TRACE("--------");
 
     switch ((*cont)->type->tag) {
     case LKIT_ARRAY:
@@ -346,11 +298,11 @@ compile_get(mrklkit_ctx_t *mctx,
                 goto err;
             }
 
-            //(sym mrklkit_rt_get_array_item (func undef array int undef))
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
                 TR(COMPILE_GET + 104);
                 goto err;
             }
+
             v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
         }
         break;
@@ -393,7 +345,10 @@ compile_get(mrklkit_ctx_t *mctx,
                 TR(COMPILE_GET + 203);
                 goto err;
             }
-            args[1] = LLVMBuildPointerCast(builder, args[1], LLVMTypeOf(LLVMGetParam(fn, 1)), NEWVAR("cast"));
+            args[1] = LLVMBuildPointerCast(builder,
+                                           args[1],
+                                           LLVMTypeOf(LLVMGetParam(fn, 1)),
+                                           NEWVAR("cast"));
             v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
         }
         break;
@@ -467,10 +422,14 @@ compile_get(mrklkit_ctx_t *mctx,
                 TR(COMPILE_GET + 303);
                 goto err;
             }
-            //LLVMDumpValue(fn);
-            //LLVMDumpValue(args[0]);
-            //LLVMDumpValue(args[1]);
             v = LLVMBuildCall(builder, fn, args, 2, NEWVAR(name));
+            /*
+             * (ty)dparse_struct_item_xxx_yyy()
+             */
+            v = LLVMBuildPointerCast(builder,
+                                     v,
+                                     expr->type->backend,
+                                     NEWVAR("cast"));
         }
 
         break;
@@ -1501,7 +1460,61 @@ compile_function(mrklkit_ctx_t *mctx,
         TR(COMPILE_FUNCTION + 1699);
         goto err;
 
-    } else if (strcmp(name , "dp-info") == 0) {
+    } else if (strcmp(name, "in") == 0) {
+    } else if (strcmp(name, "substr") == 0) {
+    } else if (strcmp(name, "strfind") == 0) {
+    } else if (strcmp(name, "split") == 0) {
+        lkit_expr_t **arg;
+        lkit_array_t *ty;
+        LLVMValueRef fn, args[3];
+
+        //(sym split (func (array str) str str))
+        ty = lkit_type_get_array(mctx, LKIT_STR);
+        if ((fn = LLVMGetNamedFunction(module,
+                    "mrklkit_rt_array_split_gc")) == NULL) {
+            TR(COMPILE_FUNCTION + 1700);
+            goto err;
+        }
+
+        args[0] = LLVMConstIntToPtr(
+                LLVMConstInt(LLVMInt64TypeInContext(lctx), (uintptr_t)ty, 0),
+                LLVMTypeOf(LLVMGetParam(fn, 0)));
+
+        arg = array_get(&expr->subs, 0);
+        if ((args[1] = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         *arg)) == NULL) {
+            TR(COMPILE_FUNCTION + 1701);
+            goto err;
+        }
+        args[1] = LLVMBuildPointerCast(builder,
+                                       args[1],
+                                       LLVMTypeOf(LLVMGetParam(fn, 1)),
+                                       NEWVAR("cast"));
+
+        arg = array_get(&expr->subs, 1);
+        if ((args[2] = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         *arg)) == NULL) {
+            TR(COMPILE_FUNCTION + 1702);
+            goto err;
+        }
+        args[2] = LLVMBuildPointerCast(builder,
+                                       args[2],
+                                       LLVMTypeOf(LLVMGetParam(fn, 2)),
+                                       NEWVAR("cast"));
+
+        v = LLVMBuildCall(builder,
+                          fn,
+                          args,
+                          countof(args),
+                          NEWVAR("call"));
+
+    } else if (strcmp(name, "dp-info") == 0) {
         lkit_expr_t **cont, **opt;
         bytes_t *optname;
         LLVMValueRef ref, args[1];
@@ -1609,8 +1622,6 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                 /* then user-defined */
                 ref = LLVMGetNamedFunction(module, (char *)expr->name->data);
                 if (ref == NULL) {
-                    //LLVMDumpModule(module);
-                    //lkit_expr_dump(expr);
                     TRACE("failed to find builtin (normally must be "
                           "mrklkit_rt_* or a standard C library, found %s)",
                           (char *)expr->name->data);
@@ -1659,7 +1670,6 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                                            NEWVAR("cast"));
                         }
                     }
-
 
                     v = LLVMBuildCall(builder,
                                       ref,
@@ -1857,9 +1867,6 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
     LLVMValueRef v, chkv, fn, storedv;
 
     /* dynamic initializer */
-    //lkit_type_dump(expr->type);
-    //lkit_expr_dump(expr);
-
     lctx = LLVMGetModuleContext(module);
 
     snprintf(buf, sizeof(buf), "_mrklkit.%s.init", (char *)name->data);
@@ -1909,7 +1916,6 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
         }
 
         v = LLVMAddGlobal(module, LLVMTypeOf(storedv), (char *)name->data);
-        //LLVMSetLinkage(v, LLVMPrivateLinkage);
         LLVMSetInitializer(v, LLVMGetUndef(LLVMTypeOf(storedv)));
 
         LLVMBuildStore(builder, storedv, v);
@@ -1952,11 +1958,8 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
         }
 
         v = LLVMAddGlobal(module, LLVMTypeOf(storedv), (char *)name->data);
-        //LLVMSetLinkage(v, LLVMPrivateLinkage);
         LLVMSetInitializer(v, LLVMGetUndef(LLVMTypeOf(storedv)));
 
-        //LLVMDumpValue(storedv);
-        //LLVMDumpValue(v);
         LLVMBuildStore(builder, storedv, v);
         if (expr->type->compile_setup != NULL) {
             if (expr->type->compile_setup(ectx,
@@ -2119,8 +2122,6 @@ _compile(lkit_gitem_t **gitem, void *udata)
                               LLVMTypeOf(initv),
                               (char *)name->data);
             LLVMSetLinkage(v, LLVMPrivateLinkage);
-            //LLVMDumpValue(v);
-            //LLVMDumpValue(initv);
             LLVMSetInitializer(v, initv);
         } else {
             LLVMValueRef fn;

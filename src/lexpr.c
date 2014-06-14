@@ -28,9 +28,10 @@ lkit_expr_qual_name(lkit_expr_t *ectx, bytes_t *name)
 
     if (ectx->name != NULL) {
         res = bytes_new(ectx->name->sz + name->sz + 3);
-        //memcpy(res->data, ectx->name->data, ectx->name->sz - 1);
-        //memcpy(res->data + ectx->name->sz - 1, name->data, name->sz);
-        snprintf((char *)res->data, res->sz, "%s::%s", ectx->name->data, name->data);
+        snprintf((char *)res->data,
+                 res->sz, "%s::%s",
+                 ectx->name->data,
+                 name->data);
     } else {
         res = bytes_new_from_str((char *)name->data);
     }
@@ -381,7 +382,6 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                 if ((expr->value.ref = lkit_expr_find(ectx,
                                                       expr->name)) == NULL) {
                     TRACE("failed probe '%s'", expr->name->data);
-                    //dict_traverse(&ectx->ctx, (dict_traverser_t)lexpr_dump, NULL);
                     TR(LKIT_EXPR_PARSE + 3);
                     goto err;
                 }
