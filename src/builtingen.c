@@ -1715,54 +1715,50 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
                 assert(builder != NULL);
 
-                if (expr->value.ref->alias != NULL) {
-                    ref = expr->value.ref->alias;
-                } else {
+                if ((ref = LLVMGetNamedGlobal(module,
+                        (char *)expr->name->data)) == NULL) {
+
+                    bytes_t *qual_name = NULL;
+
+                    qual_name = lkit_expr_qual_name(ectx, expr->name);
                     if ((ref = LLVMGetNamedGlobal(module,
-                            (char *)expr->name->data)) == NULL) {
-
-                        bytes_t *qual_name = NULL;
-
-                        qual_name = lkit_expr_qual_name(ectx, expr->name);
-                        if ((ref = LLVMGetNamedGlobal(module,
-                                (char *)qual_name->data)) == NULL) {
-                            LLVMDumpModule(module);
-                            FAIL("LLVMGetNamedGlobal");
-                        }
-                        snprintf(buf,
-                                 sizeof(buf),
-                                 "_mrklkit.%s.init",
-                                 (char *)qual_name->data);
-                    } else {
-                        snprintf(buf,
-                                 sizeof(buf),
-                                 "_mrklkit.%s.init",
-                                 (char *)expr->name->data);
+                            (char *)qual_name->data)) == NULL) {
+                        LLVMDumpModule(module);
+                        FAIL("LLVMGetNamedGlobal");
                     }
+                    snprintf(buf,
+                             sizeof(buf),
+                             "_mrklkit.%s.init",
+                             (char *)qual_name->data);
+                } else {
+                    snprintf(buf,
+                             sizeof(buf),
+                             "_mrklkit.%s.init",
+                             (char *)expr->name->data);
+                }
 
-                    //TRACE("init: %s", buf);
+                //TRACE("init: %s", buf);
 
-                    if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
-                        if (expr->value.ref->lazy_init) {
-                            expr->value.ref->lazy_init_referenced = 1;
+                if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
+                    if (expr->value.ref->lazy_init) {
+                        expr->value.ref->lazy_init_referenced = 1;
 #ifdef MRKLKIT_LLVM_C_PATCH_VOID
-                            if (LLVMBuildCall(builder,
-                                              fn,
-                                              NULL,
-                                              0,
-                                              "") == NULL) {
-                                TR(LKIT_COMPILE_EXPR + 4);
-                            }
-#else
-                            if (LLVMBuildCall(builder,
-                                              fn,
-                                              NULL,
-                                              0,
-                                              NEWVAR("tmp")) == NULL) {
-                                TR(LKIT_COMPILE_EXPR + 4);
-                            }
-#endif
+                        if (LLVMBuildCall(builder,
+                                          fn,
+                                          NULL,
+                                          0,
+                                          "") == NULL) {
+                            TR(LKIT_COMPILE_EXPR + 4);
                         }
+#else
+                        if (LLVMBuildCall(builder,
+                                          fn,
+                                          NULL,
+                                          0,
+                                          NEWVAR("tmp")) == NULL) {
+                            TR(LKIT_COMPILE_EXPR + 4);
+                        }
+#endif
                     }
                 }
 
@@ -2093,7 +2089,6 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
 }
 
 
-
 static int
 _compile(lkit_gitem_t **gitem, void *udata)
 {
@@ -2111,17 +2106,13 @@ _compile(lkit_gitem_t **gitem, void *udata)
 
     if (expr->isref) {
         if (expr->subs.elnum == 0) {
-            LLVMValueRef ref;
-
-            if (expr->value.ref->alias != NULL) {
-                ref = expr->value.ref->alias;
-            } else {
-                if ((ref = LLVMGetNamedGlobal(params->module, (char *)expr->name->data)) == NULL) {
-                    TRRET(SYM_COMPILE + 100);
-                }
+            if (compile_dynamic_initializer(params->mctx,
+                                            params->ectx,
+                                            params->module,
+                                            name,
+                                            expr) != 0) {
+                TRRET(SYM_COMPILE + 1);
             }
-
-            expr->alias = LLVMAddAlias(params->module, LLVMTypeOf(ref), ref, (char *)name->data);
         } else {
             if (compile_dynamic_initializer(params->mctx,
                                             params->ectx,
