@@ -246,6 +246,9 @@ mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
                          idx)) == NULL) {
         return dflt;
     }
+    if (*res == NULL) {
+        return dflt;
+    }
     return *res;
 }
 
@@ -457,7 +460,7 @@ mrklkit_rt_get_dict_item_str(rt_dict_t *value, bytes_t *key, bytes_t *dflt)
     if ((it = dict_get_item(&value->fields, key)) == NULL) {
         res = dflt;
     } else {
-        res = it->value;
+        res = it->value == NULL ? dflt : it->value;
     }
     return res;
 }
