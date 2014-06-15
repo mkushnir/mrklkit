@@ -33,7 +33,8 @@ typedef LLVMValueRef (*mrklkit_expr_compiler_t)(mrklkit_ctx_t *,
                                                 lkit_expr_t *,
                                                 LLVMModuleRef,
                                                 LLVMBuilderRef,
-                                                lkit_expr_t *);
+                                                lkit_expr_t *,
+                                                void *);
 
 typedef int (*mrklkit_module_compiler_t)(void *, LLVMModuleRef);
 

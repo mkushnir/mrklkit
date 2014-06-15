@@ -25,7 +25,8 @@ compile_if(mrklkit_ctx_t *mctx,
            lkit_expr_t *cexpr,
            lkit_expr_t *texpr,
            lkit_expr_t *fexpr,
-           lkit_type_t *restype)
+           lkit_type_t *restype,
+           void *udata)
 {
     LLVMContextRef lctx;
     LLVMValueRef v = NULL, cond, texp = NULL, fexp = NULL, iexp[2];
@@ -50,7 +51,7 @@ compile_if(mrklkit_ctx_t *mctx,
     fblock = LLVMInsertBasicBlockInContext(lctx, endblock, NEWVAR("C.false"));
 
     /**/
-    cond = lkit_compile_expr(mctx, ectx, module, builder, cexpr);
+    cond = lkit_compile_expr(mctx, ectx, module, builder, cexpr, udata);
     assert(cond != NULL);
     LLVMBuildCondBr(builder, cond, tblock, fblock);
 
@@ -58,7 +59,7 @@ compile_if(mrklkit_ctx_t *mctx,
     LLVMPositionBuilderAtEnd(builder, tblock);
 
     if (texpr != NULL) {
-        texp = lkit_compile_expr(mctx, ectx, module, builder, texpr);
+        texp = lkit_compile_expr(mctx, ectx, module, builder, texpr, udata);
         assert(texp != NULL);
         res = LLVMBuildBr(builder, endblock);
         assert(res != NULL);
@@ -70,7 +71,7 @@ compile_if(mrklkit_ctx_t *mctx,
     LLVMPositionBuilderAtEnd(builder, fblock);
 
     if (fexpr != NULL) {
-        fexp = lkit_compile_expr(mctx, ectx, module, builder, fexpr);
+        fexp = lkit_compile_expr(mctx, ectx, module, builder, fexpr, udata);
         assert(fexp != NULL);
         res = LLVMBuildBr(builder, endblock);
         assert(res != NULL);
@@ -114,7 +115,8 @@ compile_cmp(mrklkit_ctx_t *mctx,
             LLVMBuilderRef builder,
             lkit_expr_t *expr,
             LLVMIntPredicate ip,
-            LLVMRealPredicate rp)
+            LLVMRealPredicate rp,
+            void *udata)
 {
     LLVMContextRef lctx;
     LLVMValueRef v = NULL;
@@ -129,7 +131,8 @@ compile_cmp(mrklkit_ctx_t *mctx,
                                ectx,
                                module,
                                builder,
-                               *arg)) == NULL) {
+                               *arg,
+                               udata)) == NULL) {
         TR(COMPILE_CMP + 1);
         goto end;
     }
@@ -139,7 +142,8 @@ compile_cmp(mrklkit_ctx_t *mctx,
                                   ectx,
                                   module,
                                   builder,
-                                  *arg)) == NULL) {
+                                  *arg,
+                                  udata)) == NULL) {
         TR(COMPILE_CMP + 2);
         goto end;
     }
@@ -224,7 +228,8 @@ compile_get(mrklkit_ctx_t *mctx,
             LLVMModuleRef module,
             LLVMBuilderRef builder,
             lkit_expr_t *expr,
-            int flag)
+            int flag,
+            void *udata)
 {
     LLVMContextRef lctx;
     LLVMValueRef v = NULL;
@@ -243,7 +248,8 @@ compile_get(mrklkit_ctx_t *mctx,
                                      ectx,
                                      module,
                                      builder,
-                                     *cont)) == NULL) {
+                                     *cont,
+                                     udata)) == NULL) {
         TR(COMPILE_GET + 1);
         goto err;
     }
@@ -265,7 +271,8 @@ compile_get(mrklkit_ctx_t *mctx,
                                          ectx,
                                          module,
                                          builder,
-                                         *arg)) == NULL) {
+                                         *arg,
+                                         udata)) == NULL) {
             TR(COMPILE_GET + 2);
             goto err;
         }
@@ -291,7 +298,8 @@ compile_get(mrklkit_ctx_t *mctx,
                                              ectx,
                                              module,
                                              builder,
-                                             *arg)) == NULL) {
+                                             *arg,
+                                             udata)) == NULL) {
                 TR(COMPILE_GET + 100);
                 goto err;
             }
@@ -333,7 +341,8 @@ compile_get(mrklkit_ctx_t *mctx,
                                              ectx,
                                              module,
                                              builder,
-                                             *arg)) == NULL) {
+                                             *arg,
+                                             udata)) == NULL) {
                 TR(COMPILE_GET + 200);
                 goto err;
             }
@@ -467,7 +476,8 @@ compile_str_join(mrklkit_ctx_t *mctx,
                  LLVMContextRef lctx,
                  LLVMModuleRef module,
                  LLVMBuilderRef builder,
-                 lkit_expr_t *expr)
+                 lkit_expr_t *expr,
+                 void *udata)
 {
     size_t i;
     lkit_expr_t **arg;
@@ -494,7 +504,12 @@ compile_str_join(mrklkit_ctx_t *mctx,
     for (arg = array_first(&expr->subs, &it);
          arg != NULL;
          arg = array_next(&expr->subs, &it)) {
-        av[it.iter] = lkit_compile_expr(mctx, ectx, module, builder, *arg);
+        av[it.iter] = lkit_compile_expr(mctx,
+                                        ectx,
+                                        module,
+                                        builder,
+                                        *arg,
+                                        udata);
         assert(av[it.iter] != NULL);
         asz[it.iter] = LLVMBuildStructGEP(builder,
                                           av[it.iter],
@@ -549,7 +564,8 @@ compile_strstr(mrklkit_ctx_t *mctx,
                LLVMModuleRef module,
                LLVMBuilderRef builder,
                lkit_expr_t *expr,
-               int flag)
+               int flag,
+               void *udata)
 {
     lkit_expr_t **arg;
     LLVMValueRef a0, a1;
@@ -561,7 +577,7 @@ compile_strstr(mrklkit_ctx_t *mctx,
 
     arg = array_get(&expr->subs, 0);
     assert(arg != NULL);
-    a0 = lkit_compile_expr(mctx, ectx, module, builder, *arg);
+    a0 = lkit_compile_expr(mctx, ectx, module, builder, *arg, udata);
     assert(a0 != NULL);
     tmp = LLVMBuildStructGEP(builder, a0, BYTES_DATA_IDX, NEWVAR("gep"));
     fnparam = LLVMGetParam(fn, 0);
@@ -572,7 +588,7 @@ compile_strstr(mrklkit_ctx_t *mctx,
 
     arg = array_get(&expr->subs, 1);
     assert(arg != NULL);
-    a1 = lkit_compile_expr(mctx, ectx, module, builder, *arg);
+    a1 = lkit_compile_expr(mctx, ectx, module, builder, *arg, udata);
     assert(a1 != NULL);
     tmp = LLVMBuildStructGEP(builder, a1, BYTES_DATA_IDX, NEWVAR("gep"));
     fnparam = LLVMGetParam(fn, 1);
@@ -625,7 +641,8 @@ compile_function(mrklkit_ctx_t *mctx,
                  lkit_expr_t *ectx,
                  LLVMModuleRef module,
                  LLVMBuilderRef builder,
-                 lkit_expr_t *expr)
+                 lkit_expr_t *expr,
+                 void *udata)
 {
     LLVMContextRef lctx;
     LLVMValueRef v = NULL;
@@ -659,7 +676,8 @@ compile_function(mrklkit_ctx_t *mctx,
                        *cexpr,
                        *texpr,
                        *fexpr,
-                       expr->type);
+                       expr->type,
+                       udata);
 
     } else if (strcmp(name, ",") == 0) {
         lkit_expr_t **arg;
@@ -674,7 +692,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                        ectx,
                                        module,
                                        builder,
-                                       *arg)) == NULL) {
+                                       *arg,
+                                       udata)) == NULL) {
                 TR(COMPILE_FUNCTION + 200);
                 goto err;
             }
@@ -699,7 +718,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                            ectx,
                                            module,
                                            builder,
-                                           *arg)) == NULL) {
+                                           *arg,
+                                           udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 301);
                     goto err;
                 }
@@ -789,7 +809,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 400);
                     goto err;
                 }
@@ -812,7 +833,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 401);
                     goto err;
                 }
@@ -820,7 +842,13 @@ compile_function(mrklkit_ctx_t *mctx,
                 v = LLVMBuildFAdd(builder, v, rand, NEWVAR("plus"));
             }
         } else if (expr->type->tag == LKIT_STR) {
-            v = compile_str_join(mctx, ectx, lctx, module, builder, expr);
+            v = compile_str_join(mctx,
+                                 ectx,
+                                 lctx,
+                                 module,
+                                 builder,
+                                 expr,
+                                 udata);
         } else {
             TR(COMPILE_FUNCTION + 402);
             goto err;
@@ -841,7 +869,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 500);
             goto err;
         }
@@ -859,7 +888,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 501);
                     goto err;
                 }
@@ -880,7 +910,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 502);
                     goto err;
                 }
@@ -902,7 +933,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 600);
             goto err;
         }
@@ -920,7 +952,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 601);
                     goto err;
                 }
@@ -941,7 +974,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 602);
                     goto err;
                 }
@@ -974,7 +1008,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 700);
                     goto err;
                 }
@@ -997,7 +1032,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 701);
                     goto err;
                 }
@@ -1019,7 +1055,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 800);
             goto err;
         }
@@ -1038,7 +1075,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 801);
                     goto err;
                 }
@@ -1059,7 +1097,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 802);
                     goto err;
                 }
@@ -1081,7 +1120,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 900);
             goto err;
         }
@@ -1096,7 +1136,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
             LLVMValueRef rand;
 
-            if ((rand = lkit_compile_expr(mctx, ectx, module, builder, *arg)) == NULL) {
+            if ((rand = lkit_compile_expr(mctx, ectx, module, builder, *arg, udata)) == NULL) {
                 TR(COMPILE_FUNCTION + 901);
                 goto err;
             }
@@ -1126,7 +1166,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 902);
                     goto err;
                 }
@@ -1154,7 +1195,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 903);
                     goto err;
                 }
@@ -1183,7 +1225,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1000);
             goto err;
         }
@@ -1202,7 +1245,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 1001);
                     goto err;
                 }
@@ -1230,7 +1274,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *arg)) == NULL) {
+                                              *arg,
+                                              udata)) == NULL) {
                     TR(COMPILE_FUNCTION + 1002);
                     goto err;
                 }
@@ -1259,7 +1304,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1100);
             goto err;
         }
@@ -1274,7 +1320,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                           ectx,
                                           module,
                                           builder,
-                                          *arg)) == NULL) {
+                                          *arg,
+                                          udata)) == NULL) {
                 TR(COMPILE_FUNCTION + 1101);
                 goto err;
             }
@@ -1292,7 +1339,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1200);
             goto err;
         }
@@ -1307,7 +1355,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                           ectx,
                                           module,
                                           builder,
-                                          *arg)) == NULL) {
+                                          *arg,
+                                          udata)) == NULL) {
                 TR(COMPILE_FUNCTION + 1201);
                 goto err;
             }
@@ -1325,7 +1374,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1300);
             goto err;
         }
@@ -1339,7 +1389,8 @@ compile_function(mrklkit_ctx_t *mctx,
                         builder,
                         expr,
                         LLVMIntEQ,
-                        LLVMRealUEQ);
+                        LLVMRealUEQ,
+                        udata);
 
     } else if (strcmp(name , "!=") == 0) {
         //(sym != (func bool undef undef)) done
@@ -1349,7 +1400,8 @@ compile_function(mrklkit_ctx_t *mctx,
                         builder,
                         expr,
                         LLVMIntNE,
-                        LLVMRealUNE);
+                        LLVMRealUNE,
+                        udata);
 
     } else if (strcmp(name , "<") == 0) {
         //(sym < (func bool undef undef)) done
@@ -1359,7 +1411,8 @@ compile_function(mrklkit_ctx_t *mctx,
                         builder,
                         expr,
                         LLVMIntSLT,
-                        LLVMRealULT);
+                        LLVMRealULT,
+                        udata);
 
     } else if (strcmp(name , "<=") == 0) {
         //(sym <= (func bool undef undef)) done
@@ -1369,7 +1422,8 @@ compile_function(mrklkit_ctx_t *mctx,
                         builder,
                         expr,
                         LLVMIntSLE,
-                        LLVMRealULE);
+                        LLVMRealULE,
+                        udata);
 
     } else if (strcmp(name , ">") == 0) {
         //(sym > (func bool undef undef)) done
@@ -1379,7 +1433,8 @@ compile_function(mrklkit_ctx_t *mctx,
                         builder,
                         expr,
                         LLVMIntSGT,
-                        LLVMRealUGT);
+                        LLVMRealUGT,
+                        udata);
 
     } else if (strcmp(name , ">=") == 0) {
         //(sym >= (func bool undef undef)) done
@@ -1389,15 +1444,28 @@ compile_function(mrklkit_ctx_t *mctx,
                         builder,
                         expr,
                         LLVMIntSGE,
-                        LLVMRealUGE);
+                        LLVMRealUGE,
+                        udata);
 
     } else if (strcmp(name, "get") == 0) {
         //(sym get (func undef undef undef under)) done
-        v = compile_get(mctx, ectx, module, builder, expr, COMPILE_GET_GET);
+        v = compile_get(mctx,
+                        ectx,
+                        module,
+                        builder,
+                        expr,
+                        COMPILE_GET_GET,
+                        udata);
 
     } else if (strcmp(name, "parse") == 0) {
         //(sym parse (func undef undef undef under)) done
-        v = compile_get(mctx, ectx, module, builder, expr, COMPILE_GET_PARSE);
+        v = compile_get(mctx,
+                        ectx,
+                        module,
+                        builder,
+                        expr,
+                        COMPILE_GET_PARSE,
+                        udata);
 
     } else if (strcmp(name , "itof") == 0) {
         lkit_expr_t **arg;
@@ -1409,7 +1477,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1400);
             goto err;
         }
@@ -1428,7 +1497,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1500);
             goto err;
         }
@@ -1444,7 +1514,8 @@ compile_function(mrklkit_ctx_t *mctx,
                            module,
                            builder,
                            expr,
-                           COMPILE_STRSTR_START);
+                           COMPILE_STRSTR_START,
+                           udata);
 
     } else if (strcmp(name , "endswith") == 0) {
         v = compile_strstr(mctx,
@@ -1453,7 +1524,8 @@ compile_function(mrklkit_ctx_t *mctx,
                            module,
                            builder,
                            expr,
-                           COMPILE_STRSTR_END);
+                           COMPILE_STRSTR_END,
+                           udata);
 
     } else if (strcmp(name , "tostr") == 0) {
         lkit_expr_t **arg;
@@ -1465,7 +1537,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                    ectx,
                                    module,
                                    builder,
-                                   *arg)) == NULL) {
+                                   *arg,
+                                   udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1600);
             goto err;
         }
@@ -1498,7 +1571,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                          ectx,
                                          module,
                                          builder,
-                                         *arg)) == NULL) {
+                                         *arg,
+                                         udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1701);
             goto err;
         }
@@ -1512,7 +1586,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                          ectx,
                                          module,
                                          builder,
-                                         *arg)) == NULL) {
+                                         *arg,
+                                         udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1702);
             goto err;
         }
@@ -1560,7 +1635,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                              ectx,
                                              module,
                                              builder,
-                                             *cont)) == NULL) {
+                                             *cont,
+                                             udata)) == NULL) {
                 TR(COMPILE_FUNCTION + 4901);
                 goto err;
             }
@@ -1590,7 +1666,12 @@ compile_function(mrklkit_ctx_t *mctx,
              mod = array_next(mctx->modules, &it)) {
 
             if ((*mod)->compile_expr != NULL) {
-                v = (*mod)->compile_expr(mctx, ectx, module, builder, expr);
+                v = (*mod)->compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         expr,
+                                         udata);
                 break;
             }
         }
@@ -1610,7 +1691,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                   lkit_expr_t *ectx,
                   LLVMModuleRef module,
                   LLVMBuilderRef builder,
-                  lkit_expr_t *expr)
+                  lkit_expr_t *expr,
+                  void *udata)
 {
     LLVMContextRef lctx;
     LLVMValueRef v;
@@ -1629,7 +1711,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                       ectx,
                                       module,
                                       builder,
-                                      expr)) == NULL) {
+                                      expr,
+                                      udata)) == NULL) {
                 LLVMValueRef ref;
 
                 /* then user-defined */
@@ -1668,7 +1751,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                               ectx,
                                               module,
                                               builder,
-                                              *rand);
+                                              *rand,
+                                              udata);
 
                         assert(args[it.iter] != NULL);
                         //LLVMDumpValue(args[it.iter]);
@@ -1871,7 +1955,8 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
                             lkit_expr_t *ectx,
                             LLVMModuleRef module,
                             bytes_t *name,
-                            lkit_expr_t *expr)
+                            lkit_expr_t *expr,
+                            void *udata)
 {
     char buf[1024];
     LLVMContextRef lctx;
@@ -1924,7 +2009,8 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
                                          ectx,
                                          module,
                                          builder,
-                                         expr)) == NULL) {
+                                         expr,
+                                         udata)) == NULL) {
             TRRET(COMPILE_DYNAMIC_INITIALIZER + 1);
         }
 
@@ -1966,7 +2052,8 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
                                          ectx,
                                          module,
                                          builder,
-                                         expr)) == NULL) {
+                                         expr,
+                                         udata)) == NULL) {
             TRRET(COMPILE_DYNAMIC_INITIALIZER + 3);
         }
 
@@ -2096,6 +2183,7 @@ _compile(lkit_gitem_t **gitem, void *udata)
         mrklkit_ctx_t *mctx;
         lkit_expr_t *ectx;
         LLVMModuleRef module;
+        void *udata;
     } *params = udata;
     bytes_t *name = (*gitem)->name;
     lkit_expr_t *expr = (*gitem)->expr;
@@ -2105,22 +2193,13 @@ _compile(lkit_gitem_t **gitem, void *udata)
     }
 
     if (expr->isref) {
-        if (expr->subs.elnum == 0) {
-            if (compile_dynamic_initializer(params->mctx,
-                                            params->ectx,
-                                            params->module,
-                                            name,
-                                            expr) != 0) {
-                TRRET(SYM_COMPILE + 1);
-            }
-        } else {
-            if (compile_dynamic_initializer(params->mctx,
-                                            params->ectx,
-                                            params->module,
-                                            name,
-                                            expr) != 0) {
-                TRRET(SYM_COMPILE + 1);
-            }
+        if (compile_dynamic_initializer(params->mctx,
+                                        params->ectx,
+                                        params->module,
+                                        name,
+                                        expr,
+                                        params->udata) != 0) {
+            TRRET(SYM_COMPILE + 1);
         }
     } else {
         if (expr->value.literal != NULL) {
@@ -2130,7 +2209,8 @@ _compile(lkit_gitem_t **gitem, void *udata)
                                       params->ectx,
                                       params->module,
                                       NULL,
-                                      expr);
+                                      expr,
+                                      params->udata);
             assert(initv != NULL);
             v = LLVMAddGlobal(params->module,
                               LLVMTypeOf(initv),
@@ -2180,7 +2260,8 @@ _cb1(lkit_gitem_t **gitem, void *udata)
 int
 lkit_expr_ctx_compile(mrklkit_ctx_t *mctx,
                       lkit_expr_t *ectx,
-                      LLVMModuleRef module)
+                      LLVMModuleRef module,
+                      void *udata)
 {
     struct {
         int (*cb)(mrklkit_ctx_t *, lkit_expr_t *, lkit_expr_t *);
@@ -2191,7 +2272,8 @@ lkit_expr_ctx_compile(mrklkit_ctx_t *mctx,
         mrklkit_ctx_t *mctx;
         lkit_expr_t *ectx;
         LLVMModuleRef module;
-    } params_compile = { mctx, ectx, module };
+        void *udata;
+    } params_compile = { mctx, ectx, module, udata };
 
     if (array_traverse(&ectx->glist,
                        (array_traverser_t)_cb1,

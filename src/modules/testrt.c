@@ -837,7 +837,8 @@ _compile_trt(testrt_t *trt, void *udata)
                                 &tctx->builtin,
                                 module,
                                 builder,
-                                *expr);
+                                *expr,
+                                tctx);
         gep = LLVMBuildStructGEP(builder, av, it.iter, NEWVAR("gep"));
         LLVMBuildStore(builder, val, gep);
 
@@ -894,7 +895,8 @@ _compile_trt(testrt_t *trt, void *udata)
                                                          &tctx->builtin,
                                                          module,
                                                          builder,
-                                                         *arg),
+                                                         *arg,
+                                                         tctx),
                                        NEWVAR("MERGE"));
                     break;
 
@@ -905,7 +907,8 @@ _compile_trt(testrt_t *trt, void *udata)
                                                           &tctx->builtin,
                                                           module,
                                                           builder,
-                                                          *arg),
+                                                          *arg,
+                                                          tctx),
                                         NEWVAR("MERGE"));
                     break;
 
@@ -967,7 +970,8 @@ _compile_trt(testrt_t *trt, void *udata)
                                 &tctx->builtin,
                                 module,
                                 builder,
-                                *seecond);
+                                *seecond,
+                                tctx);
         assert(res != NULL);
         LLVMBuildCondBr(builder, res, tblock, endblock);
         LLVMPositionBuilderAtEnd(builder, tblock);
@@ -988,7 +992,8 @@ _compile_trt(testrt_t *trt, void *udata)
                               &tctx->builtin,
                               module,
                               builder,
-                              *expr) == NULL) {
+                              *expr,
+                              tctx) == NULL) {
             res = TESTRT_COMPILE + 205;
             goto end;
         }
@@ -1010,7 +1015,10 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     LLVMBasicBlockRef bb;
 
     /* builtin */
-    if (lkit_expr_ctx_compile(&tctx->mctx, &tctx->builtin, module) != 0) {
+    if (lkit_expr_ctx_compile(&tctx->mctx,
+                              &tctx->builtin,
+                              module,
+                              tctx) != 0) {
         TRRET(TESTRT_COMPILE + 100);
     }
 

@@ -27,12 +27,14 @@ LLVMValueRef lkit_compile_expr(mrklkit_ctx_t *,
                                lkit_expr_t *,
                                LLVMModuleRef,
                                LLVMBuilderRef,
-                               lkit_expr_t *);
+                               lkit_expr_t *,
+                               void *);
 
 
 int lkit_expr_ctx_compile(mrklkit_ctx_t *,
                           lkit_expr_t *,
-                          LLVMModuleRef);
+                          LLVMModuleRef,
+                          void *udata);
 
 int lkit_expr_ctx_compile_pre(lkit_expr_t *, LLVMModuleRef, LLVMBuilderRef);
 int lkit_expr_ctx_compile_post(lkit_expr_t *, LLVMModuleRef, LLVMBuilderRef);
