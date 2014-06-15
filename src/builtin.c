@@ -31,7 +31,7 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
 {
     int res = 0;
     bytes_t *name = NULL;
-    lkit_expr_t **expr = NULL;
+    lkit_expr_t **pexpr = NULL;
     lkit_gitem_t **gitem;
     fparser_datum_t **node = NULL;
 
@@ -53,11 +53,11 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
         goto err;
     }
 
-    if ((expr = array_incr(&ectx->subs)) == NULL) {
+    if ((pexpr = array_incr(&ectx->subs)) == NULL) {
         FAIL("array_incr");
     }
 
-    if ((*expr = lkit_expr_parse(mctx,
+    if ((*pexpr = lkit_expr_parse(mctx,
                                 ectx,
                                 *node,
                                 1)) == NULL) {
@@ -66,20 +66,22 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
         goto err;
     }
 
-    (*expr)->isbuiltin = isbuiltin;
+    (*pexpr)->isbuiltin = isbuiltin;
 
-    dict_set_item(&ectx->ctx, name, *expr);
+    dict_set_item(&ectx->ctx, name, *pexpr);
     if ((gitem = array_incr(&ectx->glist)) == NULL) {
         FAIL("array_incr");
     }
     (*gitem)->name = lkit_expr_qual_name(ectx, name);
-    (*gitem)->expr = *expr;
+    (*gitem)->expr = *pexpr;
 
 end:
     return res;
 
 err:
-    (void)lkit_expr_destroy(expr);
+    if (pexpr != NULL) {
+        (void)lkit_expr_destroy(pexpr);
+    }
     res = 1;
     goto end;
 }

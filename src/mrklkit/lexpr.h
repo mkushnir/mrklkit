@@ -86,6 +86,7 @@ void lkit_expr_init(lkit_expr_t *, lkit_expr_t *);
 void lkit_expr_fini(lkit_expr_t *);
 int lkit_expr_destroy(lkit_expr_t **);
 bytes_t *lkit_expr_qual_name(lkit_expr_t *, bytes_t *);
+int lkit_expr_is_constant(lkit_expr_t *);
 void lexpr_init(void);
 void lexpr_fini(void);
 

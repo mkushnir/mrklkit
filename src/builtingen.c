@@ -80,6 +80,19 @@ compile_if(mrklkit_ctx_t *mctx,
 
     LLVMPositionBuilderAtEnd(builder, endblock);
     if (restype != NULL) {
+        if (texpr->type->tag == LKIT_STR) {
+            if (lkit_expr_is_constant(texpr)) {
+                texp = LLVMBuildPointerCast(builder,
+                                            texp,
+                                            restype->backend,
+                                            NEWVAR("cast"));
+            } else if (lkit_expr_is_constant(fexpr)) {
+                fexp = LLVMBuildPointerCast(builder,
+                                            fexp,
+                                            restype->backend,
+                                            NEWVAR("cast"));
+            }
+        }
         v = LLVMBuildPhi(builder, restype->backend, NEWVAR("result"));
         iexp[0] = texp;
         iblock[0] = LLVMIsConstant(texp) ? tblock :

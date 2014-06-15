@@ -40,6 +40,17 @@ lkit_expr_qual_name(lkit_expr_t *ectx, bytes_t *name)
 }
 
 
+int
+lkit_expr_is_constant(lkit_expr_t *expr)
+{
+    while (expr->isref) {
+        expr = expr->value.ref;
+    }
+    assert(!expr->isref);
+    return expr->value.literal != NULL;
+}
+
+
 static void
 lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
 {
