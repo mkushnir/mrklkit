@@ -14,9 +14,6 @@
 extern "C" {
 #endif
 
-typedef struct _lkit_user_class {
-} lkit_user_class_t;
-
 struct _lkit_type;
 typedef struct _lkit_expr {
     struct _lkit_type *type;

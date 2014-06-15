@@ -582,7 +582,6 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
             }
         }
     }
-
 }
 
 
