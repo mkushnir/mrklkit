@@ -351,14 +351,12 @@ ltype_compile_methods(lkit_type_t *ty,
                                                    &argty,
                                                    1,
                                                    0));
-            LLVMSetLinkage(fn1, LLVMPrivateLinkage);
             fn2 = LLVMAddFunction(module,
                                   buf2,
                                   LLVMFunctionType(LLVMInt64TypeInContext(lctx),
                                                    &argty,
                                                    1,
                                                    0));
-            LLVMSetLinkage(fn2, LLVMPrivateLinkage);
 
             bb = LLVMAppendBasicBlockInContext(lctx, fn1, NEWVAR("L"));
             LLVMPositionBuilderAtEnd(b1, bb);
