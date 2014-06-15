@@ -145,6 +145,13 @@ mrklkit_rt_array_dump(rt_array_t *value)
 }
 
 
+static int
+null_init(void **v)
+{
+    *v = NULL;
+    return 0;
+}
+
 rt_array_t *
 mrklkit_rt_array_new(lkit_array_t *ty)
 {
@@ -155,7 +162,11 @@ mrklkit_rt_array_new(lkit_array_t *ty)
     }
     res->nref = 0;
     res->type = ty;
-    array_init(&res->fields, sizeof(void *), 0, NULL, NULL);
+    array_init(&res->fields,
+               sizeof(void *),
+               0,
+               (array_initializer_t)null_init,
+               NULL);
     return res;
 }
 
