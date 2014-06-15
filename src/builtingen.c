@@ -1715,50 +1715,54 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
                 assert(builder != NULL);
 
-                if ((ref = LLVMGetNamedGlobal(module,
-                        (char *)expr->name->data)) == NULL) {
-
-                    bytes_t *qual_name = NULL;
-
-                    qual_name = lkit_expr_qual_name(ectx, expr->name);
-                    if ((ref = LLVMGetNamedGlobal(module,
-                            (char *)qual_name->data)) == NULL) {
-                        LLVMDumpModule(module);
-                        FAIL("LLVMGetNamedGlobal");
-                    }
-                    snprintf(buf,
-                             sizeof(buf),
-                             "_mrklkit.%s.init",
-                             (char *)qual_name->data);
+                if (expr->value.ref->alias != NULL) {
+                    ref = expr->value.ref->alias;
                 } else {
-                    snprintf(buf,
-                             sizeof(buf),
-                             "_mrklkit.%s.init",
-                             (char *)expr->name->data);
-                }
+                    if ((ref = LLVMGetNamedGlobal(module,
+                            (char *)expr->name->data)) == NULL) {
 
-                //TRACE("init: %s", buf);
+                        bytes_t *qual_name = NULL;
 
-                if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
-                    if (expr->value.ref->lazy_init) {
-                        expr->value.ref->lazy_init_referenced = 1;
+                        qual_name = lkit_expr_qual_name(ectx, expr->name);
+                        if ((ref = LLVMGetNamedGlobal(module,
+                                (char *)qual_name->data)) == NULL) {
+                            LLVMDumpModule(module);
+                            FAIL("LLVMGetNamedGlobal");
+                        }
+                        snprintf(buf,
+                                 sizeof(buf),
+                                 "_mrklkit.%s.init",
+                                 (char *)qual_name->data);
+                    } else {
+                        snprintf(buf,
+                                 sizeof(buf),
+                                 "_mrklkit.%s.init",
+                                 (char *)expr->name->data);
+                    }
+
+                    //TRACE("init: %s", buf);
+
+                    if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
+                        if (expr->value.ref->lazy_init) {
+                            expr->value.ref->lazy_init_referenced = 1;
 #ifdef MRKLKIT_LLVM_C_PATCH_VOID
-                        if (LLVMBuildCall(builder,
-                                          fn,
-                                          NULL,
-                                          0,
-                                          "") == NULL) {
-                            TR(LKIT_COMPILE_EXPR + 4);
-                        }
+                            if (LLVMBuildCall(builder,
+                                              fn,
+                                              NULL,
+                                              0,
+                                              "") == NULL) {
+                                TR(LKIT_COMPILE_EXPR + 4);
+                            }
 #else
-                        if (LLVMBuildCall(builder,
-                                          fn,
-                                          NULL,
-                                          0,
-                                          NEWVAR("tmp")) == NULL) {
-                            TR(LKIT_COMPILE_EXPR + 4);
-                        }
+                            if (LLVMBuildCall(builder,
+                                              fn,
+                                              NULL,
+                                              0,
+                                              NEWVAR("tmp")) == NULL) {
+                                TR(LKIT_COMPILE_EXPR + 4);
+                            }
 #endif
+                        }
                     }
                 }
 
@@ -2101,25 +2105,31 @@ _compile(lkit_gitem_t **gitem, void *udata)
     bytes_t *name = (*gitem)->name;
     lkit_expr_t *expr = (*gitem)->expr;
 
-    //TRACE("%p/%s %d", expr->type->backend, (char *)name->data, expr->isref);
-    //lkit_type_dump(expr->type);
-    //lkit_expr_dump(expr);
-
-    /* check for function */
-    //if (check_function(name) == 0) {
-    //    return 0;
-    //}
     if (expr->isbuiltin) {
         return 0;
     }
 
     if (expr->isref) {
-        if (compile_dynamic_initializer(params->mctx,
-                                        params->ectx,
-                                        params->module,
-                                        name,
-                                        expr) != 0) {
-            TRRET(SYM_COMPILE + 1);
+        if (expr->subs.elnum == 0) {
+            LLVMValueRef ref;
+
+            if (expr->value.ref->alias != NULL) {
+                ref = expr->value.ref->alias;
+            } else {
+                if ((ref = LLVMGetNamedGlobal(params->module, (char *)expr->name->data)) == NULL) {
+                    TRRET(SYM_COMPILE + 100);
+                }
+            }
+
+            expr->alias = LLVMAddAlias(params->module, LLVMTypeOf(ref), ref, (char *)name->data);
+        } else {
+            if (compile_dynamic_initializer(params->mctx,
+                                            params->ectx,
+                                            params->module,
+                                            name,
+                                            expr) != 0) {
+                TRRET(SYM_COMPILE + 1);
+            }
         }
     } else {
         if (expr->value.literal != NULL) {

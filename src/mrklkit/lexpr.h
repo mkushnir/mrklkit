@@ -25,6 +25,7 @@ typedef struct _lkit_expr {
         fparser_datum_t *literal;   /* !isref */
         struct _lkit_expr *ref;     /*  isref */
     } value;
+    LLVMValueRef alias;
 
     /*
      * lkit_expr_t *

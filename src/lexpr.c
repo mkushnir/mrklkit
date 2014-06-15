@@ -271,6 +271,7 @@ lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
     expr->isref = 0;
     expr->isbuiltin = 0;
     expr->value.literal = NULL;
+    expr->alias = NULL;
     expr->error = 0;
     expr->lazy_init = 0;
     expr->lazy_init_referenced = 0;

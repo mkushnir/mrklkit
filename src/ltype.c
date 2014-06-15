@@ -1226,6 +1226,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                 case LKIT_INT:
                 case LKIT_FLOAT:
                     //ta->fini = NULL;
+                    break;
 
                 default:
                     TR(LKIT_TYPE_PARSE + 4);
