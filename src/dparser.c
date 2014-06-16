@@ -92,8 +92,8 @@ dparser_reach_value_m(bytestream_t *bs, char delim, off_t epos)
 }
 
 
-static int64_t
-_strtoi64(char *ptr, char **endptr, char delim)
+int64_t
+dparser_strtoi64(char *ptr, char **endptr, char delim)
 {
     int64_t res = 0;
     int64_t sign; /* XXX make it uint64_t, set to 0x8000000000000000 ... */
@@ -125,8 +125,8 @@ err:
 
 
 /* a quick naive parser */
-static double
-_strtod(char *ptr, char **endptr, char delim)
+double
+dparser_strtod(char *ptr, char **endptr, char delim)
 {
     uint64_t integ = 0;
     uint64_t frac = 0;
@@ -200,7 +200,7 @@ dparse_int(bytestream_t *bs,
     char *ptr = (char *)SPDATA(bs);
     char *endptr = ptr;
 
-    *val = _strtoi64(ptr, &endptr, delim);
+    *val = dparser_strtoi64(ptr, &endptr, delim);
 
     if (errno == EINVAL || errno == ERANGE) {
         res = DPARSE_ERRORVALUE;
@@ -232,7 +232,7 @@ dparse_float(bytestream_t *bs,
      * XXX  empty fields with DPARSE_MERGEDELIM off
      */
     //*val = strtod(ptr, &endptr);
-    *val = _strtod(ptr, &endptr, delim);
+    *val = dparser_strtod(ptr, &endptr, delim);
 
     if (errno == EINVAL || errno == ERANGE) {
         res = DPARSE_ERRORVALUE;
@@ -730,7 +730,7 @@ dparse_int_pos(bytestream_t *bs,
     char *ptr = (char *)SDATA(bs, spos);
     char *endptr = ptr;
 
-    *val = _strtoi64(ptr, &endptr, delim);
+    *val = dparser_strtoi64(ptr, &endptr, delim);
     return spos + endptr - ptr;
 }
 
@@ -744,7 +744,7 @@ dparse_float_pos(bytestream_t *bs,
     char *ptr = (char *)SDATA(bs, spos);
     char *endptr = ptr;
 
-    *val = _strtod(ptr, &endptr, delim);
+    *val = dparser_strtod(ptr, &endptr, delim);
     return spos + endptr - ptr;
 }
 

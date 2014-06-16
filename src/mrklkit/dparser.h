@@ -53,6 +53,8 @@ void dparser_reach_value(bytestream_t *,
                          off_t);
 void dparser_reach_value_m(bytestream_t *,
                            char, off_t);
+int64_t dparser_strtoi64(char *, char **, char);
+double dparser_strtod(char *, char **, char);
 
 int dparse_int(bytestream_t *,
                char,

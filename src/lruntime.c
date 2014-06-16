@@ -1,9 +1,11 @@
+#include <errno.h>
 #include <string.h>
 #include <mrkcommon/array.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/util.h>
 #include <mrkcommon/dumpm.h>
 
+#include <mrklkit/dparser.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
 #include <mrklkit/util.h>
@@ -19,6 +21,14 @@ static array_iter_t dict_gc_it;
 static array_t struct_gc;
 static array_iter_t struct_gc_it;
 
+
+int
+mrklkit_rt_strcmp(const char *a, const char *b)
+{
+    TRACE("b=%s", b);
+    TRACE("a=%s", a);
+    return strcmp(a, b);
+}
 
 static void
 mrklkit_rt_gc_init(void)
@@ -77,6 +87,37 @@ mrklkit_rt_bytes_new_from_str_gc(const char *s)
 }
 
 
+bytes_t *
+mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
+{
+    bytes_t *res;
+    size_t sz0, sz1;
+
+    sz0 = str->sz - 1; /* expect zero-term */
+    if (sz0 <= 0) {
+        goto empty;
+    }
+    begin = begin % sz0;
+    end = end % sz0;
+    sz1 = end - begin;
+    if (sz1 >= sz0) {
+        goto empty;
+    }
+    ++sz1; /* "end" including the last char */
+    res = mrklkit_rt_bytes_new_gc(sz1 + 1);
+    memcpy(res->data, str->data + begin, sz1);
+    res->data[sz1] = '\0';
+
+end:
+    return res;
+
+empty:
+    res = mrklkit_rt_bytes_new_gc(1);
+    res->data[0] = '\0';
+    goto end;
+}
+
+
 static void
 mrklkit_rt_bytes_do_gc(void)
 {
@@ -94,6 +135,30 @@ mrklkit_rt_bytes_do_gc(void)
     bytes_gc_it.iter = 0;
 }
 
+
+int64_t
+mrklkit_strtoi64(bytes_t *str, int64_t dflt)
+{
+    char *endptr;
+    int64_t res;
+    res = dparser_strtoi64((char *)str->data, &endptr, '\0');
+    if (errno == EINVAL) {
+        res = dflt;
+    }
+    return res;
+}
+
+double
+mrklkit_strtod(bytes_t *str, double dflt)
+{
+    char *endptr;
+    double res;
+    res = dparser_strtod((char *)str->data, &endptr, '\0');
+    if (errno == EINVAL) {
+        res = dflt;
+    }
+    return res;
+}
 
 /**
  * array
@@ -258,7 +323,7 @@ mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
         return dflt;
     }
     if (*res == NULL) {
-        return dflt;
+        *res = dflt;
     }
     return *res;
 }

@@ -68,6 +68,7 @@ void mrklkit_bytes_copy(bytes_t *, bytes_t *, size_t);
 void mrklkit_bytes_brushdown(bytes_t *);
 #define bytes_brushdown mrklkit_bytes_brushdown
 
+void reset_newvar_counter(void);
 char *newvar(char *, size_t, const char *);
 
 #define NEWVAR(prefix) newvar(NULL, 0, (prefix))

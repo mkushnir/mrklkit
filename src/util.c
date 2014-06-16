@@ -11,6 +11,7 @@
 
 #include "diag.h"
 
+static uint64_t newvar_ctr = 0;
 
 uint64_t
 mrklkit_bytes_hash(bytes_t *bytes)
@@ -179,16 +180,22 @@ mrklkit_bytes_incref(bytes_t *value)
 }
 
 
+void
+reset_newvar_counter(void)
+{
+    newvar_ctr = 0;
+}
+
+
 char *newvar(char *buf, size_t sz, const char *prefix)
 {
-    static uint64_t idx = 0;
     static char mybuf[1024];
 
     if (buf == NULL) {
         buf = mybuf;
         sz = sizeof(mybuf);
     }
-    snprintf(buf, sz, "%s.%ld", prefix, ++idx);
+    snprintf(buf, sz, "%s.%ld", prefix, ++newvar_ctr);
     return buf;
 }
 
