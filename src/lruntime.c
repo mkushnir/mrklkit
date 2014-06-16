@@ -136,6 +136,17 @@ mrklkit_rt_bytes_do_gc(void)
 }
 
 
+bytes_t *
+mrklkit_rt_bytes_brushdown_gc(bytes_t *str)
+{
+    bytes_t *res;
+
+    res = mrklkit_rt_bytes_new_from_str_gc((char *)str->data);
+    bytes_brushdown(res);
+    return res;
+}
+
+
 int64_t
 mrklkit_strtoi64(bytes_t *str, int64_t dflt)
 {

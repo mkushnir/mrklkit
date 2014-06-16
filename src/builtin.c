@@ -67,7 +67,9 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
     }
 
     (*pexpr)->isbuiltin = (flags & LKIT_BUILTIN_PARSE_EXPRDEF_ISBLTIN);
-    (*pexpr)->lazy_init = (flags & LKIT_BUILTIN_PARSE_EXPRDEF_FORCELAZY) >> 1;
+    if (flags & LKIT_BUILTIN_PARSE_EXPRDEF_FORCELAZY) {
+        (*pexpr)->lazy_init = 1;
+    }
 
     dict_set_item(&ectx->ctx, name, *pexpr);
     if ((gitem = array_incr(&ectx->glist)) == NULL) {
@@ -375,6 +377,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                 break;
 
             default:
+                lkit_expr_dump(expr);
                 (*cont)->error = 1;
                 TRRET(REMOVE_UNDEF + 19);
             }

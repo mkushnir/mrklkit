@@ -1766,6 +1766,33 @@ compile_function(mrklkit_ctx_t *mctx,
                           countof(args),
                           NEWVAR("call"));
 
+    } else if (strcmp(name, "brushdown") == 0) {
+        lkit_expr_t **arg;
+        LLVMValueRef fn, args[1];
+
+        //(sym split (func (array str) str str))
+        if ((fn = LLVMGetNamedFunction(module,
+                    "mrklkit_rt_bytes_brushdown_gc")) == NULL) {
+            TR(COMPILE_FUNCTION + 1700);
+            goto err;
+        }
+
+        if ((arg = array_get(&expr->subs, 0)) == NULL) {
+            FAIL("array_get");
+        }
+
+        if ((args[0] = lkit_compile_expr(mctx,
+                                     ectx,
+                                     module,
+                                     builder,
+                                     *arg,
+                                     udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1400);
+            goto err;
+        }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
+
     } else if (strcmp(name, "dp-info") == 0) {
         lkit_expr_t **cont, **opt;
         bytes_t *optname;
