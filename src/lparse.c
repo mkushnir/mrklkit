@@ -10,7 +10,10 @@
 #include "diag.h"
 
 int
-lparse_first_word(array_t *form, array_iter_t *it, char **value, int seterror)
+lparse_first_word(array_t *form,
+                  array_iter_t *it,
+                  char **value,
+                  int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -30,7 +33,10 @@ lparse_first_word(array_t *form, array_iter_t *it, char **value, int seterror)
 }
 
 int
-lparse_first_word_bytes(array_t *form, array_iter_t *it, bytes_t **value, int seterror)
+lparse_first_word_bytes(array_t *form,
+                        array_iter_t *it,
+                        bytes_t **value,
+                        int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -49,8 +55,11 @@ lparse_first_word_bytes(array_t *form, array_iter_t *it, bytes_t **value, int se
 }
 
 int
-lparse_next_word(array_t *form, array_iter_t *it, char **value, int seterror)
-{
+lparse_next_word(array_t *form,
+                 array_iter_t *it,
+                 char **value,
+                 int seterror)
+    {
     fparser_datum_t **node;
     fparser_tag_t tag;
     if ((node = array_next(form, it)) == NULL) {
@@ -70,7 +79,10 @@ lparse_next_word(array_t *form, array_iter_t *it, char **value, int seterror)
 }
 
 int
-lparse_next_word_bytes(array_t *form, array_iter_t *it, bytes_t **value, int seterror)
+lparse_next_word_bytes(array_t *form,
+                       array_iter_t *it,
+                       bytes_t **value,
+                       int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -90,7 +102,10 @@ lparse_next_word_bytes(array_t *form, array_iter_t *it, bytes_t **value, int set
 }
 
 int
-lparse_next_str(array_t *form, array_iter_t *it, char **value, int seterror)
+lparse_next_str(array_t *form,
+                array_iter_t *it,
+                char **value,
+                int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -111,7 +126,34 @@ lparse_next_str(array_t *form, array_iter_t *it, char **value, int seterror)
 }
 
 int
-lparse_first_int(array_t *form, array_iter_t *it, int64_t *value, int seterror)
+lparse_next_str_bytes(array_t *form,
+                      array_iter_t *it,
+                      bytes_t **value,
+                      int seterror)
+{
+    fparser_datum_t **node;
+    fparser_tag_t tag;
+    if ((node = array_next(form, it)) == NULL) {
+        *value = NULL;
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*node);
+    if (tag == FPARSER_STR) {
+        bytes_t *v = (bytes_t *)((*node)->body);
+        *value = v;
+        return 0;
+    }
+    (void)array_prev(form, it);
+    *value = NULL;
+    (*node)->error = seterror;
+    return 1;
+}
+
+int
+lparse_first_int(array_t *form,
+                 array_iter_t *it,
+                 int64_t *value,
+                 int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -129,7 +171,10 @@ lparse_first_int(array_t *form, array_iter_t *it, int64_t *value, int seterror)
 }
 
 int
-lparse_next_int(array_t *form, array_iter_t *it, int64_t *value, int seterror)
+lparse_next_int(array_t *form,
+                array_iter_t *it,
+                int64_t *value,
+                int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -148,7 +193,10 @@ lparse_next_int(array_t *form, array_iter_t *it, int64_t *value, int seterror)
 }
 
 int
-lparse_first_double(array_t *form, array_iter_t *it, double *value, int seterror)
+lparse_first_double(array_t *form,
+                    array_iter_t *it,
+                    double *value,
+                    int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;
@@ -166,7 +214,10 @@ lparse_first_double(array_t *form, array_iter_t *it, double *value, int seterror
 }
 
 int
-lparse_next_double(array_t *form, array_iter_t *it, double *value, int seterror)
+lparse_next_double(array_t *form,
+                   array_iter_t *it,
+                   double *value,
+                   int seterror)
 {
     fparser_datum_t **node;
     fparser_tag_t tag;

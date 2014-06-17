@@ -18,6 +18,7 @@ struct _lkit_type;
 typedef struct _lkit_expr {
     struct _lkit_type *type;
     bytes_t *name;
+    bytes_t *title;
     union {
         fparser_datum_t *literal;   /* !isref */
         struct _lkit_expr *ref;     /*  isref */

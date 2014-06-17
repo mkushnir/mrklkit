@@ -261,6 +261,7 @@ void
 lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
 {
     expr->name = NULL;
+    expr->title = NULL;
     if (array_init(&expr->subs, sizeof(lkit_expr_t *), 0,
                    NULL,
                    (array_finalizer_t)lkit_expr_destroy) != 0) {
@@ -301,15 +302,21 @@ parse_expr_quals(array_t *form,
     char *s = (char *)qual;
 
 #define EXPR_SET_INT(m) \
-    int64_t value; \
-    if (lparse_next_int(form, it, &value, 1) != 0) { \
-        expr->error = 1; \
-        return 1; \
-    } \
-    expr->m = (int)value;
 
     if (strcmp(s, ":lazy") == 0) {
-        EXPR_SET_INT(lazy_init);
+        int64_t value;
+
+        if (lparse_next_int(form, it, &value, 1) != 0) {
+            expr->error = 1;
+            return 1;
+        }
+        expr->lazy_init = (int)value;
+
+    } else if (strcmp(s, ":title") == 0) {
+        if (lparse_next_str_bytes(form, it, &expr->title, 1) != 0) {
+            expr->error = 1;
+            return 1;
+        }
     } else {
         fparser_datum_t **node;
 
