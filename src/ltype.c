@@ -760,13 +760,13 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
 {
     lkit_type_t *a = *pa;
     lkit_type_t *b = *pb;
-    int diff;
+    int64_t diff;
 
     if (a == b) {
         return 0;
     }
 
-    diff = a->tag - b->tag;
+    diff = (int64_t)(a->tag - b->tag);
 
     if (diff == 0) {
         /* deep compare of custom types by their field content */
@@ -849,7 +849,7 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
         }
     }
 
-    return diff;
+    return diff > 0 ? 1 : diff < 0 ? -1 : 0;
 }
 
 
@@ -875,17 +875,17 @@ int
 lkit_type_cmp(lkit_type_t *a, lkit_type_t *b)
 {
     uint64_t ha, hb;
-    int diff;
+    int64_t diff;
 
     ha = lkit_type_hash(a);
     hb = lkit_type_hash(b);
 
-    diff = (int)(ha - hb);
+    diff = (int64_t)(ha - hb);
 
     if (diff == 0) {
         diff = type_cmp(&a, &b);
     }
-    return diff;
+    return diff > 0 ? 1 : diff < 0 ? -1 : 0;
 }
 
 

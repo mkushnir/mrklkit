@@ -131,12 +131,12 @@ lkit_expr_hash(bytes_t *key)
 static int
 lkit_expr_cmp(bytes_t *a, bytes_t *b)
 {
-    int diff;
+    int64_t diff;
     uint64_t ha, hb;
 
     ha = lkit_expr_hash(a);
     hb = lkit_expr_hash(b);
-    diff = (int)(ha - hb);
+    diff = (int64_t)(ha - hb);
     if (diff == 0) {
         ssize_t szdiff = a->sz - b->sz;
 
@@ -144,9 +144,9 @@ lkit_expr_cmp(bytes_t *a, bytes_t *b)
             return memcmp(a->data, b->data, a->sz);
         }
 
-        return (int) szdiff;
+        return szdiff > 0 ? 1 : -1;
     }
-    return diff;
+    return diff > 0 ? 1 : -1;
 }
 
 

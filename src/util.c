@@ -27,19 +27,18 @@ int
 mrklkit_bytes_cmp(bytes_t *a, bytes_t *b)
 {
     uint64_t ha, hb;
-    int diff;
+    int64_t diff;
 
     ha = bytes_hash(a);
     hb = bytes_hash(b);
-    diff = (int)(ha - hb);
+    diff = (int64_t)(ha - hb);
     if (diff == 0) {
-        diff = (int) (a->sz - b->sz);
+        diff =  (a->sz - b->sz);
         if (diff == 0) {
             return memcmp(a->data, b->data, a->sz);
         }
-        return diff;
     }
-    return diff;
+    return diff > 0 ? 1 : -1;
 }
 
 
