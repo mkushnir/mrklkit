@@ -623,6 +623,13 @@ mrklkit_rt_struct_destroy(rt_struct_t **value)
 
 
 void
+mrklkit_rt_struct_destroy_no_destruct(rt_struct_t **value)
+{
+    STRUCT_DECREF_NO_DESTRUCT(value);
+}
+
+
+void
 mrklkit_rt_struct_dump(rt_struct_t *value)
 {
     lkit_type_t **fty;

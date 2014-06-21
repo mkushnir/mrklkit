@@ -92,6 +92,17 @@ do { \
     (++(st)->nref); \
 } while (0)
 
+#define STRUCT_DECREF_NO_DESTRUCT(st) \
+do { \
+    if (*(st) != NULL) { \
+        --(*(st))->nref; \
+        if ((*(st))->nref <= 0) { \
+            free(*(st)); \
+        } \
+        *(st) = NULL; \
+    } \
+} while (0)
+
 #define STRUCT_DECREF(st) \
 do { \
     if (*(st) != NULL) { \
@@ -139,6 +150,7 @@ bytes_t *mrklkit_rt_get_dict_item_str(rt_dict_t *, bytes_t *, bytes_t *);
 rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
 rt_struct_t *mrklkit_rt_struct_new_gc(lkit_struct_t *);
 void mrklkit_rt_struct_destroy(rt_struct_t **);
+void mrklkit_rt_struct_destroy_no_destruct(rt_struct_t **);
 void mrklkit_rt_struct_dump(rt_struct_t *);
 void **mrklkit_rt_get_struct_item_addr(rt_struct_t *, int64_t);
 #define MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(val, idx) ((val)->fields + (idx))
