@@ -303,7 +303,8 @@ end_struct:
 int
 ltype_compile_methods(lkit_type_t *ty,
                       LLVMModuleRef module,
-                      bytes_t *name)
+                      bytes_t *name,
+                      int setnull)
 {
     char *buf1 = NULL, *buf2 = NULL;
     LLVMContextRef lctx;
@@ -389,19 +390,20 @@ ltype_compile_methods(lkit_type_t *ty,
                         pnull = LLVMConstPointerNull((*fty)->backend); \
                         LLVMBuildStore(b1, pnull, gep1); \
                         /* dtor, call mrklkit_rt_NNN_destroy() */ \
-                        /* \
-                        if ((dtor = LLVMGetNamedFunction(module, \
-                                dtor_name)) == NULL) { \
-                            TRACE("no name: %s", dtor_name); \
-                            TRRET(LTYPE_COMPILE_METHODS + 3); \
+                        if (setnull) { \
+                        } else { \
+                            if ((dtor = LLVMGetNamedFunction(module, \
+                                    dtor_name)) == NULL) { \
+                                TRACE("no name: %s", dtor_name); \
+                                TRRET(LTYPE_COMPILE_METHODS + 3); \
+                            } \
+                            dparam = LLVMGetFirstParam(dtor); \
+                            gep2 = LLVMBuildPointerCast(b2, \
+                                                        gep2, \
+                                                        LLVMTypeOf(dparam), \
+                                                        NEWVAR("cast")); \
+                            LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
                         } \
-                        dparam = LLVMGetFirstParam(dtor); \
-                        gep2 = LLVMBuildPointerCast(b2, \
-                                                    gep2, \
-                                                    LLVMTypeOf(dparam), \
-                                                    NEWVAR("cast")); \
-                        LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
-                        */ \
                     }
 
                 switch ((*fty)->tag) {
@@ -435,7 +437,7 @@ ltype_compile_methods(lkit_type_t *ty,
                                  (*nm)->data);
                         //TRACE("subfield %s", buf);
                         nnm = bytes_new_from_str(buf);
-                        if (ltype_compile_methods(*fty, module, nnm) != 0) {
+                        if (ltype_compile_methods(*fty, module, nnm, setnull) != 0) {
                             TRRET(LTYPE_COMPILE_METHODS + 4);
                         }
                         bytes_decref(&nnm);

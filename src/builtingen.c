@@ -1852,9 +1852,9 @@ compile_function(mrklkit_ctx_t *mctx,
         mrklkit_module_t **mod;
         array_iter_t it;
 
-        for (mod = array_first(mctx->modules, &it);
+        for (mod = array_first(&mctx->modules, &it);
              mod != NULL;
-             mod = array_next(mctx->modules, &it)) {
+             mod = array_next(&mctx->modules, &it)) {
 
             if ((*mod)->compile_expr != NULL) {
                 v = (*mod)->compile_expr(mctx,
@@ -2004,6 +2004,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                              sizeof(buf),
                              "_mrklkit.%s.init",
                              (char *)qual_name->data);
+                    bytes_decref(&qual_name);
                 } else {
                     snprintf(buf,
                              sizeof(buf),

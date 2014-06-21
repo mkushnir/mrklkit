@@ -71,7 +71,7 @@ const char *mrklkit_meta = "; libc\n"
 
 "(sym mrklkit_bytes_new (func str int))\n"
 "(sym mrklkit_bytes_copy (func int str str int))\n"
-";(sym mrklkit_bytes_decref (func int any))\n"
+"(sym mrklkit_bytes_decref (func int any))\n"
 ";(sym mrklkit_bytes_decref_fast (func int str))\n"
 ";(sym mrklkit_bytes_incref (func int str))\n"
 "(sym mrklkit_rt_bytes_slice_gc (func str str int int))\n"
@@ -204,9 +204,9 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
                      *  - builtin
                      *  - sym
                      */
-                    for (mod = array_first(ctx->modules, &it);
+                    for (mod = array_first(&ctx->modules, &it);
                          mod != NULL;
-                         mod = array_next(ctx->modules, &it)) {
+                         mod = array_next(&ctx->modules, &it)) {
 
                         if ((*mod)->parse_expr != NULL) {
                             if ((*mod)->parse_expr(udata,
@@ -313,9 +313,9 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     }
 
     /* post parse */
-    for (mod = array_first(ctx->modules, &it);
+    for (mod = array_first(&ctx->modules, &it);
          mod != NULL;
-         mod = array_next(ctx->modules, &it)) {
+         mod = array_next(&ctx->modules, &it)) {
 
         if ((*mod)->post_parse != NULL) {
             if ((*mod)->post_parse(udata)) {
@@ -328,9 +328,9 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
     reset_newvar_counter();
 
-    for (mod = array_first(ctx->modules, &it);
+    for (mod = array_first(&ctx->modules, &it);
          mod != NULL;
-         mod = array_next(ctx->modules, &it)) {
+         mod = array_next(&ctx->modules, &it)) {
 
         if ((*mod)->compile_type != NULL) {
             if ((*mod)->compile_type(udata, ctx->module)) {
@@ -339,9 +339,9 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
         }
     }
 
-    for (mod = array_first(ctx->modules, &it);
+    for (mod = array_first(&ctx->modules, &it);
          mod != NULL;
-         mod = array_next(ctx->modules, &it)) {
+         mod = array_next(&ctx->modules, &it)) {
 
         if ((*mod)->compile != NULL) {
             if ((*mod)->compile(udata, ctx->module)) {
@@ -439,13 +439,11 @@ mrklkit_ctx_init_runtime(mrklkit_ctx_t *ctx, void *udata)
 
     LLVMRunStaticConstructors(ctx->ee);
 
-    if (ctx->modules != NULL) {
-        for (mod = array_last(ctx->modules, &it);
-             mod != NULL;
-             mod = array_prev(ctx->modules, &it)) {
-            if ((*mod)->link != NULL) {
-                (*mod)->link(udata, ctx->ee, ctx->module);
-            }
+    for (mod = array_last(&ctx->modules, &it);
+         mod != NULL;
+         mod = array_prev(&ctx->modules, &it)) {
+        if ((*mod)->link != NULL) {
+            (*mod)->link(udata, ctx->ee, ctx->module);
         }
     }
 
@@ -483,11 +481,13 @@ lkit_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
 void
 mrklkit_ctx_init(mrklkit_ctx_t *ctx,
                  const char *name,
-                 array_t *mod,
+                 mrklkit_module_t *mod[],
+                 size_t modsz,
                  void *udata)
 {
     array_iter_t it;
-    mrklkit_module_t **m;
+    mrklkit_module_t **pm;
+    size_t i;
     lkit_type_t *ty, **pty;
 
     ctx->datum_root = NULL;
@@ -589,13 +589,17 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
     }
     ctx->ee = NULL;
 
-    ctx->modules = mod;
-    if (ctx->modules != NULL) {
-        for (m = array_first(ctx->modules, &it);
-             m != NULL;
-             m = array_next(ctx->modules, &it)) {
-            if ((*m)->init != NULL) {
-                (*m)->init(udata);
+    array_init(&ctx->modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
+    if (mod != NULL) {
+        for (i = 0; i < modsz; ++i) {
+            pm = array_incr(&ctx->modules);
+            *pm = mod[i];
+        }
+        for (pm = array_first(&ctx->modules, &it);
+             pm != NULL;
+             pm = array_next(&ctx->modules, &it)) {
+            if ((*pm)->init != NULL) {
+                (*pm)->init(udata);
             }
         }
     }
@@ -608,15 +612,15 @@ mrklkit_ctx_fini(mrklkit_ctx_t *ctx, void *udata)
     array_iter_t it;
     mrklkit_module_t **mod;
 
-    if (ctx->modules != NULL) {
-        for (mod = array_last(ctx->modules, &it);
-             mod != NULL;
-             mod = array_prev(ctx->modules, &it)) {
-            if ((*mod)->fini != NULL) {
-                (*mod)->fini(udata);
-            }
+    for (mod = array_last(&ctx->modules, &it);
+         mod != NULL;
+         mod = array_prev(&ctx->modules, &it)) {
+        if ((*mod)->fini != NULL) {
+            (*mod)->fini(udata);
         }
     }
+
+    array_fini(&ctx->modules);
 
     if (ctx->ee != NULL) {
         LLVMRunStaticDestructors(ctx->ee);

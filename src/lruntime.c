@@ -894,6 +894,52 @@ mrklkit_rt_struct_deep_copy(rt_struct_t *dst,
 
 
 void
+mrklkit_rt_struct_deep_copy_gc(rt_struct_t *dst,
+                               rt_struct_t *src)
+{
+    lkit_type_t **fty;
+    array_iter_t it;
+
+    assert(dst->type->fields.elnum == src->type->fields.elnum);
+
+    for (fty = array_first(&dst->type->fields, &it);
+         fty != NULL;
+         fty = array_next(&dst->type->fields, &it)) {
+
+
+        switch ((*fty)->tag) {
+        case LKIT_STR:
+            {
+                bytes_t *a, *b;
+
+                a = (bytes_t *)*(src->fields + it.iter);
+                b = mrklkit_rt_bytes_new_gc(a->sz);
+                BYTES_INCREF(b);
+                mrklkit_bytes_copy(b, a, 0);
+                *((bytes_t **)dst->fields + it.iter) = b;
+            }
+            break;
+
+        case LKIT_ARRAY:
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");
+            break;
+
+        case LKIT_DICT:
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");
+            break;
+
+        case LKIT_STRUCT:
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");
+            break;
+
+        default:
+            *(dst->fields + it.iter) = *(src->fields + it.iter);
+        }
+    }
+}
+
+
+void
 mrklkit_rt_do_gc(void)
 {
     mrklkit_rt_bytes_do_gc();

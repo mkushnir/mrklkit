@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 typedef struct _mrklkit_ctx {
-    array_t *modules;
+    array_t modules;
     fparser_datum_t *datum_root;
     /*
      * lkit_type_t *, lkit_type_t *
@@ -42,7 +42,12 @@ const char *mrklkit_diag_str(int);
 int mrklkit_compile(mrklkit_ctx_t *, int, uint64_t, void *);
 int mrklkit_call_void(mrklkit_ctx_t *, const char *);
 int mrklkit_ctx_init_runtime(mrklkit_ctx_t *, void *);
-void mrklkit_ctx_init(mrklkit_ctx_t *, const char *, array_t *, void *);
+struct _mrklkit_module;
+void mrklkit_ctx_init(mrklkit_ctx_t *,
+                      const char *,
+                      struct _mrklkit_module *[],
+                      size_t,
+                      void *);
 void mrklkit_ctx_fini(mrklkit_ctx_t *, void *);
 void mrklkit_init(void);
 void mrklkit_fini(void);

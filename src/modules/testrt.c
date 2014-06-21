@@ -204,7 +204,7 @@ dsource_compile(LLVMModuleRef module)
          ds = array_next(&dsources, &it)) {
         if (ltype_compile_methods((lkit_type_t *)(*ds)->_struct,
                                   module,
-                                  (*ds)->kind)) {
+                                  (*ds)->kind, 1)) {
             TRRET(DSOURCE + 100);
         }
     }
@@ -786,7 +786,8 @@ _compile_trt(testrt_t *trt, void *udata)
     name = bytes_new_from_str(buf);
     if (ltype_compile_methods((lkit_type_t *)trt->takeexpr->type,
                               module,
-                              name) != 0) {
+                              name,
+                              0) != 0) {
         res = TESTRT_COMPILE + 200;
         goto end;
     }
@@ -797,7 +798,8 @@ _compile_trt(testrt_t *trt, void *udata)
         name = bytes_new_from_str(buf);
         if (ltype_compile_methods((lkit_type_t *)trt->doexpr->type,
                                   module,
-                                  name) != 0) {
+                                  name,
+                                  0) != 0) {
             res = TESTRT_COMPILE + 201;
             goto end;
         }
