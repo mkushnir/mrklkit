@@ -5,6 +5,7 @@
 
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/fasthash.h>
+#include <mrkcommon/mpool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,8 +52,10 @@ do { \
 
 
 bytes_t *mrklkit_bytes_new(size_t);
+bytes_t *mrklkit_bytes_new_mpool(mpool_ctx_t *, size_t);
 #define bytes_new mrklkit_bytes_new
 bytes_t *mrklkit_bytes_new_from_str(const char *);
+bytes_t *mrklkit_bytes_new_from_str_mpool(mpool_ctx_t *, const char *);
 #define bytes_new_from_str mrklkit_bytes_new_from_str
 void mrklkit_bytes_incref(bytes_t *);
 #define bytes_incref mrklkit_bytes_incref

@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <mrkcommon/fasthash.h>
+#include <mrkcommon/mpool.h>
 #include <mrkcommon/util.h>
 
 #include <mrklkit/fparser.h>
@@ -42,30 +43,73 @@ mrklkit_bytes_cmp(bytes_t *a, bytes_t *b)
 }
 
 
+#define MRKLKIT_BYTES_NEW_BODY(malloc_fn) \
+    size_t mod, msz; \
+    bytes_t *res; \
+    assert(sz > 0); \
+    msz = sz; \
+    mod = sz % 8; \
+    if (mod) { \
+        msz += (8 - mod); \
+    } else { \
+        msz += 8; \
+    } \
+    if ((res = malloc_fn(sizeof(bytes_t) + msz)) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    res->nref = 0; \
+    res->sz = sz; \
+    res->hash = 0; \
+    return res
+
+#define MRKLKIT_BYTES_NEW_FROM_STR_BODY(malloc_fn) \
+    bytes_t *res; \
+    size_t mod, msz; \
+    size_t sz; \
+    sz = strlen(s) + 1; \
+    msz = sz; \
+    mod = sz % 8; \
+    if (mod) { \
+        msz += (8 - mod); \
+    } else { \
+        msz += 8; \
+    } \
+    if ((res = malloc_fn(sizeof(bytes_t) + msz)) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    memcpy(res->data, s, sz); \
+    res->nref = 0; \
+    res->sz = sz; \
+    res->hash = 0; \
+    return res
+
+
 bytes_t *
 mrklkit_bytes_new(size_t sz)
 {
-    size_t mod, msz;
-    bytes_t *res;
-
-    assert(sz > 0);
-
-    msz = sz;
-    mod = sz % 8;
-    if (mod) {
-        msz += (8 - mod);
-    } else {
-        msz += 8;
-    }
-    if ((res = malloc(sizeof(bytes_t) + msz)) == NULL) {
-        FAIL("malloc");
-    }
-    res->nref = 0;
-    res->sz = sz;
-    res->hash = 0;
-    //TRACE("B>>> %p %ld %ld", res, res->nref, res->sz);
-    return res;
+    MRKLKIT_BYTES_NEW_BODY(malloc);
 }
+
+
+bytes_t *
+mrklkit_bytes_new_from_str(const char *s)
+{
+    MRKLKIT_BYTES_NEW_FROM_STR_BODY(malloc);
+}
+
+
+#define _malloc(sz) mpool_malloc(mpool, (sz))
+bytes_t *
+mrklkit_bytes_new_mpool(mpool_ctx_t *mpool, size_t sz)
+{
+    MRKLKIT_BYTES_NEW_BODY(_malloc);
+}
+bytes_t *
+mrklkit_bytes_new_from_str_mpool(mpool_ctx_t *mpool, const char *s)
+{
+    MRKLKIT_BYTES_NEW_FROM_STR_BODY(_malloc);
+}
+#undef _malloc
 
 
 void
@@ -127,34 +171,6 @@ mrklkit_bytes_brushdown(bytes_t *str)
     *(dst - 1) = '\0';
     str->sz = (intptr_t)(dst - str->data);
     str->hash = 0;
-}
-
-
-bytes_t *
-mrklkit_bytes_new_from_str(const char *s)
-{
-    bytes_t *res;
-    size_t mod, msz;
-    size_t sz;
-
-    sz = strlen(s) + 1;
-
-    msz = sz;
-    mod = sz % 8;
-    if (mod) {
-        msz += (8 - mod);
-    } else {
-        msz += 8;
-    }
-    if ((res = malloc(sizeof(bytes_t) + msz)) == NULL) {
-        FAIL("malloc");
-    }
-    memcpy(res->data, s, sz);
-    res->nref = 0;
-    res->sz = sz;
-    res->hash = 0;
-    //TRACE("B>>> %p %ld %ld '%s'", res, res->nref, res->sz, res->data);
-    return res;
 }
 
 

@@ -4,6 +4,7 @@
 #include <mrkcommon/dict.h>
 #include <mrkcommon/util.h>
 #include <mrkcommon/dumpm.h>
+#include <mrkcommon/mpool.h>
 
 #include <mrklkit/dparser.h>
 #include <mrklkit/ltype.h>
@@ -12,14 +13,7 @@
 
 #include "diag.h"
 
-static array_t bytes_gc;
-static array_iter_t bytes_gc_it;
-static array_t array_gc;
-static array_iter_t array_gc_it;
-static array_t dict_gc;
-static array_iter_t dict_gc_it;
-static array_t struct_gc;
-static array_iter_t struct_gc_it;
+static mpool_ctx_t mpool;
 
 
 int
@@ -30,60 +24,28 @@ mrklkit_rt_strcmp(const char *a, const char *b)
     return strcmp(a, b);
 }
 
-static void
-mrklkit_rt_gc_init(void)
-{
-    array_init(&bytes_gc, sizeof(bytes_t *), 0, NULL, NULL);
-    bytes_gc_it.iter = 0;
-    array_init(&array_gc, sizeof(rt_array_t *), 0, NULL, NULL);
-    array_gc_it.iter = 0;
-    array_init(&dict_gc, sizeof(rt_dict_t *), 0, NULL, NULL);
-    dict_gc_it.iter = 0;
-    array_init(&struct_gc, sizeof(rt_struct_t *), 0, NULL, NULL);
-    struct_gc_it.iter = 0;
-}
-
-
-static void
-mrklkit_rt_gc_fini(void)
-{
-    array_fini(&bytes_gc);
-    array_fini(&array_gc);
-    array_fini(&dict_gc);
-    array_fini(&struct_gc);
-}
-
-
 /**
  * str
  */
 bytes_t *
 mrklkit_rt_bytes_new_gc(size_t sz)
 {
-    bytes_t **res;
+    bytes_t *res;
 
-    if ((res = array_get_iter(&bytes_gc, &bytes_gc_it)) == NULL) {
-        res = array_incr(&bytes_gc);
-    }
-    ++bytes_gc_it.iter;
-    *res = mrklkit_bytes_new(sz);
+    res = mrklkit_bytes_new_mpool(&mpool, sz);
     //TRACE("GC>>> %p", *res);
-    return *res;
+    return res;
 }
 
 
 bytes_t *
 mrklkit_rt_bytes_new_from_str_gc(const char *s)
 {
-    bytes_t **res;
+    bytes_t *res;
 
-    if ((res = array_get_iter(&bytes_gc, &bytes_gc_it)) == NULL) {
-        res = array_incr(&bytes_gc);
-    }
-    ++bytes_gc_it.iter;
-    *res = mrklkit_bytes_new_from_str(s);
+    res = mrklkit_bytes_new_from_str_mpool(&mpool, s);
     //TRACE("GC>>> %p", *res);
-    return *res;
+    return res;
 }
 
 
@@ -104,7 +66,7 @@ mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
         goto empty;
     }
     ++sz1; /* "end" including the last char */
-    res = mrklkit_rt_bytes_new_gc(sz1 + 1);
+    res = mrklkit_bytes_new_mpool(&mpool, sz1 + 1);
     memcpy(res->data, str->data + begin, sz1);
     res->data[sz1] = '\0';
 
@@ -112,27 +74,9 @@ end:
     return res;
 
 empty:
-    res = mrklkit_rt_bytes_new_gc(1);
+    res = mrklkit_bytes_new_mpool(&mpool, 1);
     res->data[0] = '\0';
     goto end;
-}
-
-
-static void
-mrklkit_rt_bytes_do_gc(void)
-{
-    size_t i;
-
-    for (i = 0; i < bytes_gc_it.iter; ++i) {
-        bytes_t **v;
-
-        if ((v = array_get(&bytes_gc, i)) == NULL) {
-            FAIL("array_get");
-        }
-        //TRACE("GC<<< %p %ld", *v, (*v)->nref);
-        BYTES_DECREF_FAST(*v);
-    }
-    bytes_gc_it.iter = 0;
 }
 
 
@@ -141,7 +85,7 @@ mrklkit_rt_bytes_brushdown_gc(bytes_t *str)
 {
     bytes_t *res;
 
-    res = mrklkit_rt_bytes_new_from_str_gc((char *)str->data);
+    res = mrklkit_bytes_new_from_str_mpool(&mpool, (char *)str->data);
     bytes_brushdown(res);
     return res;
 }
@@ -228,55 +172,46 @@ null_init(void **v)
     return 0;
 }
 
+
+#define MRKLKIT_RT_ARRAY_NEW_BODY(malloc_fn) \
+    rt_array_t *res; \
+ \
+    if ((res = malloc_fn(sizeof(rt_array_t))) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    res->nref = 0; \
+    res->type = ty; \
+    array_init(&res->fields, \
+               sizeof(void *), \
+               0, \
+               (array_initializer_t)null_init, \
+               NULL); \
+    return res
+
+
+
 rt_array_t *
 mrklkit_rt_array_new(lkit_array_t *ty)
 {
-    rt_array_t *res;
-
-    if ((res = malloc(sizeof(rt_array_t))) == NULL) {
-        FAIL("malloc");
-    }
-    res->nref = 0;
-    res->type = ty;
-    array_init(&res->fields,
-               sizeof(void *),
-               0,
-               (array_initializer_t)null_init,
-               NULL);
-    return res;
+    MRKLKIT_RT_ARRAY_NEW_BODY(malloc);
 }
 
 
 rt_array_t *
 mrklkit_rt_array_new_gc(lkit_array_t *ty)
 {
-    rt_array_t **res;
-
-    if ((res = array_get_iter(&array_gc, &array_gc_it)) == NULL) {
-        res = array_incr(&array_gc);
-    }
-    ++array_gc_it.iter;
-    *res = mrklkit_rt_array_new(ty);
-    //TRACE("GC>>> %p", *res);
-    return *res;
+#define _malloc(sz) mpool_malloc(&mpool, (sz))
+    MRKLKIT_RT_ARRAY_NEW_BODY(_malloc);
+#undef _malloc
 }
 
 
-static void
-mrklkit_rt_array_do_gc(void)
+rt_array_t *
+mrklkit_rt_array_new_mpool(mpool_ctx_t *mpool, lkit_array_t *ty)
 {
-    size_t i;
-
-    for (i = 0; i < array_gc_it.iter; ++i) {
-        rt_array_t **v;
-
-        if ((v = array_get(&array_gc, i)) == NULL) {
-            FAIL("array_get");
-        }
-        //TRACE("GC<<< %p %ld", *v, (*v)->nref);
-        ARRAY_DECREF_FAST(*v);
-    }
-    array_gc_it.iter = 0;
+#define _malloc(sz) mpool_malloc(mpool, (sz))
+    MRKLKIT_RT_ARRAY_NEW_BODY(_malloc);
+#undef _malloc
 }
 
 
@@ -356,8 +291,8 @@ mrklkit_rt_array_split_gc(lkit_array_t *ty, bytes_t *str, bytes_t *delim)
             bytes_t **item;
             size_t sz;
 
-            if ((item = array_incr(&res->fields)) == NULL) {
-                FAIL("array_incr");
+            if ((item = array_incr_mpool(&mpool, &res->fields)) == NULL) {
+                FAIL("array_incr_mpool");
             }
             sz = s1 - s0;
             *item = mrklkit_rt_bytes_new_gc(sz + 1);
@@ -441,57 +376,33 @@ mrklkit_rt_dict_dump(rt_dict_t *value)
 }
 
 
+#define MRKLKIT_RT_DICT_NEW_BODY(malloc_fn) \
+    rt_dict_t *res; \
+    if ((res = malloc_fn(sizeof(rt_dict_t))) == NULL) { \
+        FAIL("malloc_fn"); \
+    } \
+    res->nref = 0; \
+    res->type = ty; \
+    dict_init(&res->fields, \
+              17, \
+              (dict_hashfn_t)bytes_hash, \
+              (dict_item_comparator_t)bytes_cmp, \
+              NULL); \
+    return res
+
 rt_dict_t *
 mrklkit_rt_dict_new(lkit_dict_t *ty)
 {
-    rt_dict_t *res;
-
-    if ((res = malloc(sizeof(rt_dict_t))) == NULL) {
-        FAIL("malloc");
-    }
-
-    res->nref = 0;
-    res->type = ty;
-    dict_init(&res->fields,
-              17,
-              (dict_hashfn_t)bytes_hash,
-              (dict_item_comparator_t)bytes_cmp,
-              NULL);
-
-    return res;
+    MRKLKIT_RT_DICT_NEW_BODY(malloc);
 }
 
 
 rt_dict_t *
 mrklkit_rt_dict_new_gc(lkit_dict_t *ty)
 {
-    rt_dict_t **res;
-
-    if ((res = array_get_iter(&dict_gc, &dict_gc_it)) == NULL) {
-        res = array_incr(&dict_gc);
-    }
-    ++dict_gc_it.iter;
-    *res = mrklkit_rt_dict_new(ty);
-    //TRACE("GC>>> %p", *res);
-    return *res;
-}
-
-
-static void
-mrklkit_rt_dict_do_gc(void)
-{
-    size_t i;
-
-    for (i = 0; i < dict_gc_it.iter; ++i) {
-        rt_dict_t **v;
-
-        if ((v = array_get(&dict_gc, i)) == NULL) {
-            FAIL("array_get");
-        }
-        //TRACE("GC<<< %p %ld", *v, (*v)->nref);
-        DICT_DECREF_FAST(*v);
-    }
-    dict_gc_it.iter = 0;
+#define _malloc(sz) mpool_malloc(&mpool, (sz))
+    MRKLKIT_RT_DICT_NEW_BODY(_malloc);
+#undef _malloc
 }
 
 
@@ -556,62 +467,40 @@ mrklkit_rt_get_dict_item_str(rt_dict_t *value, bytes_t *key, bytes_t *dflt)
 /**
  * struct
  */
+
+#define MRKLKIT_RT_STRUCT_NEW_BODY(malloc_fn) \
+    rt_struct_t *v; \
+    size_t sz = ty->fields.elnum * sizeof(void *) + \
+                (ty->fields.elnum + 1) * sizeof(off_t); \
+    if ((v = malloc_fn(sizeof(rt_struct_t) + sz)) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    v->nref = 0; \
+    v->type = ty; \
+    v->parser_info.bs = NULL; \
+    v->parser_info.pos = 0; \
+    v->next_delim = 0; \
+    v->current = 0; \
+    v->dpos = (off_t *)(&v->fields[ty->fields.elnum]); \
+    (void)memset(v->dpos, '\0', (ty->fields.elnum + 1) * sizeof(off_t)); \
+    if (ty->init != NULL) { \
+        ty->init(v->fields); \
+    } \
+    return v
+
 rt_struct_t *
 mrklkit_rt_struct_new(lkit_struct_t *ty)
 {
-    rt_struct_t *v;
-
-    size_t sz = ty->fields.elnum * sizeof(void *) +
-                (ty->fields.elnum + 1) * sizeof(off_t);
-
-    if ((v = malloc(sizeof(rt_struct_t) + sz)) == NULL) {
-        FAIL("malloc");
-    }
-    v->nref = 0;
-    v->type = ty;
-    v->parser_info.bs = NULL;
-    v->parser_info.pos = 0;
-    v->next_delim = 0;
-    v->current = 0;
-    v->dpos = (off_t *)(&v->fields[ty->fields.elnum]);
-    (void)memset(v->dpos, '\0', (ty->fields.elnum + 1) * sizeof(off_t));
-    if (ty->init != NULL) {
-        ty->init(v->fields);
-    }
-    return v;
+    MRKLKIT_RT_STRUCT_NEW_BODY(malloc);
 }
 
 
 rt_struct_t *
 mrklkit_rt_struct_new_gc(lkit_struct_t *ty)
 {
-    rt_struct_t **res;
-
-    if ((res = array_get_iter(&struct_gc, &struct_gc_it)) == NULL) {
-        res = array_incr(&struct_gc);
-    }
-    ++struct_gc_it.iter;
-    *res = mrklkit_rt_struct_new(ty);
-    //TRACE("GC>>> %p", *res);
-    return *res;
-}
-
-
-static void
-mrklkit_rt_struct_do_gc(void)
-{
-    size_t i;
-
-    for (i = 0; i < struct_gc_it.iter; ++i) {
-        rt_struct_t **v;
-
-        if ((v = array_get(&struct_gc, i)) == NULL) {
-            FAIL("array_get");
-        }
-        //TRACE("GC<<< %p %ld", *v, (*v)->nref);
-        STRUCT_DECREF_FAST(*v);
-    }
-    struct_gc_it.iter = 0;
+#define _malloc(sz) mpool_malloc(&mpool, (sz))
+    MRKLKIT_RT_STRUCT_NEW_BODY(_malloc);
+#undef _malloc
 }
 
 
@@ -854,49 +743,44 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
 }
 
 
+#define MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(mrklkit_bytes_new_fn) \
+    lkit_type_t **fty; \
+    array_iter_t it; \
+    assert(dst->type->fields.elnum == src->type->fields.elnum); \
+    for (fty = array_first(&dst->type->fields, &it); \
+         fty != NULL; \
+         fty = array_next(&dst->type->fields, &it)) { \
+        switch ((*fty)->tag) { \
+        case LKIT_STR: \
+            { \
+                bytes_t *a, *b; \
+                a = (bytes_t *)*(src->fields + it.iter); \
+                b = mrklkit_bytes_new_fn(a->sz); \
+                BYTES_INCREF(b); \
+                mrklkit_bytes_copy(b, a, 0); \
+                *((bytes_t **)dst->fields + it.iter) = b; \
+            } \
+            break; \
+        case LKIT_ARRAY: \
+            FAIL("mrklkit_rt_struct_deep_copy not implement array"); \
+            break; \
+        case LKIT_DICT: \
+            FAIL("mrklkit_rt_struct_deep_copy not implement array"); \
+            break; \
+        case LKIT_STRUCT: \
+            FAIL("mrklkit_rt_struct_deep_copy not implement array"); \
+            break; \
+        default: \
+            *(dst->fields + it.iter) = *(src->fields + it.iter); \
+        } \
+    }
+
+
 void
 mrklkit_rt_struct_deep_copy(rt_struct_t *dst,
                             rt_struct_t *src)
 {
-    lkit_type_t **fty;
-    array_iter_t it;
-
-    assert(dst->type->fields.elnum == src->type->fields.elnum);
-
-    for (fty = array_first(&dst->type->fields, &it);
-         fty != NULL;
-         fty = array_next(&dst->type->fields, &it)) {
-
-
-        switch ((*fty)->tag) {
-        case LKIT_STR:
-            {
-                bytes_t *a, *b;
-
-                a = (bytes_t *)*(src->fields + it.iter);
-                b = mrklkit_bytes_new(a->sz);
-                BYTES_INCREF(b);
-                mrklkit_bytes_copy(b, a, 0);
-                *((bytes_t **)dst->fields + it.iter) = b;
-            }
-            break;
-
-        case LKIT_ARRAY:
-            FAIL("mrklkit_rt_struct_deep_copy not implement array");
-            break;
-
-        case LKIT_DICT:
-            FAIL("mrklkit_rt_struct_deep_copy not implement array");
-            break;
-
-        case LKIT_STRUCT:
-            FAIL("mrklkit_rt_struct_deep_copy not implement array");
-            break;
-
-        default:
-            *(dst->fields + it.iter) = *(src->fields + it.iter);
-        }
-    }
+    MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(mrklkit_bytes_new);
 }
 
 
@@ -904,56 +788,32 @@ void
 mrklkit_rt_struct_deep_copy_gc(rt_struct_t *dst,
                                rt_struct_t *src)
 {
-    lkit_type_t **fty;
-    array_iter_t it;
-
-    assert(dst->type->fields.elnum == src->type->fields.elnum);
-
-    for (fty = array_first(&dst->type->fields, &it);
-         fty != NULL;
-         fty = array_next(&dst->type->fields, &it)) {
-
-
-        switch ((*fty)->tag) {
-        case LKIT_STR:
-            {
-                bytes_t *a, *b;
-
-                a = (bytes_t *)*(src->fields + it.iter);
-                b = mrklkit_rt_bytes_new_gc(a->sz);
-                BYTES_INCREF(b);
-                mrklkit_bytes_copy(b, a, 0);
-                *((bytes_t **)dst->fields + it.iter) = b;
-            }
-            break;
-
-        case LKIT_ARRAY:
-            FAIL("mrklkit_rt_struct_deep_copy not implement array");
-            break;
-
-        case LKIT_DICT:
-            FAIL("mrklkit_rt_struct_deep_copy not implement array");
-            break;
-
-        case LKIT_STRUCT:
-            FAIL("mrklkit_rt_struct_deep_copy not implement array");
-            break;
-
-        default:
-            *(dst->fields + it.iter) = *(src->fields + it.iter);
-        }
-    }
+#define _mrklkit_bytes_new(sz) mrklkit_bytes_new_mpool(&mpool, (sz))
+    MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(_mrklkit_bytes_new);
+#undef _mrklkit_bytes_new
 }
 
 
 void
 mrklkit_rt_do_gc(void)
 {
-    mrklkit_rt_bytes_do_gc();
-    mrklkit_rt_array_do_gc();
-    mrklkit_rt_dict_do_gc();
-    mrklkit_rt_struct_do_gc();
+    mpool_ctx_reset(&mpool);
 }
+
+
+static void
+mrklkit_rt_gc_init(void)
+{
+    mpool_ctx_init(&mpool, 1024*1024);
+}
+
+
+static void
+mrklkit_rt_gc_fini(void)
+{
+    mpool_ctx_fini(&mpool);
+}
+
 
 
 void

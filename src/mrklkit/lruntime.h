@@ -133,6 +133,7 @@ bytes_t *mrklkit_rt_bytes_new_from_str_gc(const char *);
 
 rt_array_t *mrklkit_rt_array_new(lkit_array_t *);
 rt_array_t *mrklkit_rt_array_new_gc(lkit_array_t *);
+rt_array_t *mrklkit_rt_array_new_mpool(mpool_ctx_t *, lkit_array_t *);
 void mrklkit_rt_array_destroy(rt_array_t **);
 void mrklkit_rt_array_dump(rt_array_t *);
 int64_t mrklkit_rt_get_array_item_int(rt_array_t *, int64_t, int64_t);
