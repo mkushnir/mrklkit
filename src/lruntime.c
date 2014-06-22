@@ -223,22 +223,18 @@ mrklkit_rt_array_destroy(rt_array_t **value)
 
 
 int64_t
-mrklkit_rt_get_array_item_int(rt_array_t *value, int64_t idx, int64_t dflt)
+mrklkit_rt_get_array_item_int(rt_array_t *value, int64_t idx, UNUSED int64_t dflt)
 {
     int64_t *res;
 
     idx = value->fields.elnum ? idx % value->fields.elnum : 0;
-    if ((res = ARRAY_GET(int64_t,
-                         &value->fields,
-                         idx)) == NULL) {
-        return dflt;
-    }
+    res = ARRAY_GET(int64_t, &value->fields, idx);
     return *res;
 }
 
 
 double
-mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, double dflt)
+mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, UNUSED double dflt)
 {
     union {
         void **v;
@@ -248,11 +244,7 @@ mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, double dflt)
     assert(sizeof(void *) == sizeof(double));
 
     idx = value->fields.elnum ? idx % value->fields.elnum : 0;
-    if ((res.v = ARRAY_GET(void *,
-                           &value->fields,
-                           idx)) == NULL) {
-        return dflt;
-    }
+    res.v = ARRAY_GET(void *, &value->fields, idx);
     return *res.d;
 }
 
@@ -263,14 +255,7 @@ mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
     bytes_t **res;
 
     idx = value->fields.elnum ? idx % value->fields.elnum : 0;
-    if ((res = ARRAY_GET(bytes_t *,
-                         &value->fields,
-                         idx)) == NULL) {
-        return dflt;
-    }
-    if (*res == NULL) {
-        *res = dflt;
-    }
+    res = ARRAY_GET(bytes_t *, &value->fields, idx);
     return *res;
 }
 
