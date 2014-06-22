@@ -10,6 +10,7 @@
 //#define TRRET_DEBUG_VERBOSE
 //#define TRRET_DEBUG
 #include <mrkcommon/dumpm.h>
+#include <mrkcommon/mpool.h>
 #include <mrkcommon/util.h>
 
 #include <mrklkit/dparser.h>
@@ -17,6 +18,8 @@
 #include <mrklkit/lruntime.h>
 
 #include "diag.h"
+
+static mpool_ctx_t *mpool;
 
 typedef void (*dparse_struct_item_cb_t)(bytestream_t *, char, off_t, off_t, void **);
 
@@ -394,15 +397,15 @@ dparse_array(bytestream_t *bs,
                  */ \
                 /* TRACE("SPCHR='%c' delim='%c' fdelim='%c'", SPCHR(bs), delim, fdelim); */ \
                 if (SPCHR(bs) != fdelim) { \
-                    if ((v = array_incr(&value->fields)) == NULL) { \
-                        FAIL("array_incr"); \
+                    if ((v = array_incr_mpool(mpool, &value->fields)) == NULL) { \
+                        FAIL("array_incr_mpool"); \
                     } \
                     *v = u.v; \
                     break; \
                 } \
             } \
-            if ((v = array_incr(&value->fields)) == NULL) { \
-                FAIL("array_incr"); \
+            if ((v = array_incr_mpool(mpool, &value->fields)) == NULL) { \
+                FAIL("array_incr_mpool"); \
             } \
             *v = u.v; \
             _dparser_reach_value(bs, fdelim, br.end); \
@@ -489,11 +492,11 @@ dparse_dict(bytestream_t *bs,
                          */ \
                         /* TRACE("SPCHR='%c' delim='%c' fdelim='%c'", SPCHR(bs), delim, fdelim); */ \
                         if (SPCHR(bs) != fdelim) { \
-                            dict_set_item(&value->fields, key, u.v); \
+                            dict_set_item_mpool(mpool, &value->fields, key, u.v); \
                             break; \
                         } \
                     } else { \
-                        dict_set_item(&value->fields, key, u.v); \
+                        dict_set_item_mpool(mpool, &value->fields, key, u.v); \
                     } \
                 } else { \
                     BYTES_DECREF(&key); \
@@ -814,8 +817,8 @@ dparse_array_pos(bytestream_t *bs,
         void **v; \
         fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos); \
         (void)fn(bs, fdelim, spos, fpos, &u.x); \
-        if ((v = array_incr(&(*val)->fields)) == NULL) { \
-            FAIL("array_incr"); \
+        if ((v = array_incr_mpool(mpool, &(*val)->fields)) == NULL) { \
+            FAIL("array_incr_mpool"); \
         } \
         *v = u.v; \
         spos = dparser_reach_value_pos(bs, fdelim, fpos, epos); \
@@ -879,7 +882,7 @@ dparse_dict_pos(bytestream_t *bs,
             spos = dparser_reach_value_pos(bs, kvdelim, kvpos, epos); \
             if ((it = dict_get_item(&(*val)->fields, key)) == NULL) { \
                 fpos = fn(bs, fdelim, spos, epos, &u.x); \
-                dict_set_item(&(*val)->fields, key, u.v); \
+                dict_set_item_mpool(mpool, &(*val)->fields, key, u.v); \
                 fpos = dparser_reach_delim_pos(bs, fdelim, fpos, epos); \
             } else { \
                 /* BYTES_DECREF(&key); */ \
@@ -1405,3 +1408,10 @@ dparser_read_lines(int fd,
 
     TRRET(res);
 }
+
+void
+dparser_set_mpool(mpool_ctx_t *m)
+{
+    mpool = m;
+}
+

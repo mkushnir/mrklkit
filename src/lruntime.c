@@ -13,7 +13,7 @@
 
 #include "diag.h"
 
-static mpool_ctx_t mpool;
+static mpool_ctx_t *mpool;
 
 
 int
@@ -32,7 +32,7 @@ mrklkit_rt_bytes_new_gc(size_t sz)
 {
     bytes_t *res;
 
-    res = mrklkit_bytes_new_mpool(&mpool, sz);
+    res = mrklkit_bytes_new_mpool(mpool, sz);
     //TRACE("GC>>> %p", *res);
     return res;
 }
@@ -43,7 +43,7 @@ mrklkit_rt_bytes_new_from_str_gc(const char *s)
 {
     bytes_t *res;
 
-    res = mrklkit_bytes_new_from_str_mpool(&mpool, s);
+    res = mrklkit_bytes_new_from_str_mpool(mpool, s);
     //TRACE("GC>>> %p", *res);
     return res;
 }
@@ -66,7 +66,7 @@ mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
         goto empty;
     }
     ++sz1; /* "end" including the last char */
-    res = mrklkit_bytes_new_mpool(&mpool, sz1 + 1);
+    res = mrklkit_bytes_new_mpool(mpool, sz1 + 1);
     memcpy(res->data, str->data + begin, sz1);
     res->data[sz1] = '\0';
 
@@ -74,7 +74,7 @@ end:
     return res;
 
 empty:
-    res = mrklkit_bytes_new_mpool(&mpool, 1);
+    res = mrklkit_bytes_new_mpool(mpool, 1);
     res->data[0] = '\0';
     goto end;
 }
@@ -85,7 +85,7 @@ mrklkit_rt_bytes_brushdown_gc(bytes_t *str)
 {
     bytes_t *res;
 
-    res = mrklkit_bytes_new_from_str_mpool(&mpool, (char *)str->data);
+    res = mrklkit_bytes_new_from_str_mpool(mpool, (char *)str->data);
     bytes_brushdown(res);
     return res;
 }
@@ -200,7 +200,7 @@ mrklkit_rt_array_new(lkit_array_t *ty)
 rt_array_t *
 mrklkit_rt_array_new_gc(lkit_array_t *ty)
 {
-#define _malloc(sz) mpool_malloc(&mpool, (sz))
+#define _malloc(sz) mpool_malloc(mpool, (sz))
     MRKLKIT_RT_ARRAY_NEW_BODY(_malloc);
 #undef _malloc
 }
@@ -291,7 +291,7 @@ mrklkit_rt_array_split_gc(lkit_array_t *ty, bytes_t *str, bytes_t *delim)
             bytes_t **item;
             size_t sz;
 
-            if ((item = array_incr_mpool(&mpool, &res->fields)) == NULL) {
+            if ((item = array_incr_mpool(mpool, &res->fields)) == NULL) {
                 FAIL("array_incr_mpool");
             }
             sz = s1 - s0;
@@ -376,14 +376,14 @@ mrklkit_rt_dict_dump(rt_dict_t *value)
 }
 
 
-#define MRKLKIT_RT_DICT_NEW_BODY(malloc_fn) \
+#define MRKLKIT_RT_DICT_NEW_BODY(malloc_fn, dict_init_fn) \
     rt_dict_t *res; \
     if ((res = malloc_fn(sizeof(rt_dict_t))) == NULL) { \
         FAIL("malloc_fn"); \
     } \
     res->nref = 0; \
     res->type = ty; \
-    dict_init(&res->fields, \
+    dict_init_fn(&res->fields, \
               17, \
               (dict_hashfn_t)bytes_hash, \
               (dict_item_comparator_t)bytes_cmp, \
@@ -393,16 +393,18 @@ mrklkit_rt_dict_dump(rt_dict_t *value)
 rt_dict_t *
 mrklkit_rt_dict_new(lkit_dict_t *ty)
 {
-    MRKLKIT_RT_DICT_NEW_BODY(malloc);
+    MRKLKIT_RT_DICT_NEW_BODY(malloc, dict_init);
 }
 
 
 rt_dict_t *
 mrklkit_rt_dict_new_gc(lkit_dict_t *ty)
 {
-#define _malloc(sz) mpool_malloc(&mpool, (sz))
-    MRKLKIT_RT_DICT_NEW_BODY(_malloc);
+#define _malloc(sz) mpool_malloc(mpool, (sz))
+#define _dict_init(dict, sz, hashfn, cmpfn, finifn) dict_init_mpool(mpool, (dict), (sz), (hashfn), (cmpfn), (finifn))
+    MRKLKIT_RT_DICT_NEW_BODY(_malloc, _dict_init);
 #undef _malloc
+#undef _dict_init
 }
 
 
@@ -498,7 +500,7 @@ mrklkit_rt_struct_new(lkit_struct_t *ty)
 rt_struct_t *
 mrklkit_rt_struct_new_gc(lkit_struct_t *ty)
 {
-#define _malloc(sz) mpool_malloc(&mpool, (sz))
+#define _malloc(sz) mpool_malloc(mpool, (sz))
     MRKLKIT_RT_STRUCT_NEW_BODY(_malloc);
 #undef _malloc
 }
@@ -788,43 +790,25 @@ void
 mrklkit_rt_struct_deep_copy_gc(rt_struct_t *dst,
                                rt_struct_t *src)
 {
-#define _mrklkit_bytes_new(sz) mrklkit_bytes_new_mpool(&mpool, (sz))
+#define _mrklkit_bytes_new(sz) mrklkit_bytes_new_mpool(mpool, (sz))
     MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(_mrklkit_bytes_new);
 #undef _mrklkit_bytes_new
 }
 
 
 void
-mrklkit_rt_do_gc(void)
+lruntime_set_mpool(mpool_ctx_t *m)
 {
-    mpool_ctx_reset(&mpool);
+    mpool = m;
 }
-
-
-static void
-mrklkit_rt_gc_init(void)
-{
-    mpool_ctx_init(&mpool, 1024*1024);
-}
-
-
-static void
-mrklkit_rt_gc_fini(void)
-{
-    mpool_ctx_fini(&mpool);
-}
-
-
 
 void
 lruntime_init(void)
 {
-    mrklkit_rt_gc_init();
 }
 
 
 void
 lruntime_fini(void)
 {
-    mrklkit_rt_gc_fini();
 }

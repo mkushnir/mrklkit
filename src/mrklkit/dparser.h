@@ -16,6 +16,7 @@
 
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
+#include <mrkcommon/mpool.h>
 #include <mrklkit/util.h>
 
 #ifdef __cplusplus
@@ -112,6 +113,7 @@ int dparser_read_lines(int,
                        void *,
                        size_t *);
 
+void dparser_set_mpool(mpool_ctx_t *);
 #ifdef __cplusplus
 }
 #endif

@@ -4,6 +4,7 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
+#include <mrkcommon/mpool.h>
 
 #include <mrklkit/ltype.h>
 
@@ -171,7 +172,7 @@ void mrklkit_rt_struct_shallow_copy(rt_struct_t *, rt_struct_t *);
 void mrklkit_rt_struct_deep_copy(rt_struct_t *, rt_struct_t *);
 void mrklkit_rt_struct_deep_copy_gc(rt_struct_t *, rt_struct_t *);
 
-void mrklkit_rt_do_gc(void);
+void lruntime_set_mpool(mpool_ctx_t *);
 void lruntime_init(void);
 void lruntime_fini(void);
 
