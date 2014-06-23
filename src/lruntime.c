@@ -250,7 +250,7 @@ mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, UNUSED double df
 
 
 bytes_t *
-mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
+mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, UNUSED bytes_t *dflt)
 {
     bytes_t **res;
 
