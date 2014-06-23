@@ -752,6 +752,25 @@ dparse_float_pos(bytestream_t *bs,
 }
 
 static off_t
+dparse_float_pos_pvoid(bytestream_t *bs,
+               char delim,
+               off_t spos,
+               UNUSED off_t epos,
+               void **vv)
+{
+    char *ptr = (char *)SDATA(bs, spos);
+    char *endptr = ptr;
+    union {
+        void **v;
+        double *d;
+    } u;
+    u.v = vv;
+
+    *u.d = dparser_strtod(ptr, &endptr, delim);
+    return spos + endptr - ptr;
+}
+
+static off_t
 dparse_str_pos(bytestream_t *bs,
                char delim,
                off_t spos,
@@ -986,6 +1005,57 @@ dparse_struct_item_seq(rt_struct_t *value,
 }
 
 
+
+
+#define DPARSE_STRUCT_ITEM_RA_BODY(ty, val, cb) \
+    assert(idx < (ssize_t)value->type->fields.elnum); \
+    assert(value->parser_info.bs != NULL); \
+    if (!(value->dpos[idx] & 0x80000000)) { \
+        bytestream_t *bs; \
+        off_t spos, epos; \
+        char delim; \
+        int nidx = idx + 1; \
+        off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t); \
+        bs = value->parser_info.bs; \
+        delim = value->type->delim[0]; \
+        if (value->type->parser == LKIT_PARSER_MDELIM) { \
+            _dparser_reach_value = dparser_reach_value_m_pos; \
+        } else { \
+            _dparser_reach_value = dparser_reach_value_pos; \
+        } \
+        if (nidx >= value->next_delim) { \
+            off_t pos; \
+            pos = value->parser_info.pos; \
+            do { \
+                value->dpos[value->next_delim] = pos; \
+                pos = _dparser_reach_value(bs, \
+                                           delim, \
+                                           pos, \
+                                           value->parser_info.br.end); \
+                pos = dparser_reach_delim_pos(bs, \
+                                              delim, \
+                                              pos, \
+                                              value->parser_info.br.end); \
+            } while (value->next_delim++ < nidx); \
+            assert(value->next_delim == (nidx + 1)); \
+            value->parser_info.pos = pos; \
+        } \
+        spos = _dparser_reach_value(bs, \
+                                    delim, \
+                                    value->dpos[idx], \
+                                    value->parser_info.br.end); \
+        epos = value->dpos[nidx] & ~0x80000000; \
+        value->dpos[idx] |= 0x80000000; \
+        val = (ty)MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx); \
+        cb(bs, delim, spos, epos, val); \
+    } else { \
+        val = (ty)MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx); \
+    }
+
+
+
+
+
 /**
  * struct item random access, implies "strict" delimiter grammar
  */
@@ -1121,8 +1191,7 @@ dparse_struct_item_ra_int(rt_struct_t *value, int64_t idx)
     int64_t *val;
 
     assert(sizeof(int64_t) == sizeof(void *));
-    val = (int64_t *)dparse_struct_item_ra(value,
-            idx, (dparse_struct_item_cb_t)dparse_int_pos);
+    DPARSE_STRUCT_ITEM_RA_BODY(int64_t *, val, dparse_int_pos);
     return *val;
 }
 
@@ -1151,8 +1220,7 @@ dparse_struct_item_ra_float(rt_struct_t *value, int64_t idx)
     } u;
 
     assert(sizeof(double) == sizeof(void *));
-    u.v = dparse_struct_item_ra(value,
-            idx, (dparse_struct_item_cb_t)dparse_float_pos);
+    DPARSE_STRUCT_ITEM_RA_BODY(void **, u.v, dparse_float_pos_pvoid);
     return *u.d;
 }
 
@@ -1160,7 +1228,7 @@ dparse_struct_item_ra_float(rt_struct_t *value, int64_t idx)
 int64_t
 dparse_struct_item_seq_bool(rt_struct_t *value, int64_t idx)
 {
-    UNUSED int64_t *val;
+    int64_t *val;
 
     assert(sizeof(int64_t) == sizeof(void *));
     val = (int64_t *)dparse_struct_item_seq(value,
@@ -1172,7 +1240,7 @@ dparse_struct_item_seq_bool(rt_struct_t *value, int64_t idx)
 int64_t
 dparse_struct_item_ra_bool(rt_struct_t *value, int64_t idx)
 {
-    UNUSED int64_t *val;
+    int64_t *val;
 
     assert(sizeof(int64_t) == sizeof(void *));
     val = (int64_t *)dparse_struct_item_ra(value,
@@ -1184,7 +1252,7 @@ dparse_struct_item_ra_bool(rt_struct_t *value, int64_t idx)
 bytes_t *
 dparse_struct_item_seq_str(rt_struct_t *value, int64_t idx)
 {
-    UNUSED bytes_t **val;
+    bytes_t **val;
 
     assert(sizeof(bytes_t *) == sizeof(void *));
     val = (bytes_t **)dparse_struct_item_seq(value,
@@ -1196,11 +1264,10 @@ dparse_struct_item_seq_str(rt_struct_t *value, int64_t idx)
 bytes_t *
 dparse_struct_item_ra_str(rt_struct_t *value, int64_t idx)
 {
-    UNUSED bytes_t **val;
+    bytes_t **val;
 
     assert(sizeof(bytes_t *) == sizeof(void *));
-    val = (bytes_t **)dparse_struct_item_ra(value,
-            idx, (dparse_struct_item_cb_t)dparse_str_pos);
+    DPARSE_STRUCT_ITEM_RA_BODY(bytes_t **, val, dparse_str_pos);
     return *(bytes_t **)(value->fields + idx);
 }
 
