@@ -32,7 +32,6 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
     int res = 0;
     bytes_t *name = NULL;
     lkit_expr_t **pexpr = NULL;
-    lkit_gitem_t **gitem;
     fparser_datum_t **node = NULL;
 
     /* name */
@@ -70,13 +69,11 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
     if (flags & LKIT_BUILTIN_PARSE_EXPRDEF_FORCELAZY) {
         (*pexpr)->lazy_init = 1;
     }
-
-    dict_set_item(&ectx->ctx, name, *pexpr);
-    if ((gitem = array_incr(&ectx->glist)) == NULL) {
-        FAIL("array_incr");
+    if (flags & LKIT_BUILTIN_PARSE_EXPRDEF_CUSTOMCOMPILE) {
+        (*pexpr)->custom_compile = 1;
     }
-    (*gitem)->name = lkit_expr_qual_name(ectx, name);
-    (*gitem)->expr = *pexpr;
+
+    lexpr_add_to_ctx(ectx, name, *pexpr);
 
 end:
     return res;
@@ -639,16 +636,9 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
             /* not a builtin */
             if ((ref = lkit_expr_find(ectx, expr->name)) == NULL) {
-                //lkit_expr_dump(expr);
+                lkit_expr_dump(expr);
                 TRRET(REMOVE_UNDEF + 41);
             }
-            //if ((it = dict_get_item(
-            //        &ectx->ctx, expr->name)) == NULL) {
-            //    lkit_expr_dump(expr);
-            //    TRRET(REMOVE_UNDEF + 40);
-            //} else {
-            //    ref = it->value;
-            //}
             if (builtin_remove_undef(mctx, ectx, ref) != 0) {
                 TRRET(REMOVE_UNDEF + 42);
             }

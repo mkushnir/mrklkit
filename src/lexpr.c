@@ -273,6 +273,7 @@ lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
     expr->isbuiltin = 0;
     expr->value.literal = NULL;
     expr->error = 0;
+    expr->custom_compile = 0;
     expr->lazy_init = 0;
     expr->lazy_init_referenced = 0;
     expr->type = NULL;
@@ -291,6 +292,19 @@ lexpr_init_ctx(lkit_expr_t *ectx)
                (array_finalizer_t)gitem_fini);
 }
 
+
+void
+lexpr_add_to_ctx(lkit_expr_t *ectx, bytes_t *name, lkit_expr_t *expr)
+{
+    lkit_gitem_t **gitem;
+
+    dict_set_item(&ectx->ctx, name, expr);
+    if ((gitem = array_incr(&ectx->glist)) == NULL) {
+        FAIL("array_incr");
+    }
+    (*gitem)->name = lkit_expr_qual_name(ectx, name);
+    (*gitem)->expr = expr;
+}
 
 
 static int
@@ -377,10 +391,10 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                 TR(LKIT_EXPR_PARSE + 1);
                 goto err;
             }
-
             //TRACE("ISREF by %s", expr->name->data);
             expr->isref = 1;
             expr->type = expr->value.ref->type;
+
             break;
 
         case FPARSER_SEQ:

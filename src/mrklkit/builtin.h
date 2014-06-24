@@ -15,6 +15,7 @@ extern "C" {
 
 #define LKIT_BUILTIN_PARSE_EXPRDEF_ISBLTIN (0x01)
 #define LKIT_BUILTIN_PARSE_EXPRDEF_FORCELAZY (0x02)
+#define LKIT_BUILTIN_PARSE_EXPRDEF_CUSTOMCOMPILE (0x04)
 int builtin_parse_exprdef(mrklkit_ctx_t *,
                           lkit_expr_t *,
                           array_t *,

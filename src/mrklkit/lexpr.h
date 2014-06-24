@@ -48,6 +48,7 @@ typedef struct _lkit_expr {
     int isref:1;
     int isbuiltin:1;
     int error:1;
+    int custom_compile:1;
     int lazy_init:1;
     int lazy_init_referenced:1;
 
@@ -76,6 +77,7 @@ int lkit_parse_exprdef(lkit_expr_t *,
                        void *);
 
 void lexpr_init_ctx(lkit_expr_t *);
+void lexpr_add_to_ctx(lkit_expr_t *, bytes_t *, lkit_expr_t *);
 void lexpr_fini_ctx(lkit_expr_t *);
 
 lkit_expr_t *lkit_expr_new(lkit_expr_t *);
