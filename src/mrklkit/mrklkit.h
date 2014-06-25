@@ -31,6 +31,8 @@ typedef struct _mrklkit_ctx {
     LLVMContextRef lctx;
     LLVMModuleRef module;
     LLVMExecutionEngineRef ee;
+
+    int mark_referenced:1;
 } mrklkit_ctx_t;
 
 extern const char *mrklkit_meta;

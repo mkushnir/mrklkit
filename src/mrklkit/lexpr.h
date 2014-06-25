@@ -45,12 +45,12 @@ typedef struct _lkit_expr {
     /* weekref */
     struct _lkit_expr *parent;
 
+    int referenced;
     int isref:1;
     int isbuiltin:1;
     int error:1;
-    int custom_compile:1;
+    int ismacro:1;
     int lazy_init:1;
-    int lazy_init_referenced:1;
 
 } lkit_expr_t;
 
@@ -71,6 +71,7 @@ lkit_expr_t *lkit_expr_parse(mrklkit_ctx_t *,
                              fparser_datum_t *,
                              int);
 lkit_expr_t *lkit_expr_find(lkit_expr_t *, bytes_t *);
+void lkit_expr_set_referenced(lkit_expr_t *);
 int lkit_parse_exprdef(lkit_expr_t *,
                        array_t *,
                        array_iter_t *,
@@ -81,6 +82,11 @@ void lexpr_add_to_ctx(lkit_expr_t *, bytes_t *, lkit_expr_t *);
 void lexpr_fini_ctx(lkit_expr_t *);
 
 lkit_expr_t *lkit_expr_new(lkit_expr_t *);
+lkit_expr_t *lkit_expr_build_literal(mrklkit_ctx_t *,
+                                     lkit_expr_t *,
+                                     fparser_datum_t *);
+lkit_expr_t *lkit_expr_build_ref(lkit_expr_t *, bytes_t *);
+lkit_expr_t *lkit_expr_add_sub(lkit_expr_t *, lkit_expr_t *);
 struct _lkit_type *lkit_expr_type_of(lkit_expr_t *);
 void lkit_expr_init(lkit_expr_t *, lkit_expr_t *);
 void lkit_expr_fini(lkit_expr_t *);

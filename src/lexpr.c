@@ -191,6 +191,25 @@ lkit_expr_find(lkit_expr_t *ectx, bytes_t *name)
 
 
 void
+lkit_expr_set_referenced(lkit_expr_t *expr)
+{
+    lkit_expr_t **pexpr;
+    array_iter_t it;
+
+    for (pexpr = array_first(&expr->subs, &it);
+         pexpr != NULL;
+         pexpr = array_next(&expr->subs, &it)) {
+        if ((*pexpr)->isref) {
+            ++(*pexpr)->referenced;
+            lkit_expr_set_referenced(*pexpr);
+            ++(*pexpr)->value.ref->referenced;
+            lkit_expr_set_referenced((*pexpr)->value.ref);
+        }
+    }
+}
+
+
+void
 lexpr_fini_ctx(lkit_expr_t *ectx)
 {
     //dict_traverse(&ectx->ctx, (dict_traverser_t)lexpr_dump, NULL);
@@ -233,6 +252,65 @@ lkit_expr_new(lkit_expr_t *ectx)
 }
 
 
+lkit_expr_t *
+lkit_expr_build_ref(lkit_expr_t *ectx, bytes_t *name)
+{
+    lkit_expr_t *expr;
+
+    expr = lkit_expr_new(ectx);
+    expr->name = name;
+    expr->isref = 1;
+    expr->value.ref = lkit_expr_find(ectx, name);
+    expr->type = lkit_expr_type_of(expr->value.ref);
+    return expr;
+}
+
+
+lkit_expr_t *
+lkit_expr_build_literal(mrklkit_ctx_t *mctx,
+                        lkit_expr_t *ectx,
+                        fparser_datum_t *value)
+{
+    lkit_expr_t *expr;
+
+    expr = lkit_expr_new(ectx);
+    expr->value.literal = value;
+    switch (value->tag) {
+    case FPARSER_STR:
+        expr->type = lkit_type_get(mctx, LKIT_STR);
+        break;
+
+    case FPARSER_INT:
+        expr->type = lkit_type_get(mctx, LKIT_INT);
+        break;
+
+    case FPARSER_FLOAT:
+        expr->type = lkit_type_get(mctx, LKIT_FLOAT);
+        break;
+
+    case FPARSER_BOOL:
+        expr->type = lkit_type_get(mctx, LKIT_BOOL);
+        break;
+
+    default:
+        FAIL("lkit_expr_build_literal");
+    }
+
+    return expr;
+}
+
+
+lkit_expr_t *
+lkit_expr_add_sub(lkit_expr_t *expr, lkit_expr_t *sub)
+{
+    lkit_expr_t **pexpr;
+    if ((pexpr = array_incr(&expr->subs)) == NULL) {
+        FAIL("array_incr");
+    }
+    *pexpr = sub;
+    return sub;
+}
+
 static int
 gitem_fini(lkit_gitem_t **gitem)
 {
@@ -273,9 +351,9 @@ lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
     expr->isbuiltin = 0;
     expr->value.literal = NULL;
     expr->error = 0;
-    expr->custom_compile = 0;
+    expr->ismacro = 0;
     expr->lazy_init = 0;
-    expr->lazy_init_referenced = 0;
+    expr->referenced = 0;
     expr->type = NULL;
 }
 
@@ -325,6 +403,15 @@ parse_expr_quals(array_t *form,
             return 1;
         }
         expr->lazy_init = (int)value;
+
+    } else if (strcmp(s, ":force") == 0) {
+        int64_t value;
+
+        if (lparse_next_int(form, it, &value, 1) != 0) {
+            expr->error = 1;
+            return 1;
+        }
+        expr->referenced = (int)value;
 
     } else if (strcmp(s, ":title") == 0) {
         if (lparse_next_str_bytes(form, it, &expr->title, 1) != 0) {
@@ -560,6 +647,18 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
         expr->value.ref = NULL;
         //TRACE("type:");
         //lkit_type_dump(expr->type);
+    }
+
+    /*
+     * mark all references for eager initializers
+     */
+    if (mctx->mark_referenced) {
+        if (!expr->lazy_init) {
+            if (expr->isref) {
+                ++expr->value.ref->referenced;
+                lkit_expr_set_referenced(expr->value.ref);
+            }
+        }
     }
 
 end:

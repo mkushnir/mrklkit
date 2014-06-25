@@ -15,7 +15,7 @@ extern "C" {
 
 #define LKIT_BUILTIN_PARSE_EXPRDEF_ISBLTIN (0x01)
 #define LKIT_BUILTIN_PARSE_EXPRDEF_FORCELAZY (0x02)
-#define LKIT_BUILTIN_PARSE_EXPRDEF_CUSTOMCOMPILE (0x04)
+#define LKIT_BUILTIN_PARSE_EXPRDEF_MACRO (0x04)
 int builtin_parse_exprdef(mrklkit_ctx_t *,
                           lkit_expr_t *,
                           array_t *,
@@ -26,6 +26,16 @@ int builtin_remove_undef(mrklkit_ctx_t *,
                          lkit_expr_t *,
                          lkit_expr_t *);
 
+#define COMPILE_GET_GET 0x01
+#define COMPILE_GET_PARSE 0x02
+LLVMValueRef
+lkit_compile_get(mrklkit_ctx_t *,
+                 lkit_expr_t *,
+                 LLVMModuleRef,
+                 LLVMBuilderRef,
+                 lkit_expr_t *,
+                 int,
+                 void *);
 LLVMValueRef lkit_compile_expr(mrklkit_ctx_t *,
                                lkit_expr_t *,
                                LLVMModuleRef,

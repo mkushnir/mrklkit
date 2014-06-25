@@ -6,6 +6,7 @@
  */
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
+#include <mrkcommon/mpool.h>
 
 #include <mrklkit/util.h>
 
@@ -96,6 +97,8 @@ fparser_datum_t *fparser_parse(int fd,
                                          void *),
                                void *udata);
 
+fparser_datum_t *fparser_datum_build_str_mpool(mpool_ctx_t *,
+                                               const char *);
 #ifdef __cplusplus
 }
 #endif

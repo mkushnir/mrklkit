@@ -5,6 +5,7 @@
 //#define TRRET_DEBUG
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytestream.h>
+#include <mrkcommon/mpool.h>
 #define DUMPM_INDENT_SIZE 1
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
@@ -765,6 +766,33 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
     *entry = dat;
     dat->parent = parent;
     return 0;
+}
+
+fparser_datum_t *
+fparser_datum_build_str_mpool(mpool_ctx_t *mpool, const char *str)
+{
+    fparser_datum_t *dat;
+    bytes_t *value;
+    size_t sz;
+    ssize_t escaped;
+
+    sz = strlen(str);
+    if ((dat = mpool_malloc(mpool,
+                           sizeof(fparser_datum_t) +
+                           sizeof(bytes_t) +
+                           sz +
+                           1)) == NULL) {
+        FAIL("malloc");
+    }
+    fparser_datum_init(dat, FPARSER_STR);
+    value = (bytes_t *)(dat->body);
+    value->nref = 0;
+    value->hash = 0;
+    value->sz = sz + 1;
+
+    escaped = unesc((char *)value->data, str, sz);
+    value->sz -= escaped;
+    return dat;
 }
 /*
  * vim:softtabstop=4

@@ -69,8 +69,8 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
     if (flags & LKIT_BUILTIN_PARSE_EXPRDEF_FORCELAZY) {
         (*pexpr)->lazy_init = 1;
     }
-    if (flags & LKIT_BUILTIN_PARSE_EXPRDEF_CUSTOMCOMPILE) {
-        (*pexpr)->custom_compile = 1;
+    if (flags & LKIT_BUILTIN_PARSE_EXPRDEF_MACRO) {
+        (*pexpr)->ismacro = 1;
     }
 
     lexpr_add_to_ctx(ectx, name, *pexpr);

@@ -15,6 +15,8 @@
 #include <mrkcommon/dict.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
+//#define NO_PROFILE
+#include <mrkcommon/profile.h>
 #include <mrkcommon/util.h>
 
 #include <mrklkit/fparser.h>
@@ -28,6 +30,11 @@
 #include <mrklkit/lruntime.h>
 
 #include "diag.h"
+
+UNUSED static const profile_t *parse_p;
+UNUSED static const profile_t *compile_p;
+UNUSED static const profile_t *analyze_p;
+UNUSED static const profile_t *init_runtime_p;
 
 const char *mrklkit_meta = "; libc\n"
 "(sym malloc (func any int))\n"
@@ -307,8 +314,10 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     mrklkit_module_t **mod;
     array_iter_t it;
 
+    profile_start(parse_p);
     /* parse */
     if (mrklkit_parse(ctx, fd, udata) != 0) {
+        profile_stop(parse_p);
         TRRET(MRKLKIT_COMPILE + 1);
     }
 
@@ -319,13 +328,16 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
         if ((*mod)->post_parse != NULL) {
             if ((*mod)->post_parse(udata)) {
+                profile_stop(parse_p);
                 TRRET(MRKLKIT_COMPILE + 5);
             }
         }
     }
+    profile_stop(parse_p);
 
     /* compile */
 
+    profile_start(compile_p);
     reset_newvar_counter();
 
     for (mod = array_first(&ctx->modules, &it);
@@ -334,6 +346,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
         if ((*mod)->compile_type != NULL) {
             if ((*mod)->compile_type(udata, ctx->module)) {
+                profile_stop(compile_p);
                 TRRET(MRKLKIT_COMPILE + 5);
             }
         }
@@ -349,13 +362,16 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
             }
         }
     }
+    profile_stop(compile_p);
 
     if (flags & MRKLKIT_COMPILE_DUMP0) {
         LLVMDumpModule(ctx->module);
     }
 
+    profile_start(analyze_p);
     /* LLVM analysis */
     do_analysis(ctx);
+    profile_stop(analyze_p);
 
     if (flags & MRKLKIT_COMPILE_DUMP1) {
         TRACEC("-----------------------------------------------\n");
@@ -407,6 +423,7 @@ mrklkit_ctx_init_runtime(mrklkit_ctx_t *ctx, void *udata)
     mrklkit_module_t **mod;
     array_iter_t it;
 
+    profile_start(init_runtime_p);
     LLVMLinkInJIT();
     assert(ctx->module != NULL);
     if (LLVMCreateJITCompilerForModule(&ctx->ee,
@@ -447,6 +464,7 @@ mrklkit_ctx_init_runtime(mrklkit_ctx_t *ctx, void *udata)
         }
     }
 
+    profile_stop(init_runtime_p);
     return 0;
 }
 
@@ -603,6 +621,8 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
             }
         }
     }
+
+    ctx->mark_referenced = 0;
 }
 
 
@@ -692,6 +712,11 @@ llvm_fini(void)
 void
 mrklkit_init(void)
 {
+    profile_init_module();
+    parse_p = profile_register("parse");
+    compile_p = profile_register("compile");
+    analyze_p = profile_register("analyze");
+    init_runtime_p = profile_register("init_runtime");
     llvm_init();
     ltype_init();
     lexpr_init();
@@ -706,5 +731,6 @@ mrklkit_fini(void)
     lexpr_fini();
     ltype_fini();
     llvm_fini();
+    profile_fini_module();
 }
 

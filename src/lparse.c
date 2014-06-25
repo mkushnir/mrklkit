@@ -59,7 +59,7 @@ lparse_next_word(array_t *form,
                  array_iter_t *it,
                  char **value,
                  int seterror)
-    {
+{
     fparser_datum_t **node;
     fparser_tag_t tag;
     if ((node = array_next(form, it)) == NULL) {
@@ -70,6 +70,29 @@ lparse_next_word(array_t *form,
     if (tag == FPARSER_WORD) {
         bytes_t *v = (bytes_t *)((*node)->body);
         *value = (char *)(v->data);
+        return 0;
+    }
+    (void)array_prev(form, it);
+    *value = NULL;
+    (*node)->error = seterror;
+    return 1;
+}
+
+int
+lparse_next_word_datum(array_t *form,
+                       array_iter_t *it,
+                       fparser_datum_t **value,
+                       int seterror)
+{
+    fparser_datum_t **node;
+    fparser_tag_t tag;
+    if ((node = array_next(form, it)) == NULL) {
+        *value = NULL;
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*node);
+    if (tag == FPARSER_WORD) {
+        *value = *node;
         return 0;
     }
     (void)array_prev(form, it);
@@ -141,6 +164,29 @@ lparse_next_str_bytes(array_t *form,
     if (tag == FPARSER_STR) {
         bytes_t *v = (bytes_t *)((*node)->body);
         *value = v;
+        return 0;
+    }
+    (void)array_prev(form, it);
+    *value = NULL;
+    (*node)->error = seterror;
+    return 1;
+}
+
+int
+lparse_next_str_datum(array_t *form,
+                      array_iter_t *it,
+                      fparser_datum_t **value,
+                      int seterror)
+{
+    fparser_datum_t **node;
+    fparser_tag_t tag;
+    if ((node = array_next(form, it)) == NULL) {
+        *value = NULL;
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*node);
+    if (tag == FPARSER_STR) {
+        *value = *node;
         return 0;
     }
     (void)array_prev(form, it);
@@ -228,6 +274,27 @@ lparse_next_double(array_t *form,
     if (tag == FPARSER_FLOAT) {
         double *v = (double *)((*node)->body);
         *value = *v;
+        return 0;
+    }
+    (void)array_prev(form, it);
+    (*node)->error = seterror;
+    return 1;
+}
+
+int
+lparse_next_sequence(array_t *form,
+                     array_iter_t *it,
+                     fparser_datum_t **value,
+                     int seterror)
+{
+    fparser_datum_t **node;
+    fparser_tag_t tag;
+    if ((node = array_next(form, it)) == NULL) {
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*node);
+    if (tag == FPARSER_SEQ) {
+        *value = *node;
         return 0;
     }
     (void)array_prev(form, it);
