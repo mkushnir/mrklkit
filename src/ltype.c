@@ -306,7 +306,6 @@ lkit_type_get(mrklkit_ctx_t *mctx, int tag)
     lkit_type_t *ty;
 
     if (tag < _LKIT_END_OF_BUILTIN_TYPES) {
-
         lkit_type_t **pty;
 
         if ((pty = array_get(&mctx->builtin_types, tag)) == NULL) {

@@ -521,79 +521,79 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
                sizeof(lkit_type_t *),
                _LKIT_END_OF_BUILTIN_TYPES,
                NULL,
-               NULL);
+               NULL /* weak refs */);
 
     ty = lkit_type_new(LKIT_UNDEF);
     if ((pty = array_get(&ctx->builtin_types, LKIT_UNDEF)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_VOID);
     if ((pty = array_get(&ctx->builtin_types, LKIT_VOID)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_INT);
     if ((pty = array_get(&ctx->builtin_types, LKIT_INT)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_INT_MIN);
     if ((pty = array_get(&ctx->builtin_types, LKIT_INT_MIN)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_INT_MAX);
     if ((pty = array_get(&ctx->builtin_types, LKIT_INT_MAX)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_STR);
     if ((pty = array_get(&ctx->builtin_types, LKIT_STR)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_FLOAT);
     if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_FLOAT_MIN);
     if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT_MIN)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_FLOAT_MAX);
     if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT_MAX)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_BOOL);
     if ((pty = array_get(&ctx->builtin_types, LKIT_BOOL)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_ANY);
     if ((pty = array_get(&ctx->builtin_types, LKIT_ANY)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     ty = lkit_type_new(LKIT_VARARG);
     if ((pty = array_get(&ctx->builtin_types, LKIT_VARARG)) == NULL) {
         FAIL("array_get");
     }
-    *pty = ty;
+    *pty = lkit_type_finalize(ctx, ty);
 
     dict_init(&ctx->typedefs, 101,
              (dict_hashfn_t)bytes_hash,
