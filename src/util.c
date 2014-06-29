@@ -14,6 +14,44 @@
 
 static uint64_t newvar_ctr = 0;
 
+
+bytes_t *
+mrklkit_bytes_json_escape(bytes_t *src)
+{
+    size_t i, j;
+    bytes_t *dest;
+
+    /* partial json string support */
+    dest = bytes_new(src->sz * 2);
+    for (i = 0, j = 0; i < src->sz; ++i, ++j) {
+        unsigned char ch;
+
+        ch = src->data[i];
+        if (ch == '\\' || ch == '"') {
+            dest->data[j++] = '\\';
+        } else if (ch == '\b') {
+            ch = 'b';
+            dest->data[j++] = '\\';
+        } else if (ch == '\f') {
+            ch = 'f';
+            dest->data[j++] = '\\';
+        } else if (ch == '\n') {
+            ch = 'n';
+            dest->data[j++] = '\\';
+        } else if (ch == '\r') {
+            ch = 'r';
+        } else if (ch == '\t') {
+            ch = 't';
+            dest->data[j++] = '\\';
+        }
+        dest->data[j] = src->data[i];
+    }
+    dest->data[j] = '\0';
+    dest->sz = j + 1;
+    return dest;
+}
+
+
 uint64_t
 mrklkit_bytes_hash(bytes_t *bytes)
 {

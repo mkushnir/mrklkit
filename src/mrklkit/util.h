@@ -57,6 +57,7 @@ bytes_t *mrklkit_bytes_new_mpool(mpool_ctx_t *, size_t);
 bytes_t *mrklkit_bytes_new_from_str(const char *);
 bytes_t *mrklkit_bytes_new_from_str_mpool(mpool_ctx_t *, const char *);
 #define bytes_new_from_str mrklkit_bytes_new_from_str
+#define bytes_new_from_str_mpool mrklkit_bytes_new_from_str_mpool
 void mrklkit_bytes_incref(bytes_t *);
 #define bytes_incref mrklkit_bytes_incref
 void mrklkit_bytes_decref(bytes_t **);
@@ -70,6 +71,8 @@ void mrklkit_bytes_copy(bytes_t *, bytes_t *, size_t);
 #define bytes_copy mrklkit_bytes_copy
 void mrklkit_bytes_brushdown(bytes_t *);
 #define bytes_brushdown mrklkit_bytes_brushdown
+
+bytes_t *mrklkit_bytes_json_escape(bytes_t *);
 
 void reset_newvar_counter(void);
 char *newvar(char *, size_t, const char *);
