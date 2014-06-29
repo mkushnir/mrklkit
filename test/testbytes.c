@@ -81,9 +81,33 @@ test0(void)
 }
 
 
+static void
+test1(void)
+{
+    unsigned i;
+    bytes_t *b1, *b2;
+    const char *s[] = {
+        "This is the test",
+        "This is the test\\",
+        "\\\\\\\\\\",
+        "\\\b\f\n\r\t\"'''\"",
+    };
+
+    for (i = 0; i < countof(s); ++i) {
+        b1 = bytes_new_from_str(s[i]);
+        b2 = bytes_json_escape(b1);
+
+        TRACE("b1='%s' b2='%s'", b1->data, b2->data);
+        D8(b1->data, b1->sz);
+        D8(b2->data, b2->sz);
+    }
+
+}
+
 int
 main(void)
 {
     test0();
+    test1();
     return 0;
 }

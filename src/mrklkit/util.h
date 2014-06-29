@@ -73,6 +73,7 @@ void mrklkit_bytes_brushdown(bytes_t *);
 #define bytes_brushdown mrklkit_bytes_brushdown
 
 bytes_t *mrklkit_bytes_json_escape(bytes_t *);
+#define bytes_json_escape mrklkit_bytes_json_escape
 
 void reset_newvar_counter(void);
 char *newvar(char *, size_t, const char *);

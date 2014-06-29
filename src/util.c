@@ -40,14 +40,15 @@ mrklkit_bytes_json_escape(bytes_t *src)
             dest->data[j++] = '\\';
         } else if (ch == '\r') {
             ch = 'r';
+            dest->data[j++] = '\\';
         } else if (ch == '\t') {
             ch = 't';
             dest->data[j++] = '\\';
         }
-        dest->data[j] = src->data[i];
+        dest->data[j] = ch;
     }
-    dest->data[j] = '\0';
-    dest->sz = j + 1;
+    dest->data[j - 1] = '\0';
+    dest->sz = j;
     return dest;
 }
 

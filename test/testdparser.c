@@ -436,7 +436,7 @@ main(int argc, char *argv[])
 
     mrklkit_init();
 
-    mrklkit_ctx_init(&mctx, "test", NULL, NULL);
+    mrklkit_ctx_init(&mctx, "test", NULL, 0, NULL);
 
     if (argc > 2) {
         int fd;

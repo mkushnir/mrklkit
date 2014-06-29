@@ -86,8 +86,7 @@ int
 main(int argc, char **argv)
 {
     int ch;
-    array_t modules;
-    mrklkit_module_t **m;
+    mrklkit_module_t *modules[1];
 
     while ((ch = getopt(argc, argv, "f:")) != -1) {
         switch (ch) {
@@ -108,18 +107,15 @@ main(int argc, char **argv)
     argc -= (optind - 1);
     argv += (optind - 1);
 
-    array_init(&modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
-    m = array_incr(&modules);
-    *m = &testrt_module;
+    modules[0] = &testrt_module;
 
     if (argc > 1) {
         fname = argv[1];
     }
     mrklkit_init();
-    mrklkit_ctx_init(&ctx, "test", &modules, NULL);
+    mrklkit_ctx_init(&ctx, "test", modules, 1, NULL);
     test1();
     mrklkit_ctx_fini(&ctx, NULL);
     mrklkit_fini();
-    array_fini(&modules);
     return 0;
 }

@@ -97,21 +97,13 @@ test1(void)
 static void
 run(void)
 {
-    array_t modules;
-    mrklkit_module_t **m;
+    mrklkit_module_t *modules[1];
 
     mrklkit_init();
-
-    array_init(&modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
-    m = array_incr(&modules);
-    *m = &testrt_module;
-    mrklkit_ctx_init(&tctx.mctx, "test", &modules, &tctx);
-
+    mrklkit_ctx_init(&tctx.mctx, "test", modules, 1, NULL);
     test1();
-
     mrklkit_ctx_fini(&tctx.mctx, &tctx);
     mrklkit_fini();
-    array_fini(&modules);
 }
 
 
