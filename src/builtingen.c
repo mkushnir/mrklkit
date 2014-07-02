@@ -536,11 +536,17 @@ compile_strstr(mrklkit_ctx_t *mctx,
                int flag,
                void *udata)
 {
+    const char *fnname;
     lkit_expr_t **arg;
     LLVMValueRef a0, a1;
     LLVMValueRef fn, fnparam, args[2], fnrv, tmp, tmp1;
 
-    if ((fn = LLVMGetNamedFunction(module, "strstr")) == NULL) {
+    if (flag == COMPILE_STRSTR_END) {
+        fnname = "mrklkit_strrstr";
+    } else {
+        fnname = "strstr";
+    }
+    if ((fn = LLVMGetNamedFunction(module, fnname)) == NULL) {
         FAIL("LLVMGetNamedFunction");
     }
 

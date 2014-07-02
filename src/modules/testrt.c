@@ -60,7 +60,7 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
         }
         ty->tag = LKIT_USER + 100;
         ty->name = "url";
-        ty = lkit_type_finalize(&tctx->mctx, ty);
+        ty = lkit_type_finalize(ty);
         lkit_register_typedef(&tctx->mctx, ty, typename);
     } else {
         /* get back */
@@ -72,7 +72,7 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
     return 0;
 }
 
-static int
+UNUSED static int
 _cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMModuleRef module)
 {
     LLVMContextRef lctx;
@@ -90,24 +90,9 @@ _cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMModuleRef module)
 
 
 static int
-_cb1(UNUSED bytes_t *key, lkit_type_t *value, LLVMModuleRef module)
+_compile_type(UNUSED testrt_ctx_t *tctx, LLVMModuleRef module)
 {
-    int res;
-
-    res = ltype_compile(value, module);
-    if (res != 0) {
-        //TRACE("Could not compile this type:");
-        //lkit_type_dump(value);
-    }
-    return 0;
-}
-
-
-static int
-_compile_type(testrt_ctx_t *tctx, LLVMModuleRef module)
-{
-    (void)dict_traverse(&tctx->mctx.typedefs, (dict_traverser_t)_cb0, module);
-    return dict_traverse(&tctx->mctx.types, (dict_traverser_t)_cb1, module);
+    return lkit_compile_types(module);
 }
 
 static int
@@ -297,7 +282,7 @@ _parse_dsource(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
         return 1;
     }
 
-    dsource->fdelim = dsource->_struct->delim[0];
+    dsource->fdelim = dsource->_struct->delim;
 
     return 0;
 }
@@ -439,7 +424,7 @@ _parse_take(testrt_ctx_t *tctx,
         *ty = (*expr)->type;
     }
 
-    trt->takeexpr->type = lkit_type_finalize(&tctx->mctx, (lkit_type_t *)ts);
+    trt->takeexpr->type = lkit_type_finalize((lkit_type_t *)ts);
 
     return 0;
 }
@@ -496,7 +481,7 @@ _parse_do(testrt_ctx_t *tctx,
         *ty = (*expr)->type;
     }
 
-    trt->doexpr->type = lkit_type_finalize(&tctx->mctx, (lkit_type_t *)ts);
+    trt->doexpr->type = lkit_type_finalize((lkit_type_t *)ts);
 
     return 0;
 }
@@ -755,6 +740,16 @@ _parse_expr(testrt_ctx_t *tctx,
         return _parse_trt(tctx, form, it);
     }
     return TESTRT_PARSE + 700;
+}
+
+
+static int
+_parse(mrklkit_ctx_t *mctx, int fd, void *udata)
+{
+    testrt_ctx_t *tctx;
+
+    tctx = udata;
+    return mrklkit_parse(mctx, fd, udata, &tctx->datum_root);
 }
 
 
@@ -1437,7 +1432,7 @@ _init(testrt_ctx_t *tctx)
         BYTES_INCREF(*const_bytes[i].var);
     }
 
-    null_struct = (lkit_struct_t *)lkit_type_finalize(&tctx->mctx,
+    null_struct = (lkit_struct_t *)lkit_type_finalize(
             lkit_type_get(&tctx->mctx, LKIT_STRUCT));
 
     if (array_init(&dsources, sizeof(dsource_t *), 0,
@@ -1446,6 +1441,7 @@ _init(testrt_ctx_t *tctx)
         FAIL("array_init");
     }
 
+    tctx->datum_root = NULL;
     lkit_expr_init(&tctx->builtin, NULL);
     lkit_expr_init(&tctx->root, &tctx->builtin);
     array_init(&tctx->testrts, sizeof(testrt_t), 0,
@@ -1465,6 +1461,7 @@ _fini(testrt_ctx_t *tctx)
     array_fini(&tctx->testrts);
     lkit_expr_fini(&tctx->root);
     lkit_expr_fini(&tctx->builtin);
+    fparser_datum_destroy(&tctx->datum_root);
     array_fini(&dsources);
 
     for (i = 0; i < countof(const_bytes); ++i) {
@@ -1476,6 +1473,7 @@ mrklkit_module_t testrt_module = {
     (mrklkit_module_initializer_t)_init,
     (mrklkit_module_finalizer_t)_fini,
     (mrklkit_expr_parser_t)_parse_expr,
+    (mrklkit_parser_t)_parse,
     NULL,
     (mrklkit_type_compiler_t)_compile_type,
     NULL,

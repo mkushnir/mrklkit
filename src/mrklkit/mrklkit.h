@@ -17,18 +17,19 @@ extern "C" {
 
 typedef struct _mrklkit_ctx {
     array_t modules;
-    fparser_datum_t *datum_root;
-    /*
-     * lkit_type_t *, lkit_type_t *
-     */
-    dict_t types;
-    array_t builtin_types;
-    /*
-     * bytes_t *, lkit_type_t *
-     */
-    dict_t typedefs;
+    ///*
+    // * lkit_type_t *, lkit_type_t *
+    // */
+    //dict_t types;
+    //array_t builtin_types;
+    ///*
+    // * bytes_t *, lkit_type_t *
+    // */
+    //dict_t typedefs;
     /* backend */
     LLVMContextRef lctx;
+
+    /* program */
     LLVMModuleRef module;
     LLVMExecutionEngineRef ee;
 
@@ -38,19 +39,22 @@ typedef struct _mrklkit_ctx {
 extern const char *mrklkit_meta;
 const char *mrklkit_diag_str(int);
 
+int mrklkit_parse(mrklkit_ctx_t *, int fd, void *, fparser_datum_t **);
 #define MRKLKIT_COMPILE_DUMP0 0x01
 #define MRKLKIT_COMPILE_DUMP1 0x02
 #define MRKLKIT_COMPILE_DUMP2 0x04
 int mrklkit_compile(mrklkit_ctx_t *, int, uint64_t, void *);
 int mrklkit_call_void(mrklkit_ctx_t *, const char *);
-int mrklkit_ctx_init_runtime(mrklkit_ctx_t *, void *);
+void mrklkit_ctx_setup_program(mrklkit_ctx_t *,
+                               const char *,
+                               void *);
+void mrklkit_ctx_cleanup_program(mrklkit_ctx_t *, void *);
+
 struct _mrklkit_module;
 void mrklkit_ctx_init(mrklkit_ctx_t *,
-                      const char *,
                       struct _mrklkit_module *[],
-                      size_t,
-                      void *);
-void mrklkit_ctx_fini(mrklkit_ctx_t *, void *);
+                      size_t);
+void mrklkit_ctx_fini(mrklkit_ctx_t *);
 void mrklkit_init(void);
 void mrklkit_fini(void);
 

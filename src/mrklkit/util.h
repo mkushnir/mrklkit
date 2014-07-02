@@ -50,6 +50,7 @@ do { \
     } \
 } while (0)
 
+char *mrklkit_strrstr(const char *, const char *);
 
 bytes_t *mrklkit_bytes_new(size_t);
 bytes_t *mrklkit_bytes_new_mpool(mpool_ctx_t *, size_t);
@@ -58,6 +59,10 @@ bytes_t *mrklkit_bytes_new_from_str(const char *);
 bytes_t *mrklkit_bytes_new_from_str_mpool(mpool_ctx_t *, const char *);
 #define bytes_new_from_str mrklkit_bytes_new_from_str
 #define bytes_new_from_str_mpool mrklkit_bytes_new_from_str_mpool
+bytes_t *mrklkit_bytes_new_from_bytes(const bytes_t *);
+bytes_t *mrklkit_bytes_new_from_bytes_mpool(mpool_ctx_t *, const bytes_t *);
+#define bytes_new_from_bytes mrklkit_bytes_new_from_bytes
+#define bytes_new_from_bytes_mpool mrklkit_bytes_new_from_bytes_mpool
 void mrklkit_bytes_incref(bytes_t *);
 #define bytes_incref mrklkit_bytes_incref
 void mrklkit_bytes_decref(bytes_t **);

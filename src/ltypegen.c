@@ -536,7 +536,7 @@ ltype_link_methods(lkit_type_t *ty,
             lkit_type_t **fty;
             array_iter_t it;
             lkit_struct_t *ts;
-            void *p;
+            void *p = NULL;
             LLVMValueRef g = NULL;
 
             //TRACE("linking: %s", name->data);
@@ -608,5 +608,26 @@ ltype_link_methods(lkit_type_t *ty,
     }
 
     return 0;
+}
+
+
+static int
+_cb0(lkit_type_t *key, UNUSED lkit_type_t *value, LLVMModuleRef module)
+{
+    int res;
+
+    res = ltype_compile(key, module);
+    if (res != 0) {
+        //TRACE("Could not compile this type:");
+        //lkit_type_dump(key);
+    }
+    return 0;
+}
+
+
+int
+lkit_compile_types(LLVMModuleRef module)
+{
+    return lkit_traverse_types((dict_traverser_t)_cb0, module);
 }
 

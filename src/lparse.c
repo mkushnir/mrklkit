@@ -124,6 +124,7 @@ lparse_next_word_bytes(array_t *form,
     return 1;
 }
 
+
 int
 lparse_next_str(array_t *form,
                 array_iter_t *it,
@@ -144,6 +145,30 @@ lparse_next_str(array_t *form,
     }
     (void)array_prev(form, it);
     *value = NULL;
+    (*node)->error = seterror;
+    return 1;
+}
+
+
+int
+lparse_next_char(array_t *form,
+                 array_iter_t *it,
+                 char *value,
+                 int seterror)
+{
+    fparser_datum_t **node;
+    fparser_tag_t tag;
+    if ((node = array_next(form, it)) == NULL) {
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*node);
+    if (tag == FPARSER_STR) {
+        bytes_t *v = (bytes_t *)((*node)->body);
+        *value = ((char *)(v->data))[0];
+        return 0;
+    }
+    (void)array_prev(form, it);
+    *value = '\0';
     (*node)->error = seterror;
     return 1;
 }

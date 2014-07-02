@@ -371,7 +371,7 @@ dparse_array(bytestream_t *bs,
     br.end = SPOS(bs);
     SPOS(bs) = br.start;
 
-    fdelim = value->type->delim[0];
+    fdelim = value->type->delim;
     if ((afty = lkit_array_get_element_type(value->type)) == NULL) {
         FAIL("lkit_array_get_element_type");
     }
@@ -452,8 +452,8 @@ dparse_dict(bytestream_t *bs,
     br.end = SPOS(bs);
     SPOS(bs) = br.start;
 
-    kvdelim = value->type->kvdelim[0];
-    fdelim = value->type->fdelim[0];
+    kvdelim = value->type->kvdelim;
+    fdelim = value->type->fdelim;
     if ((dfty = lkit_dict_get_element_type(value->type)) == NULL) {
         FAIL("lkit_dict_get_element_type");
     }
@@ -543,7 +543,7 @@ dparse_struct(bytestream_t *bs,
     void **val;
     void (*_dparser_reach_value)(bytestream_t *, char, off_t);
 
-    sdelim = value->type->delim[0];
+    sdelim = value->type->delim;
     br.start = SPOS(bs);
     dparser_reach_delim(bs, delim, epos);
     br.end = SPOS(bs);
@@ -821,7 +821,7 @@ dparse_array_pos(bytestream_t *bs,
     char fdelim;
     lkit_type_t *afty;
 
-    fdelim = (*val)->type->delim[0];
+    fdelim = (*val)->type->delim;
     if ((afty = lkit_array_get_element_type((*val)->type)) == NULL) {
         FAIL("lkit_array_get_element_type");
     }
@@ -875,8 +875,8 @@ dparse_dict_pos(bytestream_t *bs,
     lkit_type_t *dfty;
     off_t (*_dparse_str_pos)(bytestream_t *, char, off_t, off_t, bytes_t **);
 
-    kvdelim = (*val)->type->kvdelim[0];
-    fdelim = (*val)->type->fdelim[0];
+    kvdelim = (*val)->type->kvdelim;
+    fdelim = (*val)->type->fdelim;
     if ((dfty = lkit_dict_get_element_type((*val)->type)) == NULL) {
         FAIL("lkit_dict_get_element_type");
     }
@@ -979,7 +979,7 @@ dparse_struct_item_seq(rt_struct_t *value,
         char delim;
 
         bs = value->parser_info.bs;
-        delim = value->type->delim[0];
+        delim = value->type->delim;
 
         if (value->type->parser == LKIT_PARSER_SMDELIM) {
             _dparser_reach_value = dparser_reach_value_m_pos;
@@ -1017,7 +1017,7 @@ dparse_struct_item_seq(rt_struct_t *value,
         int nidx = idx + 1; \
         off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t); \
         bs = value->parser_info.bs; \
-        delim = value->type->delim[0]; \
+        delim = value->type->delim; \
         if (value->type->parser == LKIT_PARSER_MDELIM) { \
             _dparser_reach_value = dparser_reach_value_m_pos; \
         } else { \
@@ -1079,7 +1079,7 @@ dparse_struct_item_ra(rt_struct_t *value,
         off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t);
 
         bs = value->parser_info.bs;
-        delim = value->type->delim[0];
+        delim = value->type->delim;
 
         if (value->type->parser == LKIT_PARSER_MDELIM) {
             _dparser_reach_value = dparser_reach_value_m_pos;
@@ -1431,6 +1431,7 @@ dparser_read_lines(int fd,
                                          fd,
                                          '\n',
                                          br.end) == DPARSE_EOD) {
+
             res = DPARSE_EOD;
             break;
         }
@@ -1439,6 +1440,11 @@ dparser_read_lines(int fd,
 
         //TRACE("start=%ld end=%ld sz=%ld", br.start, br.end, br.end - br.start);
         //D32(SDATA(bs, br.start), br.end - br.start);
+
+        //if ((br.end - br.start) <= 0) {
+        //    res = DPARSE_EOD;
+        //    break;
+        //}
 
         if ((res = cb(bs, &br, udata)) != 0) {
             ++(*nlines);

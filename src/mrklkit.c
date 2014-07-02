@@ -34,7 +34,7 @@
 UNUSED static const profile_t *parse_p;
 UNUSED static const profile_t *compile_p;
 UNUSED static const profile_t *analyze_p;
-UNUSED static const profile_t *init_runtime_p;
+UNUSED static const profile_t *setup_program_p;
 
 const char *mrklkit_meta = "; libc\n"
 "(sym malloc (func any int))\n"
@@ -44,6 +44,7 @@ const char *mrklkit_meta = "; libc\n"
 //"(sym mrklkit_rt_strcmp (func int any any))\n"
 "(sym strstr (func any any any))\n"
 "\n"
+"(sym mrklkit_strrstr (func any any any))\n"
 "; mrklkit backend\n"
 "(sym dparse_struct_item_ra_int         (func int undef int))\n"
 "(sym dparse_struct_item_ra_float       (func float undef int))\n"
@@ -150,26 +151,26 @@ const char *mrklkit_meta = "; libc\n"
  *
  */
 
-static int
-mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata)
+int
+mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata, fparser_datum_t **datum_root)
 {
     int res = 0;
     array_t *form;
     array_iter_t it;
     fparser_datum_t **fnode;
 
-    if ((ctx->datum_root = fparser_parse(fd, NULL, NULL)) == NULL) {
+    if ((*datum_root = fparser_parse(fd, NULL, NULL)) == NULL) {
         FAIL("fparser_parse");
     }
 
 
-    if (FPARSER_DATUM_TAG(ctx->datum_root) != FPARSER_SEQ) {
-        ctx->datum_root->error = 1;
+    if (FPARSER_DATUM_TAG(*datum_root) != FPARSER_SEQ) {
+        (*datum_root)->error = 1;
         res = MRKLKIT_PARSE + 1;
         goto err;
     }
 
-    form = (array_t *)ctx->datum_root->body;
+    form = (array_t *)(*datum_root)->body;
     for (fnode = array_first(form, &it);
          fnode != NULL;
          fnode = array_next(form, &it)) {
@@ -246,7 +247,7 @@ end:
     TRRET(res);
 
 err:
-    fparser_datum_dump_formatted(ctx->datum_root);
+    fparser_datum_dump_formatted(*datum_root);
     goto end;
 }
 
@@ -316,10 +317,22 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
     profile_start(parse_p);
     /* parse */
-    if (mrklkit_parse(ctx, fd, udata) != 0) {
-        profile_stop(parse_p);
-        TRRET(MRKLKIT_COMPILE + 1);
+    for (mod = array_first(&ctx->modules, &it);
+         mod != NULL;
+         mod = array_next(&ctx->modules, &it)) {
+
+        if ((*mod)->parse != NULL) {
+            if ((*mod)->parse(ctx, fd, udata)) {
+                profile_stop(parse_p);
+                TRRET(MRKLKIT_COMPILE + 5);
+            }
+        }
     }
+    ///* parse */
+    //if (mrklkit_parse(ctx, fd, udata) != 0) {
+    //    profile_stop(parse_p);
+    //    TRRET(MRKLKIT_COMPILE + 1);
+    //}
 
     /* post parse */
     for (mod = array_first(&ctx->modules, &it);
@@ -417,15 +430,75 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
 
 int
-mrklkit_ctx_init_runtime(mrklkit_ctx_t *ctx, void *udata)
+mrklkit_call_void(mrklkit_ctx_t *ctx, const char *name)
 {
-    char *error_msg = NULL;
-    mrklkit_module_t **mod;
-    array_iter_t it;
+    int res;
+    LLVMValueRef fn;
+    LLVMGenericValueRef rv;
 
-    profile_start(init_runtime_p);
+    res = LLVMFindFunction(ctx->ee, name, &fn);
+    //TRACE("res=%d", res);
+    if (res == 0) {
+        rv = LLVMRunFunction(ctx->ee, fn, 0, NULL);
+        //TRACE("rv=%p", rv);
+        //TRACE("rv=%llu", LLVMGenericValueToInt(rv, 0));
+        LLVMDisposeGenericValue(rv);
+    }
+    return res;
+}
+
+
+void
+mrklkit_ctx_init(mrklkit_ctx_t *ctx,
+                 mrklkit_module_t *mod[],
+                 size_t modsz)
+{
+    mrklkit_module_t **pm;
+    size_t i;
+
+    ctx->lctx = LLVMContextCreate();
+
+    ctx->ee = NULL;
+
+    array_init(&ctx->modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
+    if (mod != NULL) {
+        for (i = 0; i < modsz; ++i) {
+            pm = array_incr(&ctx->modules);
+            *pm = mod[i];
+        }
+    }
+}
+
+
+void
+mrklkit_ctx_setup_program(mrklkit_ctx_t *ctx,
+                          const char *name,
+                          void *udata)
+{
+    array_iter_t it;
+    mrklkit_module_t **pm;
+    mrklkit_module_t **mod;
+    char *error_msg = NULL;
+
+    profile_start(setup_program_p);
+
+    if ((ctx->module = LLVMModuleCreateWithNameInContext(name,
+            ctx->lctx)) == NULL) {
+        FAIL("LLVMModuleCreateWithNameInContext");
+    }
+
+    for (pm = array_first(&ctx->modules, &it);
+         pm != NULL;
+         pm = array_next(&ctx->modules, &it)) {
+        if ((*pm)->init != NULL) {
+            (*pm)->init(udata);
+        }
+    }
+
+    ctx->mark_referenced = 0;
+
     LLVMLinkInJIT();
-    assert(ctx->module != NULL);
+
     if (LLVMCreateJITCompilerForModule(&ctx->ee,
                                        ctx->module,
                                        0,
@@ -464,170 +537,13 @@ mrklkit_ctx_init_runtime(mrklkit_ctx_t *ctx, void *udata)
         }
     }
 
-    profile_stop(init_runtime_p);
-    return 0;
+    profile_stop(setup_program_p);
 }
 
-
-int
-mrklkit_call_void(mrklkit_ctx_t *ctx, const char *name)
-{
-    int res;
-    LLVMValueRef fn;
-    LLVMGenericValueRef rv;
-
-    res = LLVMFindFunction(ctx->ee, name, &fn);
-    //TRACE("res=%d", res);
-    if (res == 0) {
-        rv = LLVMRunFunction(ctx->ee, fn, 0, NULL);
-        //TRACE("rv=%p", rv);
-        //TRACE("rv=%llu", LLVMGenericValueToInt(rv, 0));
-        LLVMDisposeGenericValue(rv);
-    }
-    return res;
-}
-
-
-static int
-lkit_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
-{
-    lkit_type_destroy(&key);
-    return 0;
-}
 
 
 void
-mrklkit_ctx_init(mrklkit_ctx_t *ctx,
-                 const char *name,
-                 mrklkit_module_t *mod[],
-                 size_t modsz,
-                 void *udata)
-{
-    array_iter_t it;
-    mrklkit_module_t **pm;
-    size_t i;
-    lkit_type_t *ty, **pty;
-
-    ctx->datum_root = NULL;
-
-    dict_init(&ctx->types, 101,
-             (dict_hashfn_t)lkit_type_hash,
-             (dict_item_comparator_t)lkit_type_cmp,
-             (dict_item_finalizer_t)lkit_type_fini_dict);
-
-    /* builtin types */
-
-    array_init(&ctx->builtin_types,
-               sizeof(lkit_type_t *),
-               _LKIT_END_OF_BUILTIN_TYPES,
-               NULL,
-               NULL /* weak refs */);
-
-    ty = lkit_type_new(LKIT_UNDEF);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_UNDEF)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_VOID);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_VOID)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_INT);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_INT)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_INT_MIN);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_INT_MIN)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_INT_MAX);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_INT_MAX)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_STR);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_STR)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_FLOAT);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_FLOAT_MIN);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT_MIN)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_FLOAT_MAX);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_FLOAT_MAX)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_BOOL);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_BOOL)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_ANY);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_ANY)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    ty = lkit_type_new(LKIT_VARARG);
-    if ((pty = array_get(&ctx->builtin_types, LKIT_VARARG)) == NULL) {
-        FAIL("array_get");
-    }
-    *pty = lkit_type_finalize(ctx, ty);
-
-    dict_init(&ctx->typedefs, 101,
-             (dict_hashfn_t)bytes_hash,
-             (dict_item_comparator_t)bytes_cmp,
-             NULL /* key and value weakrefs */);
-
-    ctx->lctx = LLVMContextCreate();
-    if ((ctx->module = LLVMModuleCreateWithNameInContext(name,
-            ctx->lctx)) == NULL) {
-        FAIL("LLVMModuleCreateWithNameInContext");
-    }
-    ctx->ee = NULL;
-
-    array_init(&ctx->modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
-    if (mod != NULL) {
-        for (i = 0; i < modsz; ++i) {
-            pm = array_incr(&ctx->modules);
-            *pm = mod[i];
-        }
-        for (pm = array_first(&ctx->modules, &it);
-             pm != NULL;
-             pm = array_next(&ctx->modules, &it)) {
-            if ((*pm)->init != NULL) {
-                (*pm)->init(udata);
-            }
-        }
-    }
-
-    ctx->mark_referenced = 0;
-}
-
-
-void
-mrklkit_ctx_fini(mrklkit_ctx_t *ctx, void *udata)
+mrklkit_ctx_cleanup_program(mrklkit_ctx_t *ctx, void *udata)
 {
     array_iter_t it;
     mrklkit_module_t **mod;
@@ -640,27 +556,30 @@ mrklkit_ctx_fini(mrklkit_ctx_t *ctx, void *udata)
         }
     }
 
-    array_fini(&ctx->modules);
-
     if (ctx->ee != NULL) {
         LLVMRunStaticDestructors(ctx->ee);
         //LLVMDisposeExecutionEngine(ctx->ee);
         ctx->ee = NULL;
     }
+
     if (ctx->module != NULL) {
         LLVMDisposeModule(ctx->module);
         ctx->module = NULL;
     }
+}
+
+
+void
+mrklkit_ctx_fini(mrklkit_ctx_t *ctx)
+{
+    array_fini(&ctx->modules);
+
     LLVMContextDispose(ctx->lctx);
     ctx->lctx = NULL;
 
-    dict_fini(&ctx->typedefs);
-    array_fini(&ctx->builtin_types);
-    dict_fini(&ctx->types);
-
-    if (ctx->datum_root != NULL) {
-        fparser_datum_destroy(&ctx->datum_root);
-    }
+    //dict_fini(&ctx->typedefs);
+    //array_fini(&ctx->builtin_types);
+    //dict_fini(&ctx->types);
 }
 
 
@@ -716,10 +635,10 @@ mrklkit_init(void)
     parse_p = profile_register("parse");
     compile_p = profile_register("compile");
     analyze_p = profile_register("analyze");
-    init_runtime_p = profile_register("init_runtime");
-    llvm_init();
+    setup_program_p = profile_register("setup_program");
     ltype_init();
     lexpr_init();
+    llvm_init();
     lruntime_init();
 }
 
@@ -728,9 +647,9 @@ void
 mrklkit_fini(void)
 {
     lruntime_fini();
+    llvm_fini();
     lexpr_fini();
     ltype_fini();
-    llvm_fini();
     profile_fini_module();
 }
 

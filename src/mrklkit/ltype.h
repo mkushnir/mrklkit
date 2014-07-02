@@ -130,7 +130,7 @@ typedef struct _lkit_array {
     //array_finalizer_t fini;
     lkit_parser_t parser;
     /* weak ref, will use delim[0] */
-    char *delim;
+    char delim;
     /* lkit_type_t * */
     array_t fields;
 } lkit_array_t;
@@ -140,9 +140,9 @@ typedef struct _lkit_dict {
     //dict_item_finalizer_t fini;
     lkit_parser_t parser;
     /* weak ref, will use kvdelim[0] */
-    char *kvdelim;
+    char kvdelim;
     /* weak ref, will use fdelim[0] */
-    char *fdelim;
+    char fdelim;
     /* lkit_type_t * */
     array_t fields;
 } lkit_dict_t;
@@ -154,7 +154,7 @@ typedef struct _lkit_struct {
     void (*fini)(void **);
     lkit_parser_t parser;
     /* weak ref, will use delim[0] */
-    char *delim;
+    char delim;
     /* lkit_type_t * */
     array_t fields;
     /* weak refs */
@@ -167,14 +167,9 @@ typedef struct _lkit_func {
     array_t fields;
 } lkit_func_t;
 
-typedef struct _lkit_typedef {
-    /* weakref */
-    char *name;
-    lkit_type_t *type;
-} lkit_typedef_t;
-
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
+int lkit_traverse_types(dict_traverser_t, void *);
 void lkit_type_dump(lkit_type_t *);
 void lkit_type_str(lkit_type_t *, bytestream_t *);
 lkit_type_t * lkit_type_new(lkit_tag_t);
@@ -187,7 +182,7 @@ lkit_type_t *lkit_type_parse(mrklkit_ctx_t *,
                              int);
 lkit_array_t *lkit_type_get_array(mrklkit_ctx_t *, int);
 lkit_dict_t *lkit_type_get_dict(mrklkit_ctx_t *, int);
-lkit_type_t *lkit_type_finalize(mrklkit_ctx_t *, lkit_type_t *);
+lkit_type_t *lkit_type_finalize(lkit_type_t *);
 void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *);
 lkit_type_t *lkit_typedef_get(mrklkit_ctx_t *, bytes_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
@@ -198,6 +193,7 @@ lkit_type_t *lkit_dict_get_element_type(lkit_dict_t *);
 lkit_type_t *lkit_struct_get_field_type(lkit_struct_t *, bytes_t *);
 int lkit_struct_get_field_index(lkit_struct_t *, bytes_t *);
 
+void mrklkit_init_types(dict_t *, array_t *, dict_t *);
 void ltype_init(void);
 void ltype_fini(void);
 

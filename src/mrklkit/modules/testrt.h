@@ -8,6 +8,7 @@
 
 #include <mrklkit/mrklkit.h>
 #include <mrklkit/module.h>
+#include <mrklkit/fparser.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lexpr.h>
 #include <mrklkit/lruntime.h>
@@ -61,6 +62,7 @@ typedef struct _testrt {
 
 typedef struct _testrt_ctx {
     mrklkit_ctx_t mctx;
+    fparser_datum_t *datum_root;
     lkit_expr_t builtin;
     lkit_expr_t root;
     array_t testrts;

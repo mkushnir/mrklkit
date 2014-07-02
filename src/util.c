@@ -15,6 +15,30 @@
 static uint64_t newvar_ctr = 0;
 
 
+char *
+mrklkit_strrstr(const char *big, const char *little)
+{
+    char *res = NULL;
+    size_t littlesz;
+
+    littlesz = strlen(little);
+    if (littlesz == 0) {
+        return (char *)big + strlen(big);
+    }
+    while (1) {
+        char *tmp;
+
+        tmp = strstr(big, little);
+        if (tmp == NULL) {
+            break;
+        }
+        res = tmp;
+        big += littlesz;
+    }
+    return res;
+}
+
+
 bytes_t *
 mrklkit_bytes_json_escape(bytes_t *src)
 {
@@ -137,6 +161,33 @@ mrklkit_bytes_new_from_str(const char *s)
 }
 
 
+#define MRKLKIT_BYTES_NEW_FROM_BYTES_BODY(malloc_fn) \
+    bytes_t *res; \
+    size_t mod, msz; \
+    msz = s->sz; \
+    mod = s->sz % 8; \
+    if (mod) { \
+        msz += (8 - mod); \
+    } else { \
+        msz += 8; \
+    } \
+    if ((res = malloc_fn(sizeof(bytes_t) + msz)) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    memcpy(res->data, s->data, s->sz); \
+    res->nref = 0; \
+    res->sz = s->sz; \
+    res->hash = 0; \
+    return res
+
+
+bytes_t *
+mrklkit_bytes_new_from_bytes(const bytes_t *s)
+{
+    MRKLKIT_BYTES_NEW_FROM_BYTES_BODY(malloc);
+}
+
+
 #define _malloc(sz) mpool_malloc(mpool, (sz))
 bytes_t *
 mrklkit_bytes_new_mpool(mpool_ctx_t *mpool, size_t sz)
@@ -147,6 +198,11 @@ bytes_t *
 mrklkit_bytes_new_from_str_mpool(mpool_ctx_t *mpool, const char *s)
 {
     MRKLKIT_BYTES_NEW_FROM_STR_BODY(_malloc);
+}
+bytes_t *
+mrklkit_bytes_new_form_bytes_mpool(mpool_ctx_t *mpool, const bytes_t *s)
+{
+    MRKLKIT_BYTES_NEW_FROM_BYTES_BODY(_malloc);
 }
 #undef _malloc
 
