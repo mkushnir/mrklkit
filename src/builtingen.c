@@ -81,7 +81,9 @@ compile_if(mrklkit_ctx_t *mctx,
 
     LLVMPositionBuilderAtEnd(builder, endblock);
     if (restype != NULL) {
-        v = LLVMBuildPhi(builder, restype->backend, NEWVAR("result"));
+        v = LLVMBuildPhi(builder,
+                         mrklkit_ctx_get_type_backend(mctx, restype),
+                         NEWVAR("result"));
         iexp[0] = texp;
         iblock[0] = LLVMIsConstant(texp) ? tblock :
                     LLVMGetInstructionParent(texp);
@@ -771,7 +773,9 @@ compile_function(mrklkit_ctx_t *mctx,
             expr->type->tag == LKIT_INT_MIN ||
             expr->type->tag == LKIT_INT_MAX) {
 
-            v = LLVMConstInt(expr->type->backend, 0, 1);
+            v = LLVMConstInt(mrklkit_ctx_get_type_backend(mctx, expr->type),
+                             0,
+                             1);
 
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
@@ -796,7 +800,8 @@ compile_function(mrklkit_ctx_t *mctx,
                    expr->type->tag == LKIT_FLOAT_MIN ||
                    expr->type->tag == LKIT_FLOAT_MAX) {
 
-            v = LLVMConstReal(expr->type->backend, 0.0);
+            v = LLVMConstReal(mrklkit_ctx_get_type_backend(mctx, expr->type),
+                              0.0);
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -970,7 +975,7 @@ compile_function(mrklkit_ctx_t *mctx,
             expr->type->tag == LKIT_INT_MIN ||
             expr->type->tag == LKIT_INT_MAX) {
 
-            v = LLVMConstInt(expr->type->backend, 1, 1);
+            v = LLVMConstInt(mrklkit_ctx_get_type_backend(mctx, expr->type), 1, 1);
 
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
@@ -995,7 +1000,7 @@ compile_function(mrklkit_ctx_t *mctx,
                    expr->type->tag == LKIT_FLOAT_MIN ||
                    expr->type->tag == LKIT_FLOAT_MAX) {
 
-            v = LLVMConstReal(expr->type->backend, 1.0);
+            v = LLVMConstReal(mrklkit_ctx_get_type_backend(mctx, expr->type), 1.0);
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
@@ -1102,7 +1107,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
 #if 0
         LLVMValueRef mem;
-        mem = LLVMBuildAlloca(builder, expr->type->backend, NEWVAR("mem"));
+        mem = LLVMBuildAlloca(builder, mrklkit_ctx_get_type_backend(mctx, expr->type), NEWVAR("mem"));
         LLVMBuildStore(builder, v, mem);
         for (arg = array_next(&expr->subs, &it);
              arg != NULL;
@@ -1787,6 +1792,13 @@ compile_function(mrklkit_ctx_t *mctx,
                                                LLVMInt8TypeInContext(lctx), 0),
                                            NEWVAR("cast"));
 
+            //LLVMDumpValue(ref);
+            //LLVMDumpValue(args[0]);
+            //LLVMDumpType(LLVMTypeOf(LLVMGetParam(ref, 0)));
+            //LLVMDumpType(LLVMTypeOf(args[0]));
+            //TRACE("type: %p/%p", LLVMTypeOf(LLVMGetParam(ref, 0)), LLVMTypeOf(args[0]));
+            //TRACE("module: %p", module);
+            //LLVMDumpModule(module);
             v = LLVMBuildCall(builder,
                               ref,
                               args,
@@ -2047,7 +2059,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                     if (expr->type->tag == LKIT_STR && LKIT_EXPR_CONSTANT(expr)) {
                         v = LLVMBuildPointerCast(builder,
                                                  v,
-                                                 expr->type->backend,
+                                                 mrklkit_ctx_get_type_backend(mctx, expr->type),
                                                  NEWVAR("cast"));
                     }
                 }
@@ -2057,15 +2069,13 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
     } else {
         if (expr->value.literal != NULL) {
-            assert(expr->type->backend != NULL);
-
             switch (expr->type->tag) {
             case LKIT_INT:
             case LKIT_INT_MIN:
             case LKIT_INT_MAX:
                 {
                     int64_t *pv = (int64_t *)expr->value.literal->body;
-                    v = LLVMConstInt(expr->type->backend, *pv, 1);
+                    v = LLVMConstInt(mrklkit_ctx_get_type_backend(mctx, expr->type), *pv, 1);
                 }
                 break;
 
@@ -2074,12 +2084,12 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
             case LKIT_FLOAT_MAX:
                 {
                     double *pv = (double *)expr->value.literal->body;
-                    v = LLVMConstReal(expr->type->backend, *pv);
+                    v = LLVMConstReal(mrklkit_ctx_get_type_backend(mctx, expr->type), *pv);
                 }
                 break;
 
             case LKIT_BOOL:
-                v = LLVMConstInt(expr->type->backend,
+                v = LLVMConstInt(mrklkit_ctx_get_type_backend(mctx, expr->type),
                                  expr->value.literal->body[0],
                                  0);
                 break;
@@ -2110,7 +2120,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                     LLVMSetInitializer(v, vv);
                     v = LLVMBuildPointerCast(builder,
                                              v,
-                                             expr->type->backend,
+                                             mrklkit_ctx_get_type_backend(mctx, expr->type),
                                              NEWVAR("cast"));
                 }
                 break;
@@ -2388,19 +2398,19 @@ _compile(lkit_gitem_t **gitem, void *udata)
             LLVMValueRef fn;
 
             /* declaration, */
-            assert(expr->type->backend != NULL);
-
             switch (expr->type->tag) {
             case LKIT_FUNC:
                 fn = LLVMAddFunction(params->module,
                                      (char *)name->data,
-                                     expr->type->backend);
+                                     mrklkit_ctx_get_type_backend(
+                                         params->mctx, expr->type));
                 LLVMAddFunctionAttr(fn, LLVMNoUnwindAttribute);
                 break;
 
             default:
                 fn = LLVMAddGlobal(params->module,
-                                   expr->type->backend,
+                                   mrklkit_ctx_get_type_backend(
+                                       params->mctx, expr->type),
                                    (char *)name->data);
                 //FAIL("compile_decl: not implemented");
             }

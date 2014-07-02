@@ -4,6 +4,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
+#include <mrklkit/mrklkit.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/util.h>
 
@@ -11,9 +12,10 @@
 extern "C" {
 #endif
 
-int lkit_compile_types(LLVMModuleRef);
-int ltype_compile(lkit_type_t *, LLVMModuleRef);
-int ltype_compile_methods(lkit_type_t *,
+int lkit_compile_types(mrklkit_ctx_t *, LLVMModuleRef);
+LLVMTypeRef ltype_compile(mrklkit_ctx_t *, lkit_type_t *, LLVMModuleRef);
+int ltype_compile_methods(mrklkit_ctx_t *,
+                          lkit_type_t *,
                           LLVMModuleRef,
                           bytes_t *,
                           int);

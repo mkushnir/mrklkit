@@ -37,7 +37,6 @@ lkit_type_destroy(lkit_type_t **ty)
 {
     if (*ty != NULL) {
         (*ty)->hash = 0;
-        (*ty)->backend = NULL;
 
         if (((*ty)->name) != NULL) {
             /* weak ref */
@@ -154,7 +153,6 @@ lkit_type_new(lkit_tag_t tag)
             }
             tc->base.tag = tag;
             tc->base.name = "str";
-            tc->deref_backend = NULL;
             ty = (lkit_type_t *)tc;
         }
         break;
@@ -268,7 +266,6 @@ lkit_type_new(lkit_tag_t tag)
                        0,
                        NULL,
                        (array_finalizer_t)lkit_array_names_fini);
-            ts->deref_backend = NULL;
             ty = (lkit_type_t *)ts;
         }
         break;
@@ -293,7 +290,6 @@ lkit_type_new(lkit_tag_t tag)
     }
 
     ty->hash = 0;
-    ty->backend = NULL;
     ty->compile = NULL;
     ty->compile_setup = NULL;
     ty->compile_cleanup = NULL;
@@ -373,7 +369,7 @@ lkit_type_finalize(lkit_type_t *ty)
             if (ty->tag >= _LKIT_END_OF_BUILTIN_TYPES) {
                 lkit_type_destroy(&ty);
             } else {
-                TRACE("a new instance of builtin type???");
+                TRACE("a new instance of builtin type??? (%d)", ty->tag);
                 lkit_type_dump(ty);
                 FAIL("dict_get_item");
             }

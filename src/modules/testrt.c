@@ -72,27 +72,10 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
     return 0;
 }
 
-UNUSED static int
-_cb0(UNUSED bytes_t *key, lkit_type_t *value, LLVMModuleRef module)
-{
-    LLVMContextRef lctx;
-
-    lctx = LLVMGetModuleContext(module);
-
-    if (value->tag == (int)(LKIT_USER + 100)) {
-        value->backend = LLVMPointerType(LLVMStructTypeInContext(lctx,
-                                                              NULL,
-                                                              0,
-                                                              0), 0);
-    }
-    return 0;
-}
-
-
 static int
-_compile_type(UNUSED testrt_ctx_t *tctx, LLVMModuleRef module)
+_compile_type(testrt_ctx_t *tctx, LLVMModuleRef module)
 {
-    return lkit_compile_types(module);
+    return lkit_compile_types(&tctx->mctx, module);
 }
 
 static int
@@ -179,7 +162,7 @@ dsource_get(const char *name)
 
 
 static int
-dsource_compile(LLVMModuleRef module)
+dsource_compile(testrt_ctx_t *tctx, LLVMModuleRef module)
 {
     array_iter_t it;
     dsource_t **ds;
@@ -187,7 +170,8 @@ dsource_compile(LLVMModuleRef module)
     for (ds = array_first(&dsources, &it);
          ds != NULL;
          ds = array_next(&dsources, &it)) {
-        if (ltype_compile_methods((lkit_type_t *)(*ds)->_struct,
+        if (ltype_compile_methods(&tctx->mctx,
+                                  (lkit_type_t *)(*ds)->_struct,
                                   module,
                                   (*ds)->kind, 1)) {
             TRRET(DSOURCE + 100);
@@ -779,7 +763,8 @@ _compile_trt(testrt_t *trt, void *udata)
     /* methods */
     snprintf(buf, sizeof(buf), "%s.take", trt->name->data);
     name = bytes_new_from_str(buf);
-    if (ltype_compile_methods((lkit_type_t *)trt->takeexpr->type,
+    if (ltype_compile_methods(&tctx->mctx,
+                              (lkit_type_t *)trt->takeexpr->type,
                               module,
                               name,
                               0) != 0) {
@@ -791,7 +776,8 @@ _compile_trt(testrt_t *trt, void *udata)
     if (trt->doexpr != NULL) {
         snprintf(buf, sizeof(buf), "%s.do", trt->name->data);
         name = bytes_new_from_str(buf);
-        if (ltype_compile_methods((lkit_type_t *)trt->doexpr->type,
+        if (ltype_compile_methods(&tctx->mctx,
+                                  (lkit_type_t *)trt->doexpr->type,
                                   module,
                                   name,
                                   0) != 0) {
@@ -822,7 +808,11 @@ _compile_trt(testrt_t *trt, void *udata)
                        &arg,
                        1,
                        NEWVAR("call"));
-    av = LLVMBuildPointerCast(builder, av, ts->base.backend, NEWVAR("cast"));
+    av = LLVMBuildPointerCast(builder,
+                              av,
+                              mrklkit_ctx_get_type_backend(
+                                  &tctx->mctx, trt->takeexpr->type),
+                              NEWVAR("cast"));
 
     for (expr = array_first(&trt->takeexpr->subs, &it);
          expr != NULL;
@@ -860,7 +850,8 @@ _compile_trt(testrt_t *trt, void *udata)
         ts = (lkit_struct_t *)trt->doexpr->type;
         av = LLVMBuildPointerCast(builder,
                                   av,
-                                  ts->base.backend,
+                                  mrklkit_ctx_get_type_backend(
+                                      &tctx->mctx, trt->doexpr->type),
                                   NEWVAR("cast"));
 
         for (expr = array_first(&trt->doexpr->subs, &it);
@@ -1022,7 +1013,7 @@ _compile(testrt_ctx_t *tctx, LLVMModuleRef module)
     lctx = LLVMGetModuleContext(module);
     builder = LLVMCreateBuilderInContext(lctx);
 
-    if (dsource_compile(module) != 0) {
+    if (dsource_compile(tctx, module) != 0) {
         TRRET(TESTRT_COMPILE + 101);
     }
 

@@ -35,7 +35,7 @@ typedef enum _lkit_tag {
     LKIT_DICT,
     LKIT_STRUCT,
     LKIT_FUNC,
-    LKIT_USER = 0x80000000,
+    LKIT_USER = 0x3fffffff,
     /*
      * for all user-defined types:
      *  assert(tag & LKIT_USER)
@@ -80,8 +80,7 @@ typedef struct _lkit_type {
     /* weak ref */
     char *name;
     uint64_t hash;
-    LLVMTypeRef backend;
-    int (*compile)(struct _lkit_type *, LLVMContextRef);
+    LLVMTypeRef (*compile)(struct _lkit_type *, LLVMContextRef);
     int (*compile_setup)(struct _lkit_expr *,
                          LLVMModuleRef,
                          LLVMBuilderRef,
@@ -122,7 +121,6 @@ typedef struct _lkit_vararg {
 
 typedef struct _lkit_str {
     struct _lkit_type base;
-    LLVMTypeRef deref_backend;
 } lkit_str_t;
 
 typedef struct _lkit_array {
@@ -149,7 +147,6 @@ typedef struct _lkit_dict {
 
 typedef struct _lkit_struct {
     struct _lkit_type base;
-    LLVMTypeRef deref_backend;
     void (*init)(void **);
     void (*fini)(void **);
     lkit_parser_t parser;
@@ -192,6 +189,8 @@ lkit_type_t *lkit_array_get_element_type(lkit_array_t *);
 lkit_type_t *lkit_dict_get_element_type(lkit_dict_t *);
 lkit_type_t *lkit_struct_get_field_type(lkit_struct_t *, bytes_t *);
 int lkit_struct_get_field_index(lkit_struct_t *, bytes_t *);
+
+LLVMTypeRef mrklkit_ctx_get_type_backend(mrklkit_ctx_t *, lkit_type_t *);
 
 void mrklkit_init_types(dict_t *, array_t *, dict_t *);
 void ltype_init(void);
