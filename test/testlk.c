@@ -66,8 +66,6 @@ test1(void)
     tctx.ds->rdelim[0] = '\n';
     tctx.ds->rdelim[1] = '\0';
 
-    mrklkit_ctx_setup_program(&tctx.mctx, "test", &tctx);
-
     if ((fd = open(input, O_RDONLY)) == -1) {
         FAIL("open");
     }
@@ -98,7 +96,7 @@ run(void)
     mrklkit_module_t *modules[1];
 
     mrklkit_init();
-    mrklkit_ctx_init(&tctx.mctx, modules, 1);
+    mrklkit_ctx_init(&tctx.mctx, "test", &tctx, modules, 1);
     test1();
     mrklkit_ctx_fini(&tctx.mctx);
     mrklkit_fini();

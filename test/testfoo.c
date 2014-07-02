@@ -113,7 +113,7 @@ main(int argc, char **argv)
         fname = argv[1];
     }
     mrklkit_init();
-    mrklkit_ctx_init(&ctx, modules, 1);
+    mrklkit_ctx_init(&ctx, "test", NULL, modules, 1);
     test1();
     mrklkit_ctx_fini(&ctx);
     mrklkit_fini();
