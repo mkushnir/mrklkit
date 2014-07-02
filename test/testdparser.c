@@ -169,7 +169,7 @@ test_qstr(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
     lkit_type_t *ty; \
     void **fty; \
     arty = (lkit_array_t *)lkit_type_get(mctx, LKIT_ARRAY); \
-    arty->delim = (char *)","; \
+    arty->delim = ','; \
     fty = array_incr(&arty->fields); \
     *fty = lkit_type_get(mctx, tag); \
     while (SPOS(bs) < br->end) { \
@@ -236,8 +236,8 @@ test_array_str(bytestream_t *bs, const byterange_t *br, void *udata)
     lkit_type_t *ty; \
     void **fty; \
     dcty = (lkit_dict_t *)lkit_type_get(mctx, LKIT_DICT); \
-    dcty->kvdelim = (char *)":"; \
-    dcty->fdelim = (char *)","; \
+    dcty->kvdelim = ':'; \
+    dcty->fdelim = ','; \
     fty = array_incr(&dcty->fields); \
     *fty = lkit_type_get(mctx, tag); \
     while (SPOS(bs) < br->end) { \
@@ -436,7 +436,7 @@ main(int argc, char *argv[])
 
     mrklkit_init();
 
-    mrklkit_ctx_init(&mctx, "test", NULL, 0, NULL);
+    mrklkit_ctx_init(&mctx, NULL, 0);
 
     if (argc > 2) {
         int fd;
@@ -487,7 +487,7 @@ main(int argc, char *argv[])
         assert(0);
     }
 
-    mrklkit_ctx_fini(&mctx, NULL);
+    mrklkit_ctx_fini(&mctx);
     mrklkit_fini();
     return 0;
 }

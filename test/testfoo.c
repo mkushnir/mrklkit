@@ -113,9 +113,9 @@ main(int argc, char **argv)
         fname = argv[1];
     }
     mrklkit_init();
-    mrklkit_ctx_init(&ctx, "test", modules, 1, NULL);
+    mrklkit_ctx_init(&ctx, modules, 1);
     test1();
-    mrklkit_ctx_fini(&ctx, NULL);
+    mrklkit_ctx_fini(&ctx);
     mrklkit_fini();
     return 0;
 }
