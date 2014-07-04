@@ -742,7 +742,6 @@ _compile_trt(testrt_t *trt, void *udata)
 {
     int res = 0;
     testrt_ctx_t *tctx;
-    lkit_struct_t *ts;
     lkit_expr_t **expr;
     array_iter_t it;
     LLVMModuleRef module;
@@ -801,7 +800,6 @@ _compile_trt(testrt_t *trt, void *udata)
         LLVMConstInt(LLVMInt64TypeInContext(lctx), (uintptr_t)trt, 0),
         LLVMPointerType(LLVMInt8TypeInContext(lctx), 0));
 
-    ts = (lkit_struct_t *)trt->takeexpr->type;
     av = LLVMBuildCall(builder,
                        LLVMGetNamedFunction(module,
                                             "testrt_acquire_take_key"),
@@ -847,7 +845,6 @@ _compile_trt(testrt_t *trt, void *udata)
                            1,
                            NEWVAR("call"));
 
-        ts = (lkit_struct_t *)trt->doexpr->type;
         av = LLVMBuildPointerCast(builder,
                                   av,
                                   mrklkit_ctx_get_type_backend(

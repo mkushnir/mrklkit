@@ -31,7 +31,7 @@ bytes_compile_setup(UNUSED lkit_expr_t *ectx,
                     UNUSED lkit_expr_t * expr,
                     bytes_t *name)
 {
-    LLVMValueRef v, fn, arg;
+    LLVMValueRef fn, arg;
 
     if (LKIT_EXPR_CONSTANT(expr)) {
         return 0;
@@ -46,7 +46,7 @@ bytes_compile_setup(UNUSED lkit_expr_t *ectx,
     }
 
     arg = LLVMBuildLoad(builder, arg, NEWVAR("load"));
-    v = LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
+    (void)LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
 
     return 0;
 }
@@ -59,7 +59,7 @@ bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
                       UNUSED lkit_expr_t * expr,
                       bytes_t *name)
 {
-    LLVMValueRef v, fn, arg;
+    LLVMValueRef fn, arg;
 
     if (LKIT_EXPR_CONSTANT(expr)) {
         return 0;
@@ -75,7 +75,7 @@ bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
     }
 
     arg = LLVMBuildLoad(builder, arg, NEWVAR("load"));
-    v = LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
+    (void)LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
 
     return 0;
 }
@@ -107,7 +107,6 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 
         case LKIT_STR:
             {
-                lkit_str_t *tc;
                 LLVMTypeRef deref_backend;
                 LLVMTypeRef fields[4];
 
@@ -118,7 +117,6 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
                 fields[1] = LLVMInt64TypeInContext(lctx);
                 fields[2] = LLVMInt64TypeInContext(lctx);
                 fields[3] = LLVMArrayType(LLVMInt8TypeInContext(lctx), 0);
-                tc = (lkit_str_t *)ty;
                 deref_backend = LLVMStructCreateNamed(lctx, "bytes_t");
                 LLVMStructSetBody(deref_backend,
                                   fields,

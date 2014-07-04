@@ -1252,7 +1252,7 @@ dparse_struct_item_ra_bool(rt_struct_t *value, int64_t idx)
 bytes_t *
 dparse_struct_item_seq_str(rt_struct_t *value, int64_t idx)
 {
-    bytes_t **val;
+    UNUSED bytes_t **val;
 
     assert(sizeof(bytes_t *) == sizeof(void *));
     val = (bytes_t **)dparse_struct_item_seq(value,
@@ -1264,7 +1264,7 @@ dparse_struct_item_seq_str(rt_struct_t *value, int64_t idx)
 bytes_t *
 dparse_struct_item_ra_str(rt_struct_t *value, int64_t idx)
 {
-    bytes_t **val;
+    UNUSED bytes_t **val;
 
     assert(sizeof(bytes_t *) == sizeof(void *));
     DPARSE_STRUCT_ITEM_RA_BODY(bytes_t **, val, dparse_str_pos);

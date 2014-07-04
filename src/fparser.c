@@ -435,14 +435,12 @@ fparser_parse(int fd,
                         void *),
               void *udata)
 {
-    int res;
     ssize_t nread;
     bytestream_t bs;
     struct tokenizer_ctx ctx;
     fparser_datum_t *root = NULL;
 
     ctx.indent = 0;
-    res = 0;
 
     if ((root = malloc(sizeof(fparser_datum_t) + sizeof(array_t))) == NULL) {
         TRRETNULL(FPARSER_PARSE + 1);
