@@ -15,7 +15,7 @@
 #include <mrkcommon/dict.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
-//#define NO_PROFILE
+#define NO_PROFILE
 #include <mrkcommon/profile.h>
 #include <mrkcommon/util.h>
 
@@ -315,7 +315,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     mrklkit_module_t **mod;
     array_iter_t it;
 
-    profile_start(parse_p);
+    PROFILE_START(parse_p);
     /* parse */
     for (mod = array_first(&ctx->modules, &it);
          mod != NULL;
@@ -323,14 +323,14 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
         if ((*mod)->parse != NULL) {
             if ((*mod)->parse(ctx, fd, udata)) {
-                profile_stop(parse_p);
+                PROFILE_STOP(parse_p);
                 TRRET(MRKLKIT_COMPILE + 5);
             }
         }
     }
     ///* parse */
     //if (mrklkit_parse(ctx, fd, udata) != 0) {
-    //    profile_stop(parse_p);
+    //    PROFILE_STOP(parse_p);
     //    TRRET(MRKLKIT_COMPILE + 1);
     //}
 
@@ -341,16 +341,16 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
         if ((*mod)->post_parse != NULL) {
             if ((*mod)->post_parse(udata)) {
-                profile_stop(parse_p);
+                PROFILE_STOP(parse_p);
                 TRRET(MRKLKIT_COMPILE + 5);
             }
         }
     }
-    profile_stop(parse_p);
+    PROFILE_STOP(parse_p);
 
     /* compile */
 
-    profile_start(compile_p);
+    PROFILE_START(compile_p);
     reset_newvar_counter();
 
     for (mod = array_first(&ctx->modules, &it);
@@ -359,7 +359,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
         if ((*mod)->compile_type != NULL) {
             if ((*mod)->compile_type(udata, ctx->module)) {
-                profile_stop(compile_p);
+                PROFILE_STOP(compile_p);
                 TRRET(MRKLKIT_COMPILE + 5);
             }
         }
@@ -375,16 +375,16 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
             }
         }
     }
-    profile_stop(compile_p);
+    PROFILE_STOP(compile_p);
 
     if (flags & MRKLKIT_COMPILE_DUMP0) {
         LLVMDumpModule(ctx->module);
     }
 
-    profile_start(analyze_p);
+    PROFILE_START(analyze_p);
     /* LLVM analysis */
     do_analysis(ctx);
-    profile_stop(analyze_p);
+    PROFILE_STOP(analyze_p);
 
     if (flags & MRKLKIT_COMPILE_DUMP1) {
         TRACEC("-----------------------------------------------\n");
@@ -497,7 +497,7 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
     mrklkit_module_t **mod;
     char *error_msg = NULL;
 
-    profile_start(setup_runtime_p);
+    PROFILE_START(setup_runtime_p);
 
     LLVMLinkInJIT();
 
@@ -539,7 +539,7 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
         }
     }
 
-    profile_stop(setup_runtime_p);
+    PROFILE_STOP(setup_runtime_p);
 }
 
 
@@ -644,10 +644,10 @@ void
 mrklkit_init(void)
 {
     profile_init_module();
-    parse_p = profile_register("parse");
-    compile_p = profile_register("compile");
-    analyze_p = profile_register("analyze");
-    setup_runtime_p = profile_register("setup_runtime");
+    parse_p = PROFILE_REGISTER("parse");
+    compile_p = PROFILE_REGISTER("compile");
+    analyze_p = PROFILE_REGISTER("analyze");
+    setup_runtime_p = PROFILE_REGISTER("setup_runtime");
     ltype_init();
     lexpr_init();
     llvm_init();
