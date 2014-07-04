@@ -571,12 +571,12 @@ mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *ctx, void *udata)
 
     if (ctx->ee != NULL) {
         LLVMRunStaticDestructors(ctx->ee);
-        //LLVMDisposeExecutionEngine(ctx->ee);
+        LLVMDisposeExecutionEngine(ctx->ee);
         ctx->ee = NULL;
     }
 
     if (ctx->module != NULL) {
-        LLVMDisposeModule(ctx->module);
+        //LLVMDisposeModule(ctx->module);
         ctx->module = NULL;
     }
 

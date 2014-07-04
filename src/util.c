@@ -200,7 +200,7 @@ mrklkit_bytes_new_from_str_mpool(mpool_ctx_t *mpool, const char *s)
     MRKLKIT_BYTES_NEW_FROM_STR_BODY(_malloc);
 }
 bytes_t *
-mrklkit_bytes_new_form_bytes_mpool(mpool_ctx_t *mpool, const bytes_t *s)
+mrklkit_bytes_new_from_bytes_mpool(mpool_ctx_t *mpool, const bytes_t *s)
 {
     MRKLKIT_BYTES_NEW_FROM_BYTES_BODY(_malloc);
 }
