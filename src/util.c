@@ -216,6 +216,56 @@ mrklkit_bytes_copy(bytes_t *dst, bytes_t *src, size_t off)
 
 
 void
+mrklkit_bytes_urldecode(bytes_t *str)
+{
+    unsigned char *src, *dst;
+    unsigned char *end;
+
+    end = str->data + str->sz;
+    for (src = str->data, dst = str->data;
+         src < end;
+         ++src, ++dst) {
+        if (*src == '%' && (src + 2) < end) {
+            ++src;
+            if (*src >= '0' && *src <= '9') {
+                *dst = (*src - '0') << 4;
+                //TRACE("*dst='%02hhd'", *dst);
+            } else if (*src >= 'A' && *src <= 'F') {
+                *dst = (*src - '7') << 4;
+                //TRACE("*dst='%02hhd'", *dst);
+            } else if (*src >= 'a' && *src <= 'f') {
+                *dst = (*src - 'w') << 4;
+                //TRACE("*dst='%02hhd'", *dst);
+            } else {
+                /* ignore invalid sequence */
+            }
+            ++src;
+            if (*src >= '0' && *src <= '9') {
+                *dst |= (*src - '0');
+                //TRACE("*dst='%02hhd'", *dst);
+            } else if (*src >= 'A' && *src <= 'F') {
+                *dst |= (*src - '7');
+                //TRACE("*dst='%02hhd'", *dst);
+            } else if (*src >= 'a' && *src <= 'f') {
+                *dst |= (*src - 'w');
+                //TRACE("*dst='%02hhd'", *dst);
+            } else {
+                /* ignore invalid sequence */
+            }
+        } else {
+            *dst = *src;
+        }
+    }
+    *(dst - 1) = '\0';
+    str->sz = (intptr_t)(dst - str->data);
+    str->hash = 0;
+}
+
+
+/*
+ * URL decode + remove spaces
+ */
+void
 mrklkit_bytes_brushdown(bytes_t *str)
 {
     unsigned char *src, *dst;

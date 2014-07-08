@@ -76,6 +76,8 @@ void mrklkit_bytes_copy(bytes_t *, bytes_t *, size_t);
 #define bytes_copy mrklkit_bytes_copy
 void mrklkit_bytes_brushdown(bytes_t *);
 #define bytes_brushdown mrklkit_bytes_brushdown
+void mrklkit_bytes_urldecode(bytes_t *);
+#define bytes_urldecode mrklkit_bytes_urldecode
 
 bytes_t *mrklkit_bytes_json_escape(bytes_t *);
 #define bytes_json_escape mrklkit_bytes_json_escape
