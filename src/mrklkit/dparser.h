@@ -11,6 +11,7 @@
 #endif
 #include <unistd.h>
 
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/util.h>
 

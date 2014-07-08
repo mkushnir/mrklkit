@@ -4,6 +4,7 @@
 #include <time.h>
 #include <fcntl.h>
 
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 #include <mrkcommon/bytestream.h>
@@ -128,7 +129,7 @@ test_str(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
             dparser_reach_value(bs, FDELIM, br->end);
         }
         //D8(SPDATA(bs), br->end - SPOS(bs));
-        mrklkit_bytes_decref(&value);
+        bytes_decref(&value);
     }
     return 0;
 }
@@ -158,7 +159,7 @@ test_qstr(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
             dparser_reach_value(bs, FDELIM, br->end);
         }
         //D8(SPDATA(bs), br->end - SPOS(bs));
-        mrklkit_bytes_decref(&value);
+        bytes_decref(&value);
     }
     return 0;
 }
@@ -339,7 +340,7 @@ struct_00_fini(void **value)
 {
     bytes_t **fstr;
     fstr = (bytes_t **)(value + 2);
-    mrklkit_bytes_decref(fstr);
+    bytes_decref(fstr);
 }
 
 

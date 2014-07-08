@@ -4,6 +4,8 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
+#include <mrkcommon/bytes.h>
+
 #include <mrklkit/mrklkit.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/util.h>

@@ -2,6 +2,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
@@ -473,7 +474,7 @@ compile_str_join(mrklkit_ctx_t *mctx,
         FAIL("malloc");
     }
     if ((bifn = LLVMGetNamedFunction(module,
-                                     "mrklkit_bytes_incref")) == NULL) {
+                                     "bytes_incref")) == NULL) {
         FAIL("LLVMGetNamedFunction");
     }
     for (arg = array_first(&expr->subs, &it);
@@ -499,11 +500,11 @@ compile_str_join(mrklkit_ctx_t *mctx,
         FAIL("LLVMGetNamedFunction");
     }
     if ((bcfn = LLVMGetNamedFunction(module,
-                                     "mrklkit_bytes_copy")) == NULL) {
+                                     "bytes_copy")) == NULL) {
         FAIL("LLVMGetNamedFunction");
     }
     if ((bdfn = LLVMGetNamedFunction(module,
-                                     "mrklkit_bytes_decref_fast")) == NULL) {
+                                     "bytes_decref_fast")) == NULL) {
         FAIL("LLVMGetNamedFunction");
     }
     v = LLVMBuildCall(builder, bnfn, &accum, 1, NEWVAR("call"));

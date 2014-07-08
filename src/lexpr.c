@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/dict.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>

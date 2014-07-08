@@ -12,6 +12,7 @@
 #include <llvm-c/Transforms/PassManagerBuilder.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/dict.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
@@ -77,11 +78,11 @@ const char *mrklkit_meta = "; libc\n"
 "(sym mrklkit_rt_get_dict_item_float    (func float (dict float) str float))\n"
 "(sym mrklkit_rt_get_dict_item_str      (func str (dict str) str str))\n"
 
-"(sym mrklkit_bytes_new (func str int))\n"
-"(sym mrklkit_bytes_copy (func int str str int))\n"
-"(sym mrklkit_bytes_decref (func int any))\n"
-";(sym mrklkit_bytes_decref_fast (func int str))\n"
-";(sym mrklkit_bytes_incref (func int str))\n"
+"(sym bytes_new (func str int))\n"
+"(sym bytes_copy (func int str str int))\n"
+"(sym bytes_decref (func int any))\n"
+";(sym bytes_decref_fast (func int str))\n"
+";(sym bytes_incref (func int str))\n"
 "(sym mrklkit_rt_bytes_slice_gc (func str str int int))\n"
 "(sym mrklkit_rt_bytes_brushdown_gc (func str str))\n"
 "(sym mrklkit_rt_array_split_gc (func (array str) any str str))\n"

@@ -1,6 +1,8 @@
 #include <errno.h>
 #include <string.h>
+
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/util.h>
 #include <mrkcommon/dumpm.h>
@@ -32,7 +34,7 @@ mrklkit_rt_bytes_new_gc(size_t sz)
 {
     bytes_t *res;
 
-    res = mrklkit_bytes_new_mpool(mpool, sz);
+    res = bytes_new_mpool(mpool, sz);
     //TRACE("GC>>> %p", *res);
     return res;
 }
@@ -43,7 +45,7 @@ mrklkit_rt_bytes_new_from_str_gc(const char *s)
 {
     bytes_t *res;
 
-    res = mrklkit_bytes_new_from_str_mpool(mpool, s);
+    res = bytes_new_from_str_mpool(mpool, s);
     //TRACE("GC>>> %p", *res);
     return res;
 }
@@ -66,7 +68,7 @@ mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
         goto empty;
     }
     ++sz1; /* "end" including the last char */
-    res = mrklkit_bytes_new_mpool(mpool, sz1 + 1);
+    res = bytes_new_mpool(mpool, sz1 + 1);
     memcpy(res->data, str->data + begin, sz1);
     res->data[sz1] = '\0';
 
@@ -74,7 +76,7 @@ end:
     return res;
 
 empty:
-    res = mrklkit_bytes_new_mpool(mpool, 1);
+    res = bytes_new_mpool(mpool, 1);
     res->data[0] = '\0';
     goto end;
 }
@@ -85,7 +87,7 @@ mrklkit_rt_bytes_brushdown_gc(bytes_t *str)
 {
     bytes_t *res;
 
-    res = mrklkit_bytes_new_from_str_mpool(mpool, (char *)str->data);
+    res = bytes_new_from_str_mpool(mpool, (char *)str->data);
     bytes_brushdown(res);
     return res;
 }
@@ -730,7 +732,7 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
 }
 
 
-#define MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(mrklkit_bytes_new_fn) \
+#define MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(bytes_new_fn) \
     lkit_type_t **fty; \
     array_iter_t it; \
     assert(dst->type->fields.elnum == src->type->fields.elnum); \
@@ -742,9 +744,9 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
             { \
                 bytes_t *a, *b; \
                 a = (bytes_t *)*(src->fields + it.iter); \
-                b = mrklkit_bytes_new_fn(a->sz); \
+                b = bytes_new_fn(a->sz); \
                 BYTES_INCREF(b); \
-                mrklkit_bytes_copy(b, a, 0); \
+                bytes_copy(b, a, 0); \
                 *((bytes_t **)dst->fields + it.iter) = b; \
             } \
             break; \
@@ -767,7 +769,7 @@ void
 mrklkit_rt_struct_deep_copy(rt_struct_t *dst,
                             rt_struct_t *src)
 {
-    MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(mrklkit_bytes_new);
+    MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(bytes_new);
 }
 
 
@@ -775,9 +777,9 @@ void
 mrklkit_rt_struct_deep_copy_gc(rt_struct_t *dst,
                                rt_struct_t *src)
 {
-#define _mrklkit_bytes_new(sz) mrklkit_bytes_new_mpool(mpool, (sz))
-    MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(_mrklkit_bytes_new);
-#undef _mrklkit_bytes_new
+#define _bytes_new(sz) bytes_new_mpool(mpool, (sz))
+    MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(_bytes_new);
+#undef _bytes_new
 }
 
 

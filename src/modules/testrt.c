@@ -4,10 +4,12 @@
 #include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/bytestream.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
+#include <mrkcommon/fasthash.h>
 
 #include <mrklkit/module.h>
 #include <mrklkit/mrklkit.h>
@@ -830,7 +832,7 @@ _compile_trt(testrt_t *trt, void *udata)
         if ((*expr)->type->tag == LKIT_STR) {
             LLVMBuildCall(builder,
                           LLVMGetNamedFunction(module,
-                                               "mrklkit_bytes_incref"),
+                                               "bytes_incref"),
                           &val,
                           1,
                           NEWVAR("call"));
@@ -912,7 +914,7 @@ _compile_trt(testrt_t *trt, void *udata)
             if ((*expr)->type->tag == LKIT_STR) {
                 LLVMBuildCall(builder,
                               LLVMGetNamedFunction(module,
-                                                   "mrklkit_bytes_incref"),
+                                                   "bytes_incref"),
                               &val,
                               1,
                               NEWVAR("call"));

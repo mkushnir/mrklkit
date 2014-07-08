@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <mrkcommon/dumpm.h>
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
+#include <mrkcommon/dumpm.h>
 #include <mrklkit/fparser.h>
 #include <mrklkit/lparse.h>
 

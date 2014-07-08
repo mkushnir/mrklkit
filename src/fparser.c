@@ -4,6 +4,7 @@
 
 //#define TRRET_DEBUG
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/mpool.h>
 #define DUMPM_INDENT_SIZE 1

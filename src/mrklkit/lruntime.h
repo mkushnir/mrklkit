@@ -2,6 +2,7 @@
 #define LRUNTIME_H_DEFINED
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/mpool.h>

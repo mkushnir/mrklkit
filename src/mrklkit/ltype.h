@@ -6,6 +6,7 @@
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/bytestream.h>
 

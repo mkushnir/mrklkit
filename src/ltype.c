@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
 #define TRRET_DEBUG_VERBOSE

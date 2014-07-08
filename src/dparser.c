@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
 //#define TRRET_DEBUG_VERBOSE
 //#define TRRET_DEBUG

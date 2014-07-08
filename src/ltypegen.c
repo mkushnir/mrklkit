@@ -7,6 +7,7 @@
 #include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrkcommon/dict.h>
 //#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
@@ -37,7 +38,7 @@ bytes_compile_setup(UNUSED lkit_expr_t *ectx,
         return 0;
     }
 
-    if ((fn = LLVMGetNamedFunction(module, "mrklkit_bytes_incref")) == NULL) {
+    if ((fn = LLVMGetNamedFunction(module, "bytes_incref")) == NULL) {
         FAIL("bytes_compile_setup");
     }
 
@@ -66,7 +67,7 @@ bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
     }
 
     if ((fn = LLVMGetNamedFunction(module,
-                                   "mrklkit_bytes_decref_fast")) == NULL) {
+                                   "bytes_decref_fast")) == NULL) {
         FAIL("bytes_compile_cleanup");
     }
 
@@ -406,7 +407,7 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
 
                 switch ((*fty)->tag) {
                 case LKIT_STR:
-                    dtor_name = "mrklkit_bytes_decref";
+                    dtor_name = "bytes_decref";
                     BUILDCODE;
                     break;
 

@@ -2,6 +2,7 @@
 #define LPARSE_H_DEFINED
 
 #include <mrkcommon/array.h>
+#include <mrkcommon/bytes.h>
 #include <mrklkit/fparser.h>
 #include <mrklkit/util.h>
 
