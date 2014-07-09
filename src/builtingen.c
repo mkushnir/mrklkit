@@ -529,7 +529,7 @@ compile_str_join(mrklkit_ctx_t *mctx,
 
 #define COMPILE_STRSTR_START 0
 #define COMPILE_STRSTR_END 1
-static LLVMValueRef
+UNUSED static LLVMValueRef
 compile_strstr(mrklkit_ctx_t *mctx,
                lkit_expr_t *ectx,
                LLVMContextRef lctx,
@@ -1577,6 +1577,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
         v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
 
+#if 0
     } else if (strcmp(name , "startswith") == 0) {
         v = compile_strstr(mctx,
                            ectx,
@@ -1596,6 +1597,7 @@ compile_function(mrklkit_ctx_t *mctx,
                            expr,
                            COMPILE_STRSTR_END,
                            udata);
+#endif
 
     } else if (strcmp(name , "tostr") == 0) {
         lkit_expr_t **arg;
@@ -1728,6 +1730,33 @@ compile_function(mrklkit_ctx_t *mctx,
         //(sym split (func (array str) str str))
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_brushdown_gc")) == NULL) {
+            TR(COMPILE_FUNCTION + 1700);
+            goto err;
+        }
+
+        if ((arg = array_get(&expr->subs, 0)) == NULL) {
+            FAIL("array_get");
+        }
+
+        if ((args[0] = lkit_compile_expr(mctx,
+                                     ectx,
+                                     module,
+                                     builder,
+                                     *arg,
+                                     udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1400);
+            goto err;
+        }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
+
+    } else if (strcmp(name, "urldecode") == 0) {
+        lkit_expr_t **arg;
+        LLVMValueRef fn, args[1];
+
+        //(sym split (func (array str) str str))
+        if ((fn = LLVMGetNamedFunction(module,
+                    "mrklkit_rt_bytes_urldecode_gc")) == NULL) {
             TR(COMPILE_FUNCTION + 1700);
             goto err;
         }

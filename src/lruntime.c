@@ -93,6 +93,17 @@ mrklkit_rt_bytes_brushdown_gc(bytes_t *str)
 }
 
 
+bytes_t *
+mrklkit_rt_bytes_urldecode_gc(bytes_t *str)
+{
+    bytes_t *res;
+
+    res = bytes_new_from_str_mpool(mpool, (char *)str->data);
+    bytes_urldecode(res);
+    return res;
+}
+
+
 int64_t
 mrklkit_strtoi64(bytes_t *str, int64_t dflt)
 {
