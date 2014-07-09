@@ -1941,17 +1941,6 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                 }
                 break;
 
-            case LKIT_INT:
-            case LKIT_INT_MIN:
-            case LKIT_INT_MAX:
-            case LKIT_FLOAT:
-            case LKIT_FLOAT_MIN:
-            case LKIT_FLOAT_MAX:
-            case LKIT_BOOL:
-            case LKIT_STR:
-            case LKIT_ARRAY:
-            case LKIT_DICT:
-            case LKIT_STRUCT:
             default:
                 {
                     LLVMValueRef ref;
