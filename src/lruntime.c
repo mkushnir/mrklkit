@@ -236,18 +236,25 @@ mrklkit_rt_array_destroy(rt_array_t **value)
 
 
 int64_t
-mrklkit_rt_get_array_item_int(rt_array_t *value, int64_t idx, UNUSED int64_t dflt)
+mrklkit_rt_get_array_item_int(rt_array_t *value, int64_t idx, int64_t dflt)
 {
     int64_t *res;
 
-    idx = value->fields.elnum ? idx % value->fields.elnum : 0;
-    res = ARRAY_GET(int64_t, &value->fields, idx);
+    if (idx < (ssize_t)value->fields.elnum) {
+        if (value->fields.elnum) {
+            res = ARRAY_GET(int64_t, &value->fields, idx % value->fields.elnum);
+        } else {
+            res = &dflt;
+        }
+    } else {
+        res = &dflt;
+    }
     return *res;
 }
 
 
 double
-mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, UNUSED double dflt)
+mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, double dflt)
 {
     union {
         void **v;
@@ -256,19 +263,36 @@ mrklkit_rt_get_array_item_float(rt_array_t *value, int64_t idx, UNUSED double df
 
     assert(sizeof(void *) == sizeof(double));
 
-    idx = value->fields.elnum ? idx % value->fields.elnum : 0;
-    res.v = ARRAY_GET(void *, &value->fields, idx);
+    if (idx < (ssize_t)value->fields.elnum) {
+        if (value->fields.elnum) {
+            res.v = ARRAY_GET(void *, &value->fields, idx % value->fields.elnum);
+        } else {
+            res.d = &dflt;
+        }
+    } else {
+        res.d = &dflt;
+    }
     return *res.d;
 }
 
 
 bytes_t *
-mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, UNUSED bytes_t *dflt)
+mrklkit_rt_get_array_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
 {
     bytes_t **res;
 
-    idx = value->fields.elnum ? idx % value->fields.elnum : 0;
-    res = ARRAY_GET(bytes_t *, &value->fields, idx);
+    if (idx < (ssize_t)value->fields.elnum) {
+        if (value->fields.elnum) {
+            res = ARRAY_GET(bytes_t *, &value->fields, idx % value->fields.elnum);
+            if (*res == NULL) {
+                res = &dflt;
+            }
+        } else {
+            res = &dflt;
+        }
+    } else {
+        res = &dflt;
+    }
     return *res;
 }
 
