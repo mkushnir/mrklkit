@@ -12,7 +12,7 @@ lib_LTLIBRARIES = libmrklkit.la
 
 nobase_include_HEADERS = \
 	mrklkit/fparser.h \
-	mrklkit/dparser.h
+	mrklkit/dparser.h \
 	mrklkit/lexpr.h \
 	mrklkit/lparse.h \
 	mrklkit/ltype.h \
