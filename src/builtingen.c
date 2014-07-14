@@ -1512,7 +1512,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
 
         if ((fn = LLVMGetNamedFunction(module, "mrklkit_strtoi64")) == NULL) {
-            TR(COMPILE_FUNCTION + 1500);
+            TR(COMPILE_FUNCTION + 1600);
             goto err;
         }
 
@@ -1526,7 +1526,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 1601);
             goto err;
         }
 
@@ -1540,7 +1540,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 1602);
             goto err;
         }
 
@@ -1554,7 +1554,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
 
         if ((fn = LLVMGetNamedFunction(module, "mrklkit_strtod")) == NULL) {
-            TR(COMPILE_FUNCTION + 1500);
+            TR(COMPILE_FUNCTION + 1700);
             goto err;
         }
 
@@ -1568,7 +1568,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 1701);
             goto err;
         }
 
@@ -1582,7 +1582,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 1702);
             goto err;
         }
 
@@ -1622,7 +1622,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                    builder,
                                    *arg,
                                    udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1600);
+            TR(COMPILE_FUNCTION + 1800);
             goto err;
         }
         /* not implemented */
@@ -1638,7 +1638,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_slice_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 1700);
+            TR(COMPILE_FUNCTION + 2000);
             goto err;
         }
 
@@ -1652,7 +1652,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 2001);
             goto err;
         }
 
@@ -1666,7 +1666,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 2002);
             goto err;
         }
 
@@ -1680,7 +1680,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 2003);
             goto err;
         }
 
@@ -1694,11 +1694,15 @@ compile_function(mrklkit_ctx_t *mctx,
         lkit_array_t *ty;
         LLVMValueRef fn, args[3];
 
+        /*
+         * very slow b/c array_incr_mpool(), use parse
+         */
+
         //(sym split (func (array str) str str))
         ty = lkit_type_get_array(mctx, LKIT_STR);
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_array_split_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 1700);
+            TR(COMPILE_FUNCTION + 2200);
             goto err;
         }
 
@@ -1713,7 +1717,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                          builder,
                                          *arg,
                                          udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1701);
+            TR(COMPILE_FUNCTION + 2201);
             goto err;
         }
 
@@ -1724,7 +1728,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                          builder,
                                          *arg,
                                          udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1702);
+            TR(COMPILE_FUNCTION + 2202);
             goto err;
         }
 
@@ -1741,7 +1745,7 @@ compile_function(mrklkit_ctx_t *mctx,
         //(sym split (func (array str) str str))
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_brushdown_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 1700);
+            TR(COMPILE_FUNCTION + 2300);
             goto err;
         }
 
@@ -1755,7 +1759,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 2301);
             goto err;
         }
 
@@ -1768,7 +1772,7 @@ compile_function(mrklkit_ctx_t *mctx,
         //(sym split (func (array str) str str))
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_urldecode_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 1700);
+            TR(COMPILE_FUNCTION + 2400);
             goto err;
         }
 
@@ -1782,9 +1786,47 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1400);
+            TR(COMPILE_FUNCTION + 2401);
             goto err;
         }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
+
+    } else if (strcmp(name, "len") == 0) {
+        lkit_expr_t **arg;
+        char *fnname;
+        LLVMValueRef fn, args[1];
+
+        if ((arg = array_get(&expr->subs, 0)) == NULL) {
+            FAIL("array_get");
+        }
+
+        if ((*arg)->type->tag == LKIT_ARRAY) {
+            fnname = "mrklkit_rt_array_len";
+        } else {
+            FAIL("compile_function");
+        }
+
+        if ((fn = LLVMGetNamedFunction(module, fnname)) == NULL) {
+            TR(COMPILE_FUNCTION + 2500);
+            goto err;
+        }
+
+        if ((args[0] = lkit_compile_expr(mctx,
+                                     ectx,
+                                     module,
+                                     builder,
+                                     *arg,
+                                     udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 2501);
+            goto err;
+        }
+
+        args[0] = LLVMBuildPointerCast(builder,
+                                       args[0],
+                                       LLVMPointerType(
+                                           LLVMInt8TypeInContext(lctx), 0),
+                                       NEWVAR("cast"));
 
         v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
 

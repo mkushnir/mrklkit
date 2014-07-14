@@ -74,6 +74,7 @@ const char *mrklkit_meta = "; libc\n"
 "(sym mrklkit_rt_get_array_item_int     (func int (array int) int int))\n"
 "(sym mrklkit_rt_get_array_item_float   (func float (array float) int float))\n"
 "(sym mrklkit_rt_get_array_item_str     (func str (array str) int str))\n"
+"(sym mrklkit_rt_array_len              (func int any))\n"
 "(sym mrklkit_rt_get_dict_item_int      (func int (dict int) str int))\n"
 "(sym mrklkit_rt_get_dict_item_float    (func float (dict float) str float))\n"
 "(sym mrklkit_rt_get_dict_item_str      (func str (dict str) str str))\n"
@@ -128,6 +129,7 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin set (func undef undef undef undef))\n"
 "(builtin del (func undef undef undef))\n"
 "(builtin has (func bool undef undef))\n"
+"(builtin len (func int undef))\n"
 "\n"
 "(builtin itof (func float int))\n"
 "(builtin float (func float int))\n" /* compat */
@@ -381,7 +383,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     }
     PROFILE_STOP(compile_p);
 
-    if (flags & MRKLKIT_COMPILE_DUMP0) {
+    if ((flags & MRKLKIT_COMPILE_DUMP0) == MRKLKIT_COMPILE_DUMP0) {
         LLVMDumpModule(ctx->module);
     }
 
@@ -390,12 +392,12 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     do_analysis(ctx);
     PROFILE_STOP(analyze_p);
 
-    if (flags & MRKLKIT_COMPILE_DUMP1) {
+    if ((flags & MRKLKIT_COMPILE_DUMP1) == MRKLKIT_COMPILE_DUMP1) {
         TRACEC("-----------------------------------------------\n");
         LLVMDumpModule(ctx->module);
     }
 
-    if (flags & MRKLKIT_COMPILE_DUMP2) {
+    if ((flags & MRKLKIT_COMPILE_DUMP2) == MRKLKIT_COMPILE_DUMP2) {
         TRACEC("-----------------------------------------------\n");
         tr = LLVMGetFirstTarget();
         TRACE("target name=%s descr=%s jit=%d tm=%d asm=%d triple=%s",

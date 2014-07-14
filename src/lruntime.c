@@ -328,6 +328,14 @@ mrklkit_rt_array_split_gc(lkit_array_t *ty, bytes_t *str, bytes_t *delim)
     return res;
 }
 
+
+int64_t
+mrklkit_rt_array_len(rt_array_t *ar)
+{
+    return (int64_t)ar->fields.elnum;
+}
+
+
 /**
  * dict
  */

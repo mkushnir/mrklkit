@@ -141,6 +141,7 @@ void mrklkit_rt_array_dump(rt_array_t *);
 int64_t mrklkit_rt_get_array_item_int(rt_array_t *, int64_t, int64_t);
 double mrklkit_rt_get_array_item_float(rt_array_t *, int64_t, double);
 bytes_t *mrklkit_rt_get_array_item_str(rt_array_t *, int64_t, bytes_t *);
+int64_t mrklkit_rt_array_len(rt_array_t *);
 
 rt_dict_t *mrklkit_rt_dict_new(lkit_dict_t *);
 rt_dict_t *mrklkit_rt_dict_new_gc(lkit_dict_t *);
