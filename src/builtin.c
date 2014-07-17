@@ -599,12 +599,31 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                 TRRET(REMOVE_UNDEF + 37);
             }
 
-            if ((*subj)->type->tag != LKIT_ARRAY) {
-                TRRET(REMOVE_UNDEF + 38);
-            }
-
             if (expr->type->tag != LKIT_INT) {
                 FAIL("builtin_remove_undef");
+            }
+
+        } else if (strcmp(name, "in") == 0) {
+            lkit_expr_t **arg;
+            array_iter_t it;
+            lkit_type_t *ty;
+
+            ty = NULL;
+            for (arg = array_first(&expr->subs, &it);
+                 arg!= NULL;
+                 arg = array_next(&expr->subs, &it)) {
+
+                if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
+                    TRRET(REMOVE_UNDEF + 38);
+                }
+
+                if (ty != NULL) {
+                    if (ty->tag != (*arg)->type->tag) {
+                        TRRET(REMOVE_UNDEF + 39);
+                    }
+                } else {
+                    ty = (*arg)->type;
+                }
             }
 
         } else if (strcmp(name, "dp-info") == 0) {
