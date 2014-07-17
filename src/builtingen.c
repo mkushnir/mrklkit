@@ -1674,6 +1674,7 @@ compile_function(mrklkit_ctx_t *mctx,
                     TR(COMPILE_FUNCTION + 1900);
                     goto err;
                 }
+                currblock = LLVMGetInsertBlock(builder);
                 testblock = LLVMInsertBasicBlockInContext(lctx,
                                                           endblock,
                                                           NEWVAR("IN.test"));
