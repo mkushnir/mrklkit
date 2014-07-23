@@ -568,6 +568,9 @@ mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *ctx, void *udata)
     for (mod = array_last(&ctx->modules, &it);
          mod != NULL;
          mod = array_prev(&ctx->modules, &it)) {
+        if ((*mod)->unlink != NULL) {
+            (*mod)->unlink(udata);
+        }
         if ((*mod)->fini != NULL) {
             (*mod)->fini(udata);
         }

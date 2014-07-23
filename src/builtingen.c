@@ -1624,7 +1624,6 @@ compile_function(mrklkit_ctx_t *mctx,
         FAIL("compile_function, not supported: tostr");
 
     } else if (strcmp(name, "in") == 0) {
-
         if (expr->subs.elnum < 2) {
             v = LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0);
         } else {
@@ -1682,17 +1681,13 @@ compile_function(mrklkit_ctx_t *mctx,
                 LLVMAddIncoming(v, &tmp, &currblock, 1);
                 currblock = testblock;
             }
+
             LLVMPositionBuilderAtEnd(builder, currblock);
             tmp = LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0);
             LLVMAddIncoming(v, &tmp, &currblock, 1);
             LLVMBuildBr(builder, endblock);
             LLVMPositionBuilderAtEnd(builder, endblock);
         }
-
-
-
-
-
 
     } else if (strcmp(name, "substr") == 0) {
         lkit_expr_t **arg;

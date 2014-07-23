@@ -25,6 +25,7 @@ int ltype_link_methods(lkit_type_t *,
                        LLVMExecutionEngineRef,
                        LLVMModuleRef,
                        bytes_t *);
+void ltype_unlink_methods(lkit_type_t *);
 #ifdef __cplusplus
 }
 #endif

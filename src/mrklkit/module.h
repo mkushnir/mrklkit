@@ -47,6 +47,8 @@ typedef int (*mrklkit_module_linker_t)(void *,
                                        LLVMExecutionEngineRef,
                                        LLVMModuleRef);
 
+typedef int (*mrklkit_module_unlinker_t)(void *);
+
 typedef struct _mrklkit_module {
     mrklkit_module_initializer_t init;
     mrklkit_module_finalizer_t fini;
@@ -57,6 +59,7 @@ typedef struct _mrklkit_module {
     mrklkit_expr_compiler_t compile_expr;
     mrklkit_module_compiler_t compile;
     mrklkit_module_linker_t link;
+    mrklkit_module_unlinker_t unlink;
 } mrklkit_module_t;
 
 

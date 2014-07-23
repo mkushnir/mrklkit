@@ -1469,4 +1469,5 @@ mrklkit_module_t testrt_module = {
     NULL,
     (mrklkit_module_compiler_t)_compile,
     (mrklkit_module_linker_t)_link,
+    NULL,
 };

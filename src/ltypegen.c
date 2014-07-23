@@ -622,6 +622,32 @@ ltype_link_methods(lkit_type_t *ty,
 }
 
 
+void
+ltype_unlink_methods(lkit_type_t *ty)
+{
+    switch (ty->tag) {
+    case LKIT_STRUCT:
+        {
+            lkit_type_t **fty;
+            array_iter_t it;
+            lkit_struct_t *ts;
+
+            ts = (lkit_struct_t *)ty;
+            ts->init = NULL;
+            ts->fini = NULL;
+            for (fty = array_first(&ts->fields, &it);
+                 fty != NULL;
+                 fty = array_next(&ts->fields, &it)) {
+                ltype_unlink_methods(*fty);
+            }
+        }
+
+    default:
+        break;
+    }
+}
+
+
 static int
 _cb0(lkit_type_t *key, UNUSED lkit_type_t *value, void *udata)
 {
