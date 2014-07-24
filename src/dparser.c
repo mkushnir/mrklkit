@@ -913,7 +913,7 @@ dparse_dict_pos(bytestream_t *bs,
 
     switch (dfty->tag) {
     case LKIT_STR:
-        DPARSE_DICT_CASE(bytes_t *, dparse_str_pos);
+        DPARSE_DICT_CASE(bytes_t *, _dparse_str_pos);
         break;
 
     case LKIT_INT:
