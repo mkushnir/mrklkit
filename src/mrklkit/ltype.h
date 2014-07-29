@@ -132,6 +132,7 @@ typedef struct _lkit_array {
     char delim;
     /* lkit_type_t * */
     array_t fields;
+    int64_t nreserved;
 } lkit_array_t;
 
 typedef struct _lkit_dict {

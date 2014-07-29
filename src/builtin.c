@@ -720,6 +720,45 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                 TRRET(REMOVE_UNDEF + 44);
             }
 
+        } else if (strcmp(name, "has") == 0 ||
+                   strcmp(name, "has-key") == 0) {
+
+            lkit_expr_t **cont;
+            lkit_type_t *ty;
+
+            cont = array_get(&expr->subs, 0);
+            assert(cont != NULL);
+
+            if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
+                TRRET(REMOVE_UNDEF + 45);
+            }
+
+            ty = (*cont)->type;
+
+            switch (ty->tag) {
+            case LKIT_DICT:
+                {
+                    lkit_expr_t **name;
+
+                    name = array_get(&expr->subs, 1);
+                    assert(name != NULL);
+
+                    /* constant str */
+                    if ((*name)->type->tag != LKIT_STR ||
+                        !LKIT_EXPR_CONSTANT(*name)) {
+
+                        (*name)->error = 1;
+                        TRRET(REMOVE_UNDEF + 46);
+                    }
+                }
+                break;
+
+            default:
+                (*cont)->error = 1;
+                TRRET(REMOVE_UNDEF + 47);
+
+            }
+
         } else {
             lkit_expr_t **arg;
             array_iter_t it;

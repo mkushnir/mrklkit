@@ -366,6 +366,7 @@ dparse_array(bytestream_t *bs,
     lkit_type_t *afty;
     byterange_t br;
     void (*_dparser_reach_value)(bytestream_t *, char, off_t);
+    unsigned idx;
 
     br.start = SPOS(bs);
     dparser_reach_delim(bs, delim, epos);
@@ -384,6 +385,7 @@ dparse_array(bytestream_t *bs,
     }
 
 #define DPARSE_ARRAY_CASE(ty, fn) \
+        idx = 0; \
         while (SPOS(bs) < br.end && SPCHR(bs) != delim) { \
             union { \
                 void *v; \
@@ -398,18 +400,15 @@ dparse_array(bytestream_t *bs,
                  */ \
                 /* TRACE("SPCHR='%c' delim='%c' fdelim='%c'", SPCHR(bs), delim, fdelim); */ \
                 if (SPCHR(bs) != fdelim) { \
-                    if ((v = array_incr_mpool(mpool, &value->fields)) == NULL) { \
-                        FAIL("array_incr_mpool"); \
-                    } \
+                    v = array_get_safe_mpool(mpool, &value->fields, idx); \
                     *v = u.v; \
                     break; \
                 } \
             } \
-            if ((v = array_incr_mpool(mpool, &value->fields)) == NULL) { \
-                FAIL("array_incr_mpool"); \
-            } \
+            v = array_get_safe_mpool(mpool, &value->fields, idx); \
             *v = u.v; \
             _dparser_reach_value(bs, fdelim, br.end); \
+            ++idx; \
         }
 
     switch (afty->tag) {
@@ -821,6 +820,7 @@ dparse_array_pos(bytestream_t *bs,
 {
     char fdelim;
     lkit_type_t *afty;
+    unsigned idx;
 
     fdelim = (*val)->type->delim;
     if ((afty = lkit_array_get_element_type((*val)->type)) == NULL) {
@@ -828,6 +828,7 @@ dparse_array_pos(bytestream_t *bs,
     }
 
 #define DPARSE_ARRAY_CASE(ty, fn) \
+    idx = 0; \
     while (spos < epos && SNCHR(bs, spos) != delim) { \
         off_t fpos; \
         union { \
@@ -837,11 +838,10 @@ dparse_array_pos(bytestream_t *bs,
         void **v; \
         fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos); \
         (void)fn(bs, fdelim, spos, fpos, &u.x); \
-        if ((v = array_incr_mpool(mpool, &(*val)->fields)) == NULL) { \
-            FAIL("array_incr_mpool"); \
-        } \
+        v = array_get_safe_mpool(mpool, &(*val)->fields, idx); \
         *v = u.v; \
         spos = dparser_reach_value_pos(bs, fdelim, fpos, epos); \
+        ++idx; \
     }
 
     switch (afty->tag) {

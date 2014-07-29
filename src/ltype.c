@@ -226,6 +226,7 @@ lkit_type_new(lkit_tag_t tag)
             //ta->fini = NULL;
             ta->parser = LKIT_PARSER_NONE;
             ta->delim = '\0';
+            ta->nreserved = 0;
             array_init(&ta->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             ty = (lkit_type_t *)ta;
         }
@@ -902,6 +903,11 @@ parse_array_quals(array_t *form,
         } else {
             /* a WORD expected after :parser */
             TRRET(PARSE_ARRAY_QUALS + 7);
+        }
+
+    } else if (strcmp(s, ":reserve") == 0) {
+        if (lparse_next_int(form, it, &ta->nreserved, 1) != 0) {
+            TRRET(PARSE_ARRAY_QUALS + 8);
         }
     } else {
         /* unknown array qualifier */

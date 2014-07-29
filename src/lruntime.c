@@ -199,6 +199,7 @@ null_init(void **v)
                0, \
                (array_initializer_t)null_init, \
                NULL); \
+    array_ensure_datasz(&res->fields, ty->nreserved, 0); \
     return res
 
 
@@ -495,6 +496,12 @@ mrklkit_rt_get_dict_item_str(rt_dict_t *value, bytes_t *key, bytes_t *dflt)
     return res;
 }
 
+
+int64_t
+mrklkit_rt_dict_has_item(rt_dict_t *value, bytes_t *key)
+{
+    return dict_get_item(&value->fields, key) != NULL;
+}
 
 /**
  * struct
