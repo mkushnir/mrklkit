@@ -2539,7 +2539,7 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
         LLVMBuilderRef builder;
     } *params = udata;
 
-    if (expr->lazy_init && expr->referenced) {
+    if (expr->lazy_init && expr->referenced && expr->isref) {
         char buf[1024];
         LLVMContextRef lctx;
         LLVMValueRef v;
