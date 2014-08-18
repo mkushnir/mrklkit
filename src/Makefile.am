@@ -51,7 +51,7 @@ endif
 
 libmrklkit_la_CFLAGS = -Wall -Wextra -Werror -std=c99 -I$(includedir) @MRKCOMMON_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
 
-libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
+libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lbz2 -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 SUBDIRS = .
 
