@@ -646,7 +646,7 @@ llvm_init(void)
 static void
 llvm_fini(void)
 {
-    LLVMContextDispose(LLVMGetGlobalContext());
+    //LLVMContextDispose(LLVMGetGlobalContext());
 }
 
 void
