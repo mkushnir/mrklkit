@@ -2495,6 +2495,14 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
     char buf[1024];
     LLVMValueRef fn;
 
+    //lkit_expr_dump(expr);
+    //TRACE("name %s lazy %d referenced %d isref %d ismacro %d",
+    //      name ? name->data : NULL,
+    //      expr->lazy_init,
+    //      expr->referenced,
+    //      expr->isref,
+    //      expr->ismacro);
+
     snprintf(buf, sizeof(buf), "_mrklkit.%s.init", (char *)name->data);
 
     if ((fn = LLVMGetNamedFunction(params->module, buf)) != NULL) {
@@ -2538,6 +2546,14 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
         LLVMModuleRef module;
         LLVMBuilderRef builder;
     } *params = udata;
+
+    //lkit_expr_dump(expr);
+    //TRACE("name %s lazy %d referenced %d isref %d ismacro %d",
+    //      name ? name->data : NULL,
+    //      expr->lazy_init,
+    //      expr->referenced,
+    //      expr->isref,
+    //      expr->ismacro);
 
     if (expr->lazy_init && expr->referenced && expr->isref) {
         char buf[1024];

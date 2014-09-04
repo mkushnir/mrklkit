@@ -200,12 +200,16 @@ lkit_expr_set_referenced(lkit_expr_t *expr)
     for (pexpr = array_first(&expr->subs, &it);
          pexpr != NULL;
          pexpr = array_next(&expr->subs, &it)) {
-        if ((*pexpr)->isref) {
+        if ((*pexpr)->isref || (*pexpr)->ismacro) {
             ++(*pexpr)->referenced;
             lkit_expr_set_referenced(*pexpr);
             ++(*pexpr)->value.ref->referenced;
             lkit_expr_set_referenced((*pexpr)->value.ref);
         }
+    }
+    if (expr->isref || expr->ismacro) {
+        ++expr->referenced;
+        lkit_expr_set_referenced(expr->value.ref);
     }
 }
 
@@ -655,8 +659,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
      */
     if (mctx->mark_referenced) {
         if (!expr->lazy_init) {
-            if (expr->isref) {
-                ++expr->value.ref->referenced;
+            if (expr->isref || expr->ismacro) {
                 lkit_expr_set_referenced(expr->value.ref);
             }
         }

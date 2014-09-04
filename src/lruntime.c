@@ -794,9 +794,15 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
             { \
                 bytes_t *a, *b; \
                 a = (bytes_t *)*(src->fields + it.iter); \
-                b = bytes_new_fn(a->sz); \
-                BYTES_INCREF(b); \
-                bytes_copy(b, a, 0); \
+                if (a != NULL) { \
+                    b = bytes_new_fn(a->sz); \
+                    BYTES_INCREF(b); \
+                    bytes_copy(b, a, 0); \
+                } else { \
+                    b = bytes_new_fn(1); \
+                    BYTES_INCREF(b); \
+                    b->data[0] = '\0'; \
+                } \
                 *((bytes_t **)dst->fields + it.iter) = b; \
             } \
             break; \
