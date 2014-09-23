@@ -9,6 +9,7 @@
 #ifndef OFF_MAX
 #   define OFF_MAX LONG_MAX
 #endif
+#include <bzlib.h>
 #include <unistd.h>
 
 #include <mrkcommon/bytes.h>
@@ -31,6 +32,13 @@ extern "C" {
 #define DPARSE_MERGEDELIM 0x01
 #define DPARSE_RESETONERROR 0x02
 
+typedef struct _dparse_bz2_ctx {
+    off_t fpos;
+    bytes_t *tail;
+} dparse_bz2_ctx_t;
+
+void dparser_bz2_ctx_init(dparse_bz2_ctx_t *);
+void dparser_bz2_ctx_fini(dparse_bz2_ctx_t *);
 
 void dparse_rt_struct_dump(rt_struct_t *);
 int64_t dparse_struct_item_seq_int(rt_struct_t *, int64_t);
@@ -113,6 +121,13 @@ int dparser_read_lines(int,
                        dparser_bytestream_recycle_cb_t,
                        void *,
                        size_t *);
+
+int dparser_read_lines_bz2(BZFILE *,
+                           bytestream_t *,
+                           dparser_read_lines_cb_t,
+                           dparser_bytestream_recycle_cb_t,
+                           void *,
+                           size_t *);
 
 void dparser_set_mpool(mpool_ctx_t *);
 #ifdef __cplusplus
