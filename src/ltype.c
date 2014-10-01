@@ -154,6 +154,7 @@ lkit_type_new(lkit_tag_t tag)
             }
             tc->base.tag = tag;
             tc->base.name = "str";
+            tc->parser = LKIT_PARSER_NONE;
             ty = (lkit_type_t *)tc;
         }
         break;
@@ -875,18 +876,6 @@ parse_array_quals(array_t *form,
                     /* mdelim requires a string argument */
                     TRRET(PARSE_ARRAY_QUALS + 2);
                 }
-            } else if (strcmp((char *) parser, "sdelim") == 0) {
-                ta->parser = LKIT_PARSER_SDELIM;
-                if (lparse_next_char(form, it, &ta->delim, 1) != 0) {
-                    /* delim requires a string argument */
-                    TRRET(PARSE_ARRAY_QUALS + 3);
-                }
-            } else if (strcmp((char *) parser, "smdelim") == 0) {
-                ta->parser = LKIT_PARSER_SMDELIM;
-                if (lparse_next_char(form, it, &ta->delim, 1) != 0) {
-                    /* delim requires a string argument */
-                    TRRET(PARSE_ARRAY_QUALS + 4);
-                }
             } else if (strcmp((char *) parser, "smartdelim") == 0) {
                 ta->parser = LKIT_PARSER_SMARTDELIM;
                 if (lparse_next_char(form, it, &ta->delim, 1) != 0) {
@@ -996,18 +985,6 @@ parse_struct_quals(array_t *form,
                     /* delim requires a string argument */
                     TRRET(PARSE_STRUCT_QUALS + 2);
                 }
-            } else if (strcmp((char *) parser, "sdelim") == 0) {
-                ts->parser = LKIT_PARSER_SDELIM;
-                if (lparse_next_char(form, it, &ts->delim, 1) != 0) {
-                    /* delim requires a string argument */
-                    TRRET(PARSE_STRUCT_QUALS + 3);
-                }
-            } else if (strcmp((char *) parser, "smdelim") == 0) {
-                ts->parser = LKIT_PARSER_SMDELIM;
-                if (lparse_next_char(form, it, &ts->delim, 1) != 0) {
-                    /* delim requires a string argument */
-                    TRRET(PARSE_STRUCT_QUALS + 4);
-                }
             } else if (strcmp((char *) parser, "none") == 0) {
                 ts->parser = LKIT_PARSER_NONE;
             } else {
@@ -1109,6 +1086,14 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
             ty = lkit_type_get(mctx, LKIT_INT);
         } else if (strcmp(typename, "str") == 0) {
             ty = lkit_type_get(mctx, LKIT_STR);
+        } else if (strcmp(typename, "qstr") == 0) {
+            {
+                lkit_str_t *ts;
+
+                ty = lkit_type_get(mctx, LKIT_STR);
+                ts = (lkit_str_t *)ty;
+                ts->parser = LKIT_PARSER_QSTR;
+            }
         } else if (strcmp(typename, "float") == 0) {
             ty = lkit_type_get(mctx, LKIT_FLOAT);
         } else if (strcmp(typename, "bool") == 0) {

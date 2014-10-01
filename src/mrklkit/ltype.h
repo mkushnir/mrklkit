@@ -68,9 +68,8 @@ typedef enum _lkit_parser {
     LKIT_PARSER_NONE,
     LKIT_PARSER_DELIM, /* normal single */
     LKIT_PARSER_MDELIM, /* normal multiple */
-    LKIT_PARSER_SDELIM, /* sequential single */
-    LKIT_PARSER_SMDELIM, /* sequential multiple */
     LKIT_PARSER_SMARTDELIM, /* smart for dictionaries and arrays */
+    LKIT_PARSER_QSTR,
 } lkit_parser_t;
 
 struct _lkit_type;
@@ -122,6 +121,7 @@ typedef struct _lkit_vararg {
 
 typedef struct _lkit_str {
     struct _lkit_type base;
+    lkit_parser_t parser;
 } lkit_str_t;
 
 typedef struct _lkit_array {

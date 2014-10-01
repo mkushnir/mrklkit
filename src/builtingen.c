@@ -396,14 +396,6 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                                    "dparse_struct_item_ra_%s",
                                    fty->name);
 
-                } else if (ts->parser == LKIT_PARSER_SDELIM ||
-                           ts->parser == LKIT_PARSER_SMDELIM) {
-
-                    (void)snprintf(buf,
-                                   sizeof(buf),
-                                   "dparse_struct_item_seq_%s",
-                                   fty->name);
-
                 } else {
                     //TRACE("ts->parser=%d", ts->parser);
                     //lkit_type_dump((*cont)->type);
@@ -2275,8 +2267,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                         v = LLVMBuildLoad(builder, ref, NEWVAR("load"));
                     }
 
-                    if (expr->type->tag ==
-                            LKIT_STR && LKIT_EXPR_CONSTANT(expr)) {
+                    if (expr->type->tag == LKIT_STR &&
+                            LKIT_EXPR_CONSTANT(expr)) {
                         v = LLVMBuildPointerCast(builder,
                                                  v,
                                                  mrklkit_ctx_get_type_backend(

@@ -141,16 +141,21 @@ test_qstr(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
     while (SPOS(bs) < br->end) {
         bytes_t *value = NULL;
 
-        if (dparse_qstr(bs,
-                         FDELIM,
-                         br->end,
-                         &value,
-                         DPFLAGS) == DPARSE_ERRORVALUE) {
+/*
+ * XXX temporarily take it away...
+ */
+#if 0
+        if (dparse_qstr_pos(bs,
+                            FDELIM,
+                            br->end,
+                            &value,
+                            DPFLAGS) == DPARSE_ERRORVALUE) {
             TRACE("err %s", value != NULL ? value->data : NULL);
             dparser_reach_delim(bs, FDELIM, br->end);
         } else {
             TRACE("ok %s", value->data);
         }
+#endif
         //D8(SPDATA(bs), br->end - SPOS(bs));
         //D8(SPDATA(bs), br->end - SPOS(bs));
         if (DPFLAGS & DPARSE_MERGEDELIM) {
