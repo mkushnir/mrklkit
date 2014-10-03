@@ -625,8 +625,11 @@ mrklkit_rt_get_struct_item_addr(rt_struct_t *value, int64_t idx)
 int64_t
 mrklkit_rt_get_struct_item_int(rt_struct_t *value, int64_t idx)
 {
+    int64_t *v;
+
     assert(idx < (ssize_t)value->type->fields.elnum);
-    return *(int64_t *)(value->fields + idx);
+    v = (int64_t *)(value->fields + idx);
+    return *v;
 }
 
 
@@ -647,8 +650,11 @@ mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)
 int64_t
 mrklkit_rt_get_struct_item_bool(rt_struct_t *value, int64_t idx)
 {
+    int64_t *v;
+
     assert(idx < (ssize_t)value->type->fields.elnum);
-    return *(int64_t *)(value->fields + idx);
+    v = (int64_t *)(value->fields + idx);
+    return *v;
 }
 
 
