@@ -360,6 +360,8 @@ lkit_type_finalize(lkit_type_t *ty)
 {
     dict_item_t *probe;
 
+    assert(ty != NULL);
+
     if ((probe = dict_get_item(&types, ty)) == NULL) {
         /* this is new one */
         dict_set_item(&types, ty, ty);
@@ -1018,7 +1020,8 @@ parse_struct_quals(array_t *form,
 static int
 parse_fielddef(mrklkit_ctx_t *mctx,
                fparser_datum_t *dat,
-               lkit_type_t *ty)
+               lkit_type_t *ty,
+               int seterror)
 {
     array_t *form;
     array_iter_t it;
@@ -1036,18 +1039,18 @@ parse_fielddef(mrklkit_ctx_t *mctx,
         lkit_type_t **fty; \
         *name = bytes_new_from_bytes(*name); \
         if ((node = array_next(form, &it)) == NULL) { \
-            dat->error = 1; \
+            dat->error = seterror; \
             return 1; \
         } \
         if ((fty = array_incr(&var->fields)) == NULL) { \
             FAIL("array_incr"); \
         } \
-        if ((*fty = lkit_type_parse(mctx, *node, 1)) == NULL) { \
-            (*node)->error = 1; \
+        if ((*fty = lkit_type_parse(mctx, *node, seterror)) == NULL) { \
+            (*node)->error = seterror; \
             return 1; \
         } \
     } else { \
-        dat->error = 1; \
+        dat->error = seterror; \
         return 1; \
     }
 
@@ -1130,9 +1133,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
 
         form = (array_t *)dat->body;
 
-        if (lparse_first_word_bytes(form, &it, &first, 1) == 0) {
-
-
+        if (lparse_first_word_bytes(form, &it, &first, seterror) == 0) {
             if (strcmp((char *)first->data, "array") == 0) {
                 lkit_array_t *ta;
                 fparser_datum_t **node;
@@ -1247,7 +1248,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
 
 
                     if (FPARSER_DATUM_TAG(*node) == FPARSER_SEQ) {
-                        if (parse_fielddef(mctx, *node, ty) != 0) {
+                        if (parse_fielddef(mctx, *node, ty, 1) != 0) {
                             TR(LKIT_TYPE_PARSE + 10);
                             goto err;
                         }
@@ -1305,6 +1306,8 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                 //TR(LKIT_TYPE_PARSE + 15);
                 goto err;
             }
+        } else {
+            goto err;
         }
     } else {
         goto end;

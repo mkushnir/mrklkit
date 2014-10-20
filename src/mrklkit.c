@@ -169,7 +169,6 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata, fparser_datum_t **datum_r
         FAIL("fparser_parse");
     }
 
-
     if (FPARSER_DATUM_TAG(*datum_root) != FPARSER_SEQ) {
         (*datum_root)->error = 1;
         res = MRKLKIT_PARSE + 1;

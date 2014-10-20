@@ -495,148 +495,199 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                 array_t *form;
                 array_iter_t it;
                 fparser_datum_t **node;
+                fparser_tag_t tag;
 
                 form = (array_t *)(dat->body);
 
-                if (lparse_first_word_bytes(form, &it, &expr->name, 1) != 0) {
+                if ((node = array_first(form, &it)) == NULL) {
                     TR(LKIT_EXPR_PARSE + 2);
                     goto err;
                 }
 
-                if ((expr->value.ref = lkit_expr_find(ectx,
-                                                      expr->name)) == NULL) {
-                    TRACE("failed probe '%s'", expr->name->data);
-                    TR(LKIT_EXPR_PARSE + 3);
-                    goto err;
-                }
+                tag = FPARSER_DATUM_TAG(*node);
+                if (tag == FPARSER_WORD) {
+                    if (lparse_first_word_bytes(form, &it, &expr->name, 1) != 0) {
+                        TR(LKIT_EXPR_PARSE + 3);
+                        goto err;
+                    }
 
-                //TRACE("ISREF by %s", expr->name->data);
-                expr->isref = 1;
+                    if ((expr->value.ref = lkit_expr_find(ectx,
+                                                          expr->name)) == NULL) {
+                        TRACE("failed probe '%s'", expr->name->data);
+                        TR(LKIT_EXPR_PARSE + 4);
+                        goto err;
+                    }
 
-                /*
-                 * XXX (xxx) (xxx :q q :w w :e e)
-                 */
-                ///* functions only ATM */
-                //if (expr->value.ref->type->tag != LKIT_FUNC) {
-                //    TR(LKIT_EXPR_PARSE + 4);
-                //    goto err;
-                //}
+                    //TRACE("ISREF by %s", expr->name->data);
+                    expr->isref = 1;
 
-                /* quals */
-                lparse_quals(form,
-                             &it,
-                             (quals_parser_t)parse_expr_quals,
-                             expr);
+                    /*
+                     * XXX (xxx) (xxx :q q :w w :e e)
+                     */
+                    ///* functions only ATM */
+                    //if (expr->value.ref->type->tag != LKIT_FUNC) {
+                    //    TR(LKIT_EXPR_PARSE + 5);
+                    //    goto err;
+                    //}
+                    /*
+                     * Please note difference expr->value.ref->type vs
+                     * expr->type.
+                     *
+                     */
+                    expr->type = lkit_expr_type_of(expr->value.ref);
 
-                /*
-                 * Please note difference expr->value.ref->type vs
-                 * expr->type.
-                 *
-                 */
-                expr->type = lkit_expr_type_of(expr->value.ref);
-                assert(expr->type != NULL);
+                    /* quals */
+                    lparse_quals(form,
+                                 &it,
+                                 (quals_parser_t)parse_expr_quals,
+                                 expr);
 
-                if (expr->value.ref->type->tag == LKIT_FUNC) {
-                    lkit_func_t *tf = NULL;
-                    int isvararg = 0, narg;
+                    assert(expr->type != NULL);
 
-                    tf = (lkit_func_t *)(expr->value.ref->type);
+                    if (expr->value.ref->type->tag == LKIT_FUNC) {
+                        lkit_func_t *tf = NULL;
+                        int isvararg = 0, narg;
 
-                    narg = 1;
-                    for (node = array_next(form, &it);
-                         node != NULL;
-                         node = array_next(form, &it), ++narg) {
+                        tf = (lkit_func_t *)(expr->value.ref->type);
 
-                        lkit_expr_t **arg;
-                        lkit_type_t *argtype;
+                        narg = 1;
+                        for (node = array_next(form, &it);
+                             node != NULL;
+                             node = array_next(form, &it), ++narg) {
 
-                        if ((arg = array_incr(&expr->subs)) == NULL) {
-                            FAIL("array_incr");
-                        }
+                            lkit_expr_t **arg;
+                            lkit_type_t *argtype;
 
-                        if ((*arg = lkit_expr_parse(mctx,
-                                                    ectx,
-                                                    *node,
-                                                    1)) == NULL) {
-                            TR(LKIT_EXPR_PARSE + 6);
-                            goto err;
-                        }
+                            if ((arg = array_incr(&expr->subs)) == NULL) {
+                                FAIL("array_incr");
+                            }
 
-                        //TRACE("just parsed arg:");
-                        //lkit_expr_dump(*arg);
-
-                        paramtype = array_get(&tf->fields, narg);
-
-                        if (!isvararg) {
-                            if (paramtype == NULL) {
-                                TR(LKIT_EXPR_PARSE + 7);
+                            if ((*arg = lkit_expr_parse(mctx,
+                                                        ectx,
+                                                        *node,
+                                                        1)) == NULL) {
+                                TR(LKIT_EXPR_PARSE + 6);
                                 goto err;
                             }
 
-                            if (*paramtype == NULL) {
-                                TR(LKIT_EXPR_PARSE + 8);
-                                goto err;
-                            }
+                            //TRACE("just parsed arg:");
+                            //lkit_expr_dump(*arg);
 
-                            if ((argtype = lkit_expr_type_of(*arg)) == NULL) {
-                                TR(LKIT_EXPR_PARSE + 9);
-                                goto err;
-                            }
+                            paramtype = array_get(&tf->fields, narg);
 
-                            if ((*paramtype)->tag == LKIT_VARARG) {
-                                isvararg = 1;
+                            if (!isvararg) {
+                                if (paramtype == NULL) {
+                                    TR(LKIT_EXPR_PARSE + 7);
+                                    goto err;
+                                }
+
+                                if (*paramtype == NULL) {
+                                    TR(LKIT_EXPR_PARSE + 8);
+                                    goto err;
+                                }
+
+                                if ((argtype = lkit_expr_type_of(*arg)) == NULL) {
+                                    TR(LKIT_EXPR_PARSE + 9);
+                                    goto err;
+                                }
+
+                                if ((*paramtype)->tag == LKIT_VARARG) {
+                                    isvararg = 1;
+                                } else {
+                                    if ((*paramtype)->tag != LKIT_UNDEF &&
+                                        argtype->tag != LKIT_UNDEF) {
+
+                                        if (lkit_type_cmp(*paramtype, argtype) != 0) {
+                                            lkit_type_dump(*paramtype);
+                                            lkit_type_dump(argtype);
+                                            lkit_expr_dump(expr);
+                                            TR(LKIT_EXPR_PARSE + 10);
+                                            goto err;
+                                        }
+                                    }
+                                }
+
                             } else {
-                                if ((*paramtype)->tag != LKIT_UNDEF &&
-                                    argtype->tag != LKIT_UNDEF) {
-
-                                    if (lkit_type_cmp(*paramtype, argtype) != 0) {
-                                        lkit_type_dump(*paramtype);
-                                        lkit_type_dump(argtype);
-                                        lkit_expr_dump(expr);
-                                        TR(LKIT_EXPR_PARSE + 10);
+                                if (paramtype != NULL && *paramtype != NULL) {
+                                    if ((*paramtype)->tag != LKIT_VARARG) {
+                                        TR(LKIT_EXPR_PARSE + 11);
                                         goto err;
                                     }
                                 }
                             }
+                        }
+
+                        if ((paramtype = array_last(&tf->fields, &it)) == NULL) {
+                            FAIL("array_get");
+                        }
+
+                        if ((*paramtype)->tag == LKIT_VARARG) {
+                            isvararg = 1;
 
                         } else {
-                            if (paramtype != NULL && *paramtype != NULL) {
-                                if ((*paramtype)->tag != LKIT_VARARG) {
-                                    TR(LKIT_EXPR_PARSE + 11);
-                                    goto err;
-                                }
+                            if (isvararg) {
+                                TR(LKIT_EXPR_PARSE + 12);
+                                goto err;
                             }
                         }
-                    }
 
-                    if ((paramtype = array_last(&tf->fields, &it)) == NULL) {
-                        FAIL("array_get");
-                    }
-
-                    if ((*paramtype)->tag == LKIT_VARARG) {
-                        isvararg = 1;
-
+                        if (!isvararg) {
+                            if ((tf->fields.elnum - expr->subs.elnum) != 1) {
+                                //lkit_expr_dump(expr);
+                                TR(LKIT_EXPR_PARSE + 13);
+                                goto err;
+                            }
+                        }
                     } else {
-                        if (isvararg) {
-                            TR(LKIT_EXPR_PARSE + 12);
-                            goto err;
-                        }
+                        /*
+                         * (xxx) not a function
+                         */
                     }
 
-                    if (!isvararg) {
-                        if ((tf->fields.elnum - expr->subs.elnum) != 1) {
-                            //lkit_expr_dump(expr);
-                            TR(LKIT_EXPR_PARSE + 13);
-                            goto err;
-                        }
-                    }
+                } else if (tag == FPARSER_INT) {
+                    expr->value.literal = *node;
+                    expr->type = lkit_type_get(mctx, LKIT_INT);
+
+                    /* quals */
+                    lparse_quals(form,
+                                 &it,
+                                 (quals_parser_t)parse_expr_quals,
+                                 expr);
+
+                } else if (tag == FPARSER_FLOAT) {
+                    expr->value.literal = *node;
+                    expr->type = lkit_type_get(mctx, LKIT_FLOAT);
+
+                    /* quals */
+                    lparse_quals(form,
+                                 &it,
+                                 (quals_parser_t)parse_expr_quals,
+                                 expr);
+
+                } else if (tag == FPARSER_STR) {
+                    expr->value.literal = *node;
+                    expr->type = lkit_type_get(mctx, LKIT_STR);
+
+                    /* quals */
+                    lparse_quals(form,
+                                 &it,
+                                 (quals_parser_t)parse_expr_quals,
+                                 expr);
+
+                } else if (tag == FPARSER_BOOL) {
+                    expr->value.literal = *node;
+                    expr->type = lkit_type_get(mctx, LKIT_BOOL);
+
+                    /* quals */
+                    lparse_quals(form,
+                                 &it,
+                                 (quals_parser_t)parse_expr_quals,
+                                 expr);
+
                 } else {
-                    /*
-                     * (xxx) not function
-                     */
+                    TR(LKIT_EXPR_PARSE + 14);
+                    goto err;
                 }
-
-
                 //TRACE("resulting expr: %ld subs", expr->subs.elnum);
                 //lkit_expr_dump(expr);
 
