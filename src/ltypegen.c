@@ -625,6 +625,10 @@ ltype_link_methods(lkit_type_t *ty,
 void
 ltype_unlink_methods(lkit_type_t *ty)
 {
+    if (ty == NULL) {
+        return;
+    }
+
     switch (ty->tag) {
     case LKIT_STRUCT:
         {
