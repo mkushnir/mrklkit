@@ -591,6 +591,10 @@ mrklkit_rt_struct_dump(rt_struct_t *value)
             }
             break;
 
+        case LKIT_BOOL:
+            TRACEC("%s ", (int8_t)mrklkit_rt_get_struct_item_int(value, it.iter) ? "#t" : "#f");
+            break;
+
         case LKIT_ARRAY:
             mrklkit_rt_array_dump(
                 mrklkit_rt_get_struct_item_array(value, it.iter));
