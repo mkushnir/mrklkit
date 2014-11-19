@@ -185,7 +185,7 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
                 LLVMTypeRef *bfields;
 
                 if ((bfields =
-                        malloc(sizeof(LLVMTypeRef) * ts->fields.elnum)) == NULL) {
+                     malloc(sizeof(LLVMTypeRef) * ts->fields.elnum)) == NULL) {
                     FAIL("malloc");
                 }
 
@@ -200,13 +200,16 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
                         goto end_struct;
                     }
 
-                    if ((bfields[it.iter] = ltype_compile(mctx, *field, module)) == NULL) {
+                    if ((bfields[it.iter] = ltype_compile(mctx,
+                                                          *field,
+                                                          module)) == NULL) {
                         free(bfields);
                         TRRETNULL(LTYPE_COMPILE + 1);
                     }
                 }
 
-                deref_backend = LLVMStructCreateNamed(lctx, NEWVAR("rt_struct_t"));
+                deref_backend = LLVMStructCreateNamed(lctx,
+                                                      NEWVAR("rt_struct_t"));
                 LLVMStructSetBody(deref_backend,
                                   bfields,
                                   ts->fields.elnum,
@@ -254,7 +257,8 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
                         break;
                     }
 
-                    if ((bfields[it.iter - 1] = ltype_compile(mctx, *field, module)) == NULL) {
+                    if ((bfields[it.iter - 1] = ltype_compile(
+                            mctx, *field, module)) == NULL) {
                         free(bfields);
                         TRRETNULL(LTYPE_COMPILE + 4);
                     }
@@ -458,15 +462,21 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                         LLVMValueRef zero;
 
                         if ((*fty)->tag == LKIT_INT_MAX) {
-                            zero = LLVMConstInt(ltype_compile(mctx, *fty, module),
+                            zero = LLVMConstInt(ltype_compile(mctx,
+                                                              *fty,
+                                                              module),
                                                 INT64_MAX,
                                                 1);
                         } else if ((*fty)->tag == LKIT_INT_MIN) {
-                            zero = LLVMConstInt(ltype_compile(mctx, *fty, module),
+                            zero = LLVMConstInt(ltype_compile(mctx,
+                                                              *fty,
+                                                              module),
                                                 INT64_MIN,
                                                 1);
                         } else {
-                            zero = LLVMConstInt(ltype_compile(mctx, *fty, module),
+                            zero = LLVMConstInt(ltype_compile(mctx,
+                                                              *fty,
+                                                              module),
                                                 0,
                                                 1);
                         }
@@ -482,13 +492,19 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                         LLVMValueRef zero;
 
                         if ((*fty)->tag == LKIT_FLOAT_MAX) {
-                            zero = LLVMConstReal(ltype_compile(mctx, *fty, module),
+                            zero = LLVMConstReal(ltype_compile(mctx,
+                                                               *fty,
+                                                               module),
                                                  INFINITY);
                         } else if ((*fty)->tag == LKIT_FLOAT_MIN) {
-                            zero = LLVMConstReal(ltype_compile(mctx, *fty, module),
+                            zero = LLVMConstReal(ltype_compile(mctx,
+                                                               *fty,
+                                                               module),
                                                  -INFINITY);
                         } else {
-                            zero = LLVMConstReal(ltype_compile(mctx, *fty, module),
+                            zero = LLVMConstReal(ltype_compile(mctx,
+                                                               *fty,
+                                                               module),
                                                  0.0);
                         }
                         LLVMBuildStore(b1, zero, gep1);

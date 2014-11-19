@@ -49,6 +49,7 @@ lkit_type_destroy(lkit_type_t **ty)
         case LKIT_ARRAY:
             {
                 lkit_array_t *ta;
+
                 ta = (lkit_array_t *)*ty;
                 array_fini(&ta->fields);
             }
@@ -57,6 +58,7 @@ lkit_type_destroy(lkit_type_t **ty)
         case LKIT_DICT:
             {
                 lkit_dict_t *td;
+
                 td = (lkit_dict_t *)*ty;
                 array_fini(&td->fields);
             }
@@ -65,6 +67,7 @@ lkit_type_destroy(lkit_type_t **ty)
         case LKIT_STRUCT:
             {
                 lkit_struct_t *ts;
+
                 ts = (lkit_struct_t *)*ty;
                 array_fini(&ts->fields);
                 array_fini(&ts->names);
@@ -74,6 +77,7 @@ lkit_type_destroy(lkit_type_t **ty)
         case LKIT_FUNC:
             {
                 lkit_func_t *tf;
+
                 tf = (lkit_func_t *)*ty;
                 array_fini(&tf->fields);
             }
@@ -1245,7 +1249,6 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                 for (node = array_next(form, &it);
                      node != NULL;
                      node = array_next(form, &it)) {
-
 
                     if (FPARSER_DATUM_TAG(*node) == FPARSER_SEQ) {
                         if (parse_fielddef(mctx, *node, ty, 1) != 0) {

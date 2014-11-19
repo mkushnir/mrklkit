@@ -311,6 +311,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             if ((arg = array_get(&expr->subs, 1)) == NULL) {
                 FAIL("array_get");
             }
+
             if ((args[1] = lkit_compile_expr(mctx,
                                              ectx,
                                              module,
@@ -341,6 +342,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                 TR(COMPILE_GET + 203);
                 goto err;
             }
+
             args[0] = LLVMBuildPointerCast(builder,
                                            args[0],
                                            LLVMTypeOf(LLVMGetParam(fn, 0)),

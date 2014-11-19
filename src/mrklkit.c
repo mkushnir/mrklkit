@@ -263,6 +263,7 @@ do_analysis(mrklkit_ctx_t *ctx)
     LLVMPassManagerBuilderRef pmb;
     LLVMPassManagerRef fpm;
     LLVMPassManagerRef pm;
+    LLVMTargetDataRef tdr;
     UNUSED int res = 0;
     LLVMValueRef fn = NULL;
 
@@ -273,6 +274,12 @@ do_analysis(mrklkit_ctx_t *ctx)
     if ((pm = LLVMCreatePassManager()) == NULL) {
         FAIL("LLVMCreatePassManager");
     }
+
+    tdr = LLVMCreateTargetData("i1:64:64");
+    //TRACE("LLVMPointerSize=%d", LLVMPointerSize(tdr));
+    //TRACE("LLVMABIAlignmentOfType=%d", LLVMABIAlignmentOfType(tdr, LLVMInt1TypeInContext(ctx->lctx)));
+    LLVMAddTargetData(tdr, fpm);
+    LLVMAddTargetData(tdr, pm);
 
     pmb = LLVMPassManagerBuilderCreate();
     LLVMPassManagerBuilderSetOptLevel(pmb, 3);
@@ -305,6 +312,7 @@ do_analysis(mrklkit_ctx_t *ctx)
     LLVMPassManagerBuilderDispose(pmb);
     LLVMDisposePassManager(pm);
     LLVMDisposePassManager(fpm);
+    LLVMDisposeTargetData(tdr);
 
 }
 
@@ -481,6 +489,7 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
             ctx->lctx)) == NULL) {
         FAIL("LLVMModuleCreateWithNameInContext");
     }
+    LLVMSetTarget(ctx->module, "x86_64-unknown-unknown");
 
     for (pm = array_first(&ctx->modules, &it);
          pm != NULL;
