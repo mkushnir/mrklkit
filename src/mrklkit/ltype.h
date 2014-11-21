@@ -194,7 +194,6 @@ int lkit_struct_get_field_index(lkit_struct_t *, bytes_t *);
 
 LLVMTypeRef mrklkit_ctx_get_type_backend(mrklkit_ctx_t *, lkit_type_t *);
 
-void mrklkit_init_types(dict_t *, array_t *, dict_t *);
 void ltype_init(void);
 void ltype_fini(void);
 

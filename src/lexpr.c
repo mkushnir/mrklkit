@@ -19,7 +19,7 @@
 
 #include "diag.h"
 
-static void lexpr_dump(bytestream_t *, lkit_expr_t *);
+static void lexpr_dump(bytestream_t *, lkit_expr_t *, int);
 
 
 bytes_t *
@@ -53,21 +53,37 @@ lkit_expr_is_constant(lkit_expr_t *expr)
 
 
 static void
-lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
+lexpr_dump(bytestream_t *bs, lkit_expr_t *expr, int level)
 {
+    char fmt[32];
+
+    snprintf(fmt, sizeof(fmt), "%%%dc", level);
+    bytestream_nprintf(bs, 32, fmt, ' ');
+
     lkit_type_str(lkit_expr_type_of(expr), bs);
     bytestream_cat(bs, 1, " ");
     //lkit_type_str(expr->type, bs);
     //bytestream_cat(bs, 2, "] ");
     if (expr->isref) {
         if (expr->name != NULL) {
-            bytestream_nprintf(bs,
-                strlen((char *)expr->name->data) + 8,
-                "<REF %s>\n", expr->name->data);
+            if (expr->error) {
+                bytestream_nprintf(bs,
+                    strlen((char *)expr->name->data) + 8 + SIZEOFCOLOR(ERRCOLOR),
+                    ERRCOLOR("<REF %s>\n"), expr->name->data);
+            } else {
+                bytestream_nprintf(bs,
+                    strlen((char *)expr->name->data) + 8,
+                    "<REF %s>\n", expr->name->data);
+            }
         } else {
-            bytestream_cat(bs, 13, "<REF <NULL>>\n");
+            if (expr->error) {
+                bytestream_cat(bs, 13 + SIZEOFCOLOR(ERRCOLOR),
+                               ERRCOLOR("<REF <NULL>>\n"));
+            } else {
+                bytestream_cat(bs, 13, "<REF <NULL>>\n");
+            }
         }
-        //lexpr_dump(bs, expr->value.ref);
+        //lexpr_dump(bs, expr->value.ref, level);
     } else {
         if (expr->name != NULL) {
             if (expr->value.literal == NULL) {
@@ -83,9 +99,19 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
             }
         } else {
             if (expr->value.literal == NULL) {
-                bytestream_cat(bs, 17, "<LITERAL <null>>\n");
+                if (expr->error) {
+                    bytestream_cat(bs, 17 + SIZEOFCOLOR(ERRCOLOR),
+                                   ERRCOLOR("<LITERAL <null>>\n"));
+                } else {
+                    bytestream_cat(bs, 17, "<LITERAL <null>>\n");
+                }
             } else {
-                bytestream_cat(bs, 11, "<LITERAL>: ");
+                if (expr->error) {
+                    bytestream_cat(bs, 11 + SIZEOFCOLOR(ERRCOLOR),
+                                   ERRCOLOR("<LITERAL>: "));
+                } else {
+                    bytestream_cat(bs, 11, "<LITERAL>: ");
+                }
                 fparser_datum_dump_bytestream(expr->value.literal, bs);
                 bytestream_cat(bs, 1, "\n");
             }
@@ -95,12 +121,18 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr)
         lkit_expr_t **subexpr;
         array_iter_t it;
 
-        bytestream_cat(bs, 6, "SUBS:\n");
+        bytestream_nprintf(bs, 32, fmt, ' ');
+
+        if (expr->error) {
+            bytestream_cat(bs, 6 + SIZEOFCOLOR(ERRCOLOR), ERRCOLOR("SUBS:\n"));
+        } else {
+            bytestream_cat(bs, 6, "SUBS:\n");
+        }
         for (subexpr = array_first(&expr->subs, &it);
              subexpr != NULL;
              subexpr = array_next(&expr->subs, &it)) {
 
-            lexpr_dump(bs, *subexpr);
+            lexpr_dump(bs, *subexpr, level + 2);
         }
     }
 }
@@ -111,9 +143,9 @@ lkit_expr_dump(lkit_expr_t *expr)
     bytestream_t bs;
 
     bytestream_init(&bs, 4096);
-    lexpr_dump(&bs, expr);
+    lexpr_dump(&bs, expr, 0);
     bytestream_cat(&bs, 1, "\0");
-    TRACE("%s", SDATA(&bs, 0));
+    TRACEC("%s", SDATA(&bs, 0));
     //D64(SDATA(&bs, 0), SEOD(&bs));
     bytestream_fini(&bs);
     return 0;
@@ -217,7 +249,6 @@ lkit_expr_set_referenced(lkit_expr_t *expr)
 void
 lexpr_fini_ctx(lkit_expr_t *ectx)
 {
-    //dict_traverse(&ectx->ctx, (dict_traverser_t)lexpr_dump, NULL);
     dict_fini(&ectx->ctx);
     array_fini(&ectx->glist);
 }
@@ -435,6 +466,14 @@ parse_expr_quals(array_t *form,
     return 0;
 }
 
+#define ETR(m, dat, ty) \
+do { \
+    TRACE(m); \
+    fparser_datum_dump_formatted(dat); \
+    TRACEC(" !~ "); \
+    lkit_type_dump((lkit_type_t *)ty); \
+    TRACEC("\n"); \
+} while (0) \
 
 lkit_expr_t *
 lkit_expr_parse(mrklkit_ctx_t *mctx,
@@ -480,6 +519,8 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
             expr->name = (bytes_t *)(dat->body);
             if ((expr->value.ref = lkit_expr_find(ectx, expr->name)) == NULL) {
                 //lkit_expr_dump(expr);
+                TRACEN("cannot find reference target: ");
+                TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
                 TR(LKIT_EXPR_PARSE + 1);
                 goto err;
             }
@@ -513,7 +554,8 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
 
                     if ((expr->value.ref = lkit_expr_find(ectx,
                                                           expr->name)) == NULL) {
-                        TRACE("failed probe '%s'", expr->name->data);
+                        TRACEN("cannot find definition: ");
+                        TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
                         TR(LKIT_EXPR_PARSE + 4);
                         goto err;
                     }
@@ -597,10 +639,11 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                                     if ((*paramtype)->tag != LKIT_UNDEF &&
                                         argtype->tag != LKIT_UNDEF) {
 
-                                        if (lkit_type_cmp(*paramtype, argtype) != 0) {
-                                            lkit_type_dump(*paramtype);
-                                            lkit_type_dump(argtype);
-                                            lkit_expr_dump(expr);
+                                        if (lkit_type_cmp(*paramtype,
+                                                          argtype) != 0) {
+                                            ETR("argument type does not match "
+                                                "formal parameter type:",
+                                                dat, expr->value.ref->type);
                                             TR(LKIT_EXPR_PARSE + 10);
                                             goto err;
                                         }
@@ -633,7 +676,9 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
 
                         if (!isvararg) {
                             if ((tf->fields.elnum - expr->subs.elnum) != 1) {
-                                //lkit_expr_dump(expr);
+                                ETR("number of arguments does not match "
+                                    "type definition", dat,
+                                    expr->value.ref->type);
                                 TR(LKIT_EXPR_PARSE + 13);
                                 goto err;
                             }

@@ -235,6 +235,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata, fparser_datum_t **datum_r
                 }
             } else {
                 /* ignore ? */
+                TRACE("empty top-level sequence");
                 res = MRKLKIT_PARSE + 3;
                 goto err;
             }
@@ -243,6 +244,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata, fparser_datum_t **datum_r
 
         default:
             /* ignore ? */
+            TRACE("unknown keyword");
             res = MRKLKIT_PARSE + 4;
             goto err;
         }

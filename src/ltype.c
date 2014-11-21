@@ -1482,7 +1482,7 @@ lkit_traverse_types(dict_traverser_t cb, void *udata)
 }
 
 
-void
+static void
 mrklkit_init_types(dict_t *types,
                    array_t *builtin_types,
                    dict_t *typedefs)
