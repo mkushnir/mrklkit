@@ -43,6 +43,7 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
 
     /* must be unique */
     if (lkit_expr_find(ectx, name) != NULL) {
+        TRACE("not unique: " ERRCOLOR("%s"), name->data);
         TR(LKIT_PARSE_EXPRDEF + 2);
         goto err;
     }
@@ -742,7 +743,6 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             }
 
             if (builtin_remove_undef(mctx, ectx, ref) != 0) {
-                lkit_expr_dump(expr);
                 TRRET(REMOVE_UNDEF + 53);
             }
 
@@ -775,10 +775,9 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
                             argty = lkit_expr_type_of(*arg);
                             if (lkit_type_cmp_loose(argty, paramty) != 0) {
-                                lkit_type_dump(argty);
-                                lkit_type_dump(paramty);
                                 (*arg)->error = 1;
-                                TRACE("type of the argument does not match definition:");
+                                TRACE("type of the argument does not match "
+                                      "function definition:");
                                 lkit_expr_dump(expr);
                                 TRRET(REMOVE_UNDEF + 55);
                             }
@@ -804,7 +803,6 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
     if (expr->type->tag == LKIT_UNDEF) {
         /* should not be reached */
-        lkit_type_dump(expr->type);
         lkit_expr_dump(expr);
         FAIL("builtin_remove_undef");
     }

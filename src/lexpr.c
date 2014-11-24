@@ -620,11 +620,15 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
 
                             if (!isvararg) {
                                 if (paramtype == NULL) {
+                                    ETR("too much arguments:",
+                                        dat, expr->value.ref->type);
                                     TR(LKIT_EXPR_PARSE + 7);
                                     goto err;
                                 }
 
                                 if (*paramtype == NULL) {
+                                    ETR("too much arguments:",
+                                        dat, expr->value.ref->type);
                                     TR(LKIT_EXPR_PARSE + 8);
                                     goto err;
                                 }

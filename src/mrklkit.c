@@ -14,7 +14,8 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
 #include <mrkcommon/dict.h>
-#define TRRET_DEBUG_VERBOSE
+//#define TRRET_DEBUG_VERBOSE
+#define TRRET_DEBUG
 #include <mrkcommon/dumpm.h>
 #define NO_PROFILE
 #include <mrkcommon/profile.h>
