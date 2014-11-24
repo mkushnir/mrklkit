@@ -52,6 +52,7 @@ typedef struct _lkit_expr {
     int error:1;
     int ismacro:1;
     int lazy_init:1;
+    int undef_removed:1;
 
 } lkit_expr_t;
 

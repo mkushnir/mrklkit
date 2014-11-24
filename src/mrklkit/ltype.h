@@ -186,11 +186,13 @@ void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *);
 lkit_type_t *lkit_typedef_get(mrklkit_ctx_t *, bytes_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);
+int lkit_type_cmp_loose(lkit_type_t *, lkit_type_t *);
 lkit_type_t *lkit_type_get(mrklkit_ctx_t *, int);
 lkit_type_t *lkit_array_get_element_type(lkit_array_t *);
 lkit_type_t *lkit_dict_get_element_type(lkit_dict_t *);
 lkit_type_t *lkit_struct_get_field_type(lkit_struct_t *, bytes_t *);
 int lkit_struct_get_field_index(lkit_struct_t *, bytes_t *);
+lkit_type_t *lkit_func_get_arg_type(lkit_func_t *, size_t);
 
 LLVMTypeRef mrklkit_ctx_get_type_backend(mrklkit_ctx_t *, lkit_type_t *);
 

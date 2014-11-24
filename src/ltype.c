@@ -502,6 +502,18 @@ lkit_struct_get_field_index(lkit_struct_t *ts, bytes_t *name)
 }
 
 
+lkit_type_t *
+lkit_func_get_arg_type(lkit_func_t *tf, size_t idx)
+{
+    ++idx;
+    if (idx < tf->fields.elnum) {
+         return *ARRAY_GET(lkit_type_t *, &tf->fields, idx);
+    }
+
+    return NULL;
+}
+
+
 static void
 _lkit_type_dump(lkit_type_t *ty, int level)
 {
@@ -820,6 +832,84 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
 }
 
 
+static int
+type_cmp_loose(lkit_type_t **pa, lkit_type_t **pb)
+{
+    lkit_type_t *a = *pa;
+    lkit_type_t *b = *pb;
+    int64_t diff;
+
+    if (a == b) {
+        return 0;
+    }
+
+    diff = (int64_t)(a->tag - b->tag);
+
+    if (diff == 0) {
+        /* deep compare of custom types by their field content */
+        switch (a->tag) {
+
+        case LKIT_ARRAY:
+            {
+                lkit_array_t *aa, *ab;
+                aa = (lkit_array_t *)a;
+                ab = (lkit_array_t *)b;
+
+                diff = array_cmp(&aa->fields,
+                                 &ab->fields,
+                                 (array_compar_t)type_cmp_loose,
+                                 0);
+            }
+            break;
+
+        case LKIT_DICT:
+            {
+                lkit_dict_t *da, *db;
+                da = (lkit_dict_t *)a;
+                db = (lkit_dict_t *)b;
+
+                diff = array_cmp(&da->fields,
+                                 &db->fields,
+                                 (array_compar_t)type_cmp_loose,
+                                 0);
+            }
+            break;
+
+        case LKIT_STRUCT:
+            {
+                lkit_struct_t *sa, *sb;
+                sa = (lkit_struct_t *)a;
+                sb = (lkit_struct_t *)b;
+
+                diff = array_cmp(&sa->fields,
+                                 &sb->fields,
+                                 (array_compar_t)type_cmp_loose,
+                                 0);
+            }
+            break;
+
+        case LKIT_FUNC:
+            {
+                lkit_func_t *fa, *fb;
+                fa = (lkit_func_t *)a;
+                fb = (lkit_func_t *)b;
+
+                diff = array_cmp(&fa->fields,
+                                 &fb->fields,
+                                 (array_compar_t)type_cmp_loose,
+                                 0);
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+}
+
+
 uint64_t
 lkit_type_hash(lkit_type_t *ty)
 {
@@ -851,6 +941,24 @@ lkit_type_cmp(lkit_type_t *a, lkit_type_t *b)
 
     if (diff == 0) {
         diff = type_cmp(&a, &b);
+    }
+    return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+}
+
+
+int
+lkit_type_cmp_loose(lkit_type_t *a, lkit_type_t *b)
+{
+    uint64_t ha, hb;
+    int64_t diff;
+
+    ha = lkit_type_hash(a);
+    hb = lkit_type_hash(b);
+
+    diff = (int64_t)(ha - hb);
+
+    if (diff == 0) {
+        diff = type_cmp_loose(&a, &b);
     }
     return diff > 0 ? 1 : diff < 0 ? -1 : 0;
 }

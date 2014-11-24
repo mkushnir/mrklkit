@@ -390,6 +390,7 @@ lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
     expr->ismacro = 0;
     expr->lazy_init = 0;
     expr->referenced = 0;
+    expr->undef_removed = 0;
     expr->type = NULL;
 }
 

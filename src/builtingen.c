@@ -1467,6 +1467,7 @@ compile_function(mrklkit_ctx_t *mctx,
             TR(COMPILE_FUNCTION + 1400);
             goto err;
         }
+
         v = LLVMBuildSIToFP(builder,
                             v,
                             LLVMDoubleTypeInContext(lctx),
