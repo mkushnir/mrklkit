@@ -1578,6 +1578,64 @@ compile_function(mrklkit_ctx_t *mctx,
 
         v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
 
+    } else if (strcmp(name, "itob") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+        LLVMValueRef test;
+
+        //(sym itob (func bool int))
+        arg = array_first(&expr->subs, &it);
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg,
+                                   udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1800);
+            goto err;
+        }
+
+        test = LLVMBuildICmp(builder,
+                            LLVMIntEQ,
+                            v,
+                            LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0),
+                            NEWVAR("test"));
+
+        v = LLVMBuildSelect(builder,
+                            test,
+                            LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0),
+                            LLVMConstInt(LLVMInt1TypeInContext(lctx), 1, 0),
+                            NEWVAR("select"));
+
+    } else if (strcmp(name, "btoi") == 0) {
+        lkit_expr_t **arg;
+        array_iter_t it;
+        LLVMValueRef test;
+
+        //(sym itob (func bool int))
+        arg = array_first(&expr->subs, &it);
+        if ((v = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg,
+                                   udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1900);
+            goto err;
+        }
+
+        test = LLVMBuildICmp(builder,
+                            LLVMIntEQ,
+                            v,
+                            LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0),
+                            NEWVAR("test"));
+
+        v = LLVMBuildSelect(builder,
+                            test,
+                            LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0),
+                            LLVMConstInt(LLVMInt64TypeInContext(lctx), 1, 0),
+                            NEWVAR("select"));
+
 #if 0
     } else if (strcmp(name , "startswith") == 0) {
         v = compile_strstr(mctx,
@@ -1612,7 +1670,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                    builder,
                                    *arg,
                                    udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 1800);
+            TR(COMPILE_FUNCTION + 2000);
             goto err;
         }
         /* not implemented */
@@ -1665,7 +1723,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                         LLVMIntEQ,
                                         LLVMRealUEQ,
                                         udata)) == NULL) {
-                    TR(COMPILE_FUNCTION + 1900);
+                    TR(COMPILE_FUNCTION + 2100);
                     goto err;
                 }
                 currblock = LLVMGetInsertBlock(builder);
@@ -1691,7 +1749,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_slice_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 2000);
+            TR(COMPILE_FUNCTION + 2200);
             goto err;
         }
 
@@ -1705,7 +1763,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 2001);
+            TR(COMPILE_FUNCTION + 2201);
             goto err;
         }
 
@@ -1719,7 +1777,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 2002);
+            TR(COMPILE_FUNCTION + 2202);
             goto err;
         }
 
@@ -1733,7 +1791,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 2003);
+            TR(COMPILE_FUNCTION + 2203);
             goto err;
         }
 
@@ -1755,7 +1813,7 @@ compile_function(mrklkit_ctx_t *mctx,
         ty = lkit_type_get_array(mctx, LKIT_STR);
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_array_split_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 2200);
+            TR(COMPILE_FUNCTION + 2300);
             goto err;
         }
 
@@ -1770,7 +1828,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                          builder,
                                          *arg,
                                          udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 2201);
+            TR(COMPILE_FUNCTION + 2301);
             goto err;
         }
 
@@ -1781,7 +1839,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                          builder,
                                          *arg,
                                          udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 2202);
+            TR(COMPILE_FUNCTION + 2302);
             goto err;
         }
 
@@ -1798,33 +1856,6 @@ compile_function(mrklkit_ctx_t *mctx,
         //(sym split (func (array str) str str))
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_brushdown_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 2300);
-            goto err;
-        }
-
-        if ((arg = array_get(&expr->subs, 0)) == NULL) {
-            FAIL("array_get");
-        }
-
-        if ((args[0] = lkit_compile_expr(mctx,
-                                     ectx,
-                                     module,
-                                     builder,
-                                     *arg,
-                                     udata)) == NULL) {
-            TR(COMPILE_FUNCTION + 2301);
-            goto err;
-        }
-
-        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
-
-    } else if (strcmp(name, "urldecode") == 0) {
-        lkit_expr_t **arg;
-        LLVMValueRef fn, args[1];
-
-        //(sym split (func (array str) str str))
-        if ((fn = LLVMGetNamedFunction(module,
-                    "mrklkit_rt_bytes_urldecode_gc")) == NULL) {
             TR(COMPILE_FUNCTION + 2400);
             goto err;
         }
@@ -1845,6 +1876,33 @@ compile_function(mrklkit_ctx_t *mctx,
 
         v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
 
+    } else if (strcmp(name, "urldecode") == 0) {
+        lkit_expr_t **arg;
+        LLVMValueRef fn, args[1];
+
+        //(sym split (func (array str) str str))
+        if ((fn = LLVMGetNamedFunction(module,
+                    "mrklkit_rt_bytes_urldecode_gc")) == NULL) {
+            TR(COMPILE_FUNCTION + 2500);
+            goto err;
+        }
+
+        if ((arg = array_get(&expr->subs, 0)) == NULL) {
+            FAIL("array_get");
+        }
+
+        if ((args[0] = lkit_compile_expr(mctx,
+                                     ectx,
+                                     module,
+                                     builder,
+                                     *arg,
+                                     udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 2501);
+            goto err;
+        }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
+
     } else if (strcmp(name, "len") == 0) {
         lkit_expr_t **arg;
 
@@ -1858,7 +1916,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
             fnname = "mrklkit_rt_array_len";
             if ((fn = LLVMGetNamedFunction(module, fnname)) == NULL) {
-                TR(COMPILE_FUNCTION + 2500);
+                TR(COMPILE_FUNCTION + 2600);
                 goto err;
             }
 
@@ -1868,7 +1926,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                          builder,
                                          *arg,
                                          udata)) == NULL) {
-                TR(COMPILE_FUNCTION + 2501);
+                TR(COMPILE_FUNCTION + 2601);
                 goto err;
             }
 
@@ -1888,7 +1946,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                     builder,
                                     *arg,
                                     udata)) == NULL) {
-                TR(COMPILE_FUNCTION + 2502);
+                TR(COMPILE_FUNCTION + 2602);
                 goto err;
             }
             v = LLVMBuildStructGEP(builder, tmp, BYTES_SZ_IDX, NEWVAR("gep"));
@@ -1921,7 +1979,7 @@ compile_function(mrklkit_ctx_t *mctx,
         case LKIT_DICT:
             if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_dict_has_item")) == NULL) {
-                TR(COMPILE_FUNCTION + 2600);
+                TR(COMPILE_FUNCTION + 2700);
                 goto err;
             }
             if ((args[0] = lkit_compile_expr(mctx,
@@ -1930,7 +1988,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                              builder,
                                              *cont,
                                              udata)) == NULL) {
-                TR(COMPILE_FUNCTION + 2601);
+                TR(COMPILE_FUNCTION + 2701);
                 goto err;
             }
             args[0] = LLVMBuildPointerCast(builder,
@@ -1944,7 +2002,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                              builder,
                                              *name,
                                              udata)) == NULL) {
-                TR(COMPILE_FUNCTION + 2602);
+                TR(COMPILE_FUNCTION + 2702);
                 goto err;
             }
             v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));

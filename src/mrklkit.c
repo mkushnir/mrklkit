@@ -138,6 +138,8 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin int (func int float))\n" /* compat */
 "(builtin atoi (func int str int))\n"
 "(builtin atof (func float str float))\n"
+"(builtin itob (func bool int))\n"
+"(builtin btoi (func int bool))\n"
 "(builtin tostr (func str undef))\n"
 "(builtin in (func bool undef ...))\n"
 "(builtin substr (func str str int int))\n"
