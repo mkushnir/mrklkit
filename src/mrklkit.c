@@ -630,7 +630,7 @@ llvm_init(void)
     UNUSED char *error_msg = NULL;
     UNUSED struct LLVMMCJITCompilerOptions opts;
 
-    LLVMInitializeAllAsmPrinters();
+    LLVMInitializeNativeAsmPrinter();
     LLVMInitializeNativeTarget();
     if ((pr = LLVMGetGlobalPassRegistry()) == NULL) {
         FAIL("LLVMGetGlobalRegistry");
