@@ -178,6 +178,52 @@ mrklkit_rt_array_dump(rt_array_t *value)
 }
 
 
+void
+mrklkit_rt_array_print(rt_array_t *value)
+{
+    void **val;
+    array_iter_t it;
+    lkit_type_t *fty;
+
+    fty = lkit_array_get_element_type(value->type);
+
+    TRACEC("\t");
+    for (val = array_first(&value->fields, &it);
+         val != NULL;
+         val = array_next(&value->fields, &it)) {
+
+        switch (fty->tag) {
+        case LKIT_INT:
+        case LKIT_INT_MIN:
+        case LKIT_INT_MAX:
+            TRACEC("%ld",
+                   mrklkit_rt_get_array_item_int(value, it.iter, 0));
+            break;
+
+        case LKIT_FLOAT:
+        case LKIT_FLOAT_MIN:
+        case LKIT_FLOAT_MAX:
+            TRACEC("%lf",
+                   mrklkit_rt_get_array_item_float(value, it.iter, 0.0));
+            break;
+
+        case LKIT_STR:
+            {
+                bytes_t *val;
+
+                val = mrklkit_rt_get_array_item_str(value, it.iter, NULL);
+                TRACEC("%s", val != NULL ? val->data : NULL);
+            }
+            break;
+
+        default:
+            FAIL("mrklkit_rt_array_print");
+
+        }
+    }
+}
+
+
 static int
 null_init(void **v)
 {
@@ -407,6 +453,43 @@ mrklkit_rt_dict_dump(rt_dict_t *value)
 }
 
 
+void
+mrklkit_rt_dict_print(rt_dict_t *value)
+{
+    lkit_type_t *fty;
+
+    fty = lkit_dict_get_element_type(value->type);
+
+    TRACEC("\t");
+    switch (fty->tag) {
+    case LKIT_INT:
+    case LKIT_INT_MIN:
+    case LKIT_INT_MAX:
+        dict_traverse(&value->fields,
+                      (dict_traverser_t)dump_int_dict,
+                      NULL);
+        break;
+
+    case LKIT_FLOAT:
+    case LKIT_FLOAT_MIN:
+    case LKIT_FLOAT_MAX:
+        dict_traverse(&value->fields,
+                      (dict_traverser_t)dump_float_dict,
+                      NULL);
+        break;
+
+    case LKIT_STR:
+        dict_traverse(&value->fields,
+                      (dict_traverser_t)dump_bytes_dict,
+                      NULL);
+        break;
+
+    default:
+        FAIL("mrklkit_rt_dict_print");
+    }
+}
+
+
 #define MRKLKIT_RT_DICT_NEW_BODY(malloc_fn, dict_init_fn) \
     rt_dict_t *res; \
     if ((res = malloc_fn(sizeof(rt_dict_t))) == NULL) { \
@@ -615,6 +698,66 @@ mrklkit_rt_struct_dump(rt_struct_t *value)
         }
     }
     TRACEC("> ");
+}
+
+
+void
+mrklkit_rt_struct_print(rt_struct_t *value)
+{
+    lkit_type_t **fty;
+    array_iter_t it;
+
+    for (fty = array_first(&value->type->fields, &it);
+         fty != NULL;
+         fty = array_next(&value->type->fields, &it)) {
+
+        TRACEC("\t");
+
+        switch ((*fty)->tag) {
+        case LKIT_INT:
+        case LKIT_INT_MIN:
+        case LKIT_INT_MAX:
+            TRACEC("%ld", mrklkit_rt_get_struct_item_int(value, it.iter));
+            break;
+
+        case LKIT_FLOAT:
+        case LKIT_FLOAT_MIN:
+        case LKIT_FLOAT_MAX:
+            TRACEC("%lf", mrklkit_rt_get_struct_item_float(value, it.iter));
+            break;
+
+        case LKIT_STR:
+            {
+                bytes_t *v;
+
+                v = mrklkit_rt_get_struct_item_str(value, it.iter);
+                TRACEC("%s", v != NULL ? v->data : (unsigned char *)"");
+            }
+            break;
+
+        case LKIT_BOOL:
+            TRACEC("%ld", mrklkit_rt_get_struct_item_int(value, it.iter));
+            break;
+
+        case LKIT_ARRAY:
+            mrklkit_rt_array_print(
+                mrklkit_rt_get_struct_item_array(value, it.iter));
+            break;
+
+        case LKIT_DICT:
+            mrklkit_rt_dict_print(
+                mrklkit_rt_get_struct_item_dict(value, it.iter));
+            break;
+
+        case LKIT_STRUCT:
+            mrklkit_rt_struct_print(
+                mrklkit_rt_get_struct_item_struct(value, it.iter));
+            break;
+
+        default:
+            FAIL("mrklkit_rt_struct_print");
+        }
+    }
 }
 
 

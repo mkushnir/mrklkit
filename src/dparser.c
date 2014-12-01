@@ -955,7 +955,8 @@ dparser_read_lines(int fd,
                    dparser_read_lines_cb_t cb,
                    dparser_bytestream_recycle_cb_t rcb,
                    void *udata,
-                   size_t *nlines)
+                   size_t *nlines,
+                   size_t *nbytes)
 {
     int res = 0;
     off_t diff;
@@ -963,6 +964,7 @@ dparser_read_lines(int fd,
     br.end = OFF_MAX;
     bytestream_rewind(bs);
     while (1) {
+
         br.start = SPOS(bs);
         if (dparser_reach_delim_readmore(bs,
                                          fd,
@@ -972,24 +974,31 @@ dparser_read_lines(int fd,
             break;
         }
         br.end = SPOS(bs);
+
+        (*nbytes) += br.end - br.start + 1;
+        ++(*nlines);
+
         if ((res = cb(bs, &br, udata)) != 0) {
-            ++(*nlines);
             break;
         }
+
         dparser_reach_value(bs, '\n', SEOD(bs));
         br.end = SEOD(bs);
+
         if (SPOS(bs) >= bs->growsz - 8192) {
             UNUSED off_t recycled;
+
             recycled = bytestream_recycle(bs, 0, SPOS(bs));
             br.end = SEOD(bs);
+            br.start -= recycled;
+
             if (rcb != NULL && rcb(udata) != 0) {
                 res = DPARSER_READ_LINES + 1;
-                ++(*nlines);
                 break;
             }
         }
-        ++(*nlines);
     }
+
     diff = SPOS(bs) - SEOD(bs);
     assert(diff <= 0);
     /* shift back ... */
@@ -1008,7 +1017,8 @@ dparser_read_lines_bz2(BZFILE *bzf,
                        dparser_read_lines_cb_t cb,
                        dparser_bytestream_recycle_cb_t rcb,
                        void *udata,
-                       size_t *nlines)
+                       size_t *nlines,
+                       size_t *nbytes)
 {
     int res = 0;
     off_t diff;
@@ -1028,6 +1038,7 @@ dparser_read_lines_bz2(BZFILE *bzf,
     }
 
     while (1) {
+
         br.start = SPOS(bs);
         if (dparser_reach_delim_readmore_bz2(bs,
                                              bzf,
@@ -1037,24 +1048,31 @@ dparser_read_lines_bz2(BZFILE *bzf,
             break;
         }
         br.end = SPOS(bs);
+
+        (*nbytes) += br.end - br.start + 1;
+        ++(*nlines);
+
         if ((res = cb(bs, &br, udata)) != 0) {
-            ++(*nlines);
             break;
         }
+
         dparser_reach_value(bs, '\n', SEOD(bs));
         br.end = SEOD(bs);
+
         if (SPOS(bs) >= bs->growsz - 8192) {
             UNUSED off_t recycled;
+
             recycled = bytestream_recycle(bs, 0, SPOS(bs));
             br.end = SEOD(bs);
+            br.start -= recycled;
+
             if (rcb != NULL && rcb(udata) != 0) {
                 res = DPARSER_READ_LINES + 1;
-                ++(*nlines);
                 break;
             }
         }
-        ++(*nlines);
     }
+
     diff = SEOD(bs) - SPOS(bs);
     assert(diff >= 0);
     /*

@@ -120,6 +120,7 @@ int dparser_read_lines(int,
                        dparser_read_lines_cb_t,
                        dparser_bytestream_recycle_cb_t,
                        void *,
+                       size_t *,
                        size_t *);
 
 int dparser_read_lines_bz2(BZFILE *,
@@ -127,6 +128,7 @@ int dparser_read_lines_bz2(BZFILE *,
                            dparser_read_lines_cb_t,
                            dparser_bytestream_recycle_cb_t,
                            void *,
+                           size_t *,
                            size_t *);
 
 void dparser_set_mpool(mpool_ctx_t *);
