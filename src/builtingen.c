@@ -1581,7 +1581,6 @@ compile_function(mrklkit_ctx_t *mctx,
     } else if (strcmp(name, "itob") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
-        LLVMValueRef test;
 
         //(sym itob (func bool int))
         arg = array_first(&expr->subs, &it);
@@ -1595,24 +1594,17 @@ compile_function(mrklkit_ctx_t *mctx,
             goto err;
         }
 
-        test = LLVMBuildICmp(builder,
-                            LLVMIntEQ,
-                            v,
-                            LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0),
-                            NEWVAR("test"));
-
-        v = LLVMBuildSelect(builder,
-                            test,
-                            LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0),
-                            LLVMConstInt(LLVMInt1TypeInContext(lctx), 1, 0),
-                            NEWVAR("select"));
+        v = LLVMBuildICmp(builder,
+                          LLVMIntNE,
+                          v,
+                          LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0),
+                          NEWVAR("test"));
 
     } else if (strcmp(name, "btoi") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
-        LLVMValueRef test;
 
-        //(sym itob (func bool int))
+        //(sym btoi (func int bool))
         arg = array_first(&expr->subs, &it);
         if ((v = lkit_compile_expr(mctx,
                                    ectx,
@@ -1624,17 +1616,10 @@ compile_function(mrklkit_ctx_t *mctx,
             goto err;
         }
 
-        test = LLVMBuildICmp(builder,
-                            LLVMIntEQ,
-                            v,
-                            LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0),
-                            NEWVAR("test"));
-
-        v = LLVMBuildSelect(builder,
-                            test,
-                            LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0),
-                            LLVMConstInt(LLVMInt64TypeInContext(lctx), 1, 0),
-                            NEWVAR("select"));
+        v = LLVMBuildZExt(builder,
+                          v,
+                          LLVMInt64TypeInContext(lctx),
+                          NEWVAR("zext"));
 
 #if 0
     } else if (strcmp(name , "startswith") == 0) {
