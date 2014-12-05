@@ -915,7 +915,7 @@ compile_function(mrklkit_ctx_t *mctx,
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                LLVMValueRef rand;
+                LLVMValueRef rand, tmp;
 
                 if ((rand = lkit_compile_expr(mctx,
                                               ectx,
@@ -927,6 +927,25 @@ compile_function(mrklkit_ctx_t *mctx,
                     goto err;
                 }
 
+                /*
+                 * the following hack: v / (rand ? rand : 1)
+                 */
+                tmp = LLVMBuildICmp(builder,
+                                    LLVMIntEQ,
+                                    rand,
+                                    LLVMConstInt(
+                                        LLVMInt64TypeInContext(lctx),
+                                        0,
+                                        0),
+                                    NEWVAR("test"));
+                rand = LLVMBuildSelect(builder,
+                                       tmp,
+                                       LLVMConstInt(
+                                           LLVMInt64TypeInContext(lctx),
+                                           1,
+                                           0),
+                                       rand,
+                                       NEWVAR("select"));
                 v = LLVMBuildSDiv(builder, v, rand, NEWVAR("div"));
             }
         } else if (expr->type->tag == LKIT_FLOAT ||
