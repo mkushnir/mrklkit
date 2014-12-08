@@ -992,6 +992,24 @@ mrklkit_rt_struct_deep_copy_gc(rt_struct_t *dst,
 }
 
 
+bytes_t *
+mrklkit_rt_struct_pi_data_gc(rt_struct_t *value)
+{
+    bytes_t *res;
+    size_t sz;
+
+    sz = value->parser_info.br.end - value->parser_info.br.start;
+    res = mrklkit_rt_bytes_new_gc(sz + 1);
+    memcpy(res->data,
+           SDATA(value->parser_info.bs,
+                 value->parser_info.br.start),
+           sz);
+    res->data[sz] = '\0';
+
+    return res;
+}
+
+
 void
 lruntime_set_mpool(mpool_ctx_t *m)
 {

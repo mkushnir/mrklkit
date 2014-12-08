@@ -2049,6 +2049,23 @@ compile_function(mrklkit_ctx_t *mctx,
             FAIL("array_get");
         }
 
+        if ((args[0] = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         *cont,
+                                         udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 4900);
+            goto err;
+        }
+
+        args[0] = LLVMBuildPointerCast(builder,
+                                       args[0],
+                                       LLVMPointerType(
+                                           LLVMInt8TypeInContext(lctx), 0),
+                                       NEWVAR("cast"));
+
+
         /* option */
         if ((opt = array_get(&expr->subs, 1)) == NULL) {
             FAIL("array_get");
@@ -2059,43 +2076,33 @@ compile_function(mrklkit_ctx_t *mctx,
         optname = (bytes_t *)(*opt)->value.literal->body;
 
         if (strcmp((char *)optname->data, "pos") == 0) {
-
             if ((ref = LLVMGetNamedFunction(module,
                     "dparse_struct_pi_pos")) == NULL) {
-                TR(COMPILE_FUNCTION + 4900);
-                goto err;
-            }
-
-            if ((args[0] = lkit_compile_expr(mctx,
-                                             ectx,
-                                             module,
-                                             builder,
-                                             *cont,
-                                             udata)) == NULL) {
                 TR(COMPILE_FUNCTION + 4901);
                 goto err;
             }
 
-            args[0] = LLVMBuildPointerCast(builder,
-                                           args[0],
-                                           LLVMPointerType(
-                                               LLVMInt8TypeInContext(lctx), 0),
-                                           NEWVAR("cast"));
-
-            //LLVMDumpValue(ref);
-            //LLVMDumpValue(args[0]);
-            //LLVMDumpType(LLVMTypeOf(LLVMGetParam(ref, 0)));
-            //LLVMDumpType(LLVMTypeOf(args[0]));
-            //TRACE("type: %p/%p", LLVMTypeOf(LLVMGetParam(ref, 0)), LLVMTypeOf(args[0]));
-            //TRACE("module: %p", module);
-            //LLVMDumpModule(module);
             v = LLVMBuildCall(builder,
                               ref,
                               args,
                               countof(args),
                               NEWVAR("call"));
+
+        } else if (strcmp((char *)optname->data, "data") == 0) {
+            if ((ref = LLVMGetNamedFunction(module,
+                    "mrklkit_rt_struct_pi_data_gc")) == NULL) {
+                TR(COMPILE_FUNCTION + 4902);
+                goto err;
+            }
+
+            v = LLVMBuildCall(builder,
+                              ref,
+                              args,
+                              countof(args),
+                              NEWVAR("call"));
+
         } else {
-            TR(COMPILE_FUNCTION + 4902);
+            TR(COMPILE_FUNCTION + 4903);
             goto err;
         }
 

@@ -605,6 +605,10 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             optname = (bytes_t *)(*opt)->value.literal->body;
             if (strcmp((char *)optname->data, "pos") == 0) {
                 expr->type = lkit_type_get(mctx, LKIT_INT);
+
+            } else if (strcmp((char *)optname->data, "data") == 0) {
+                expr->type = lkit_type_get(mctx, LKIT_STR);
+
             } else {
                 //lkit_expr_dump(expr);
                 (*opt)->error = 1;
