@@ -340,9 +340,11 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
             snprintf(buf2, name->sz + 64, "_mrklkit.%s.fini", name->data);
 
             if (LLVMGetNamedFunction(module, buf1) != NULL) {
+                TRACE("non unique name: %s", buf1);
                 TRRET(LTYPE_COMPILE_METHODS + 1);
             }
-            if (LLVMGetNamedFunction(module, buf1) != NULL) {
+            if (LLVMGetNamedFunction(module, buf2) != NULL) {
+                TRACE("non unique name: %s", buf2);
                 TRRET(LTYPE_COMPILE_METHODS + 2);
             }
 

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdint.h>
 #include <llvm-c/Core.h>
 
 #include <mrkcommon/array.h>
@@ -928,7 +929,7 @@ compile_function(mrklkit_ctx_t *mctx,
                 }
 
                 /*
-                 * the following hack: v / (rand ? rand : 1)
+                 * the following hack: v / (rand ? rand : INT64_MAX)
                  */
                 tmp = LLVMBuildICmp(builder,
                                     LLVMIntEQ,
@@ -942,7 +943,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                        tmp,
                                        LLVMConstInt(
                                            LLVMInt64TypeInContext(lctx),
-                                           1,
+                                           INT64_MAX,
                                            0),
                                        rand,
                                        NEWVAR("select"));
@@ -1060,7 +1061,8 @@ compile_function(mrklkit_ctx_t *mctx,
                  arg != NULL;
                  arg = array_next(&expr->subs, &it)) {
 
-                LLVMValueRef rand;
+                LLVMValueRef rand, tmp;
+
 
                 if ((rand = lkit_compile_expr(mctx,
                                               ectx,
@@ -1072,6 +1074,25 @@ compile_function(mrklkit_ctx_t *mctx,
                     goto err;
                 }
 
+                /*
+                 * the following hack: v / (rand ? rand : INT64_MAX)
+                 */
+                tmp = LLVMBuildICmp(builder,
+                                    LLVMIntEQ,
+                                    rand,
+                                    LLVMConstInt(
+                                        LLVMInt64TypeInContext(lctx),
+                                        0,
+                                        0),
+                                    NEWVAR("test"));
+                rand = LLVMBuildSelect(builder,
+                                       tmp,
+                                       LLVMConstInt(
+                                           LLVMInt64TypeInContext(lctx),
+                                           INT64_MAX,
+                                           0),
+                                       rand,
+                                       NEWVAR("select"));
                 v = LLVMBuildSRem(builder, v, rand, NEWVAR("rem"));
             }
         } else if (expr->type->tag == LKIT_FLOAT ||
