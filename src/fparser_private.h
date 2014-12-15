@@ -11,10 +11,13 @@ extern "C" {
 struct _fparser_datum;
 
 struct tokenizer_ctx {
-    fparser_tag_t state;
+    struct _fparser_datum *form;
     off_t tokstart;
     int indent;
-    struct _fparser_datum *form;
+    int state;
+#define FPARSER_QSTRMODE_S (0)
+#define FPARSER_QSTRMODE_D (-1)
+    int qstrmode:1;
 };
 
 #ifdef __cplusplus

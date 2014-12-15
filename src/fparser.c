@@ -81,7 +81,8 @@ compile_value(struct tokenizer_ctx *ctx,
         bytes_t *value;
         ssize_t escaped;
 
-        if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(bytes_t) + sz + 1)) == NULL) {
+        if ((dat = malloc(sizeof(fparser_datum_t) +
+                          sizeof(bytes_t) + sz + 1)) == NULL) {
             FAIL("malloc");
         }
         fparser_datum_init(dat, FPARSER_STR);
@@ -134,7 +135,8 @@ compile_value(struct tokenizer_ctx *ctx,
                     char *value;
 
                     numkind = _NUMKIND_BOOL;
-                    if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(char))) == NULL) {
+                    if ((dat = malloc(sizeof(fparser_datum_t) +
+                                      sizeof(char))) == NULL) {
                         FAIL("malloc");
                     }
                     fparser_datum_init(dat, FPARSER_BOOL);
@@ -144,7 +146,8 @@ compile_value(struct tokenizer_ctx *ctx,
                     char *value;
 
                     numkind = _NUMKIND_BOOL;
-                    if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(char))) == NULL) {
+                    if ((dat = malloc(sizeof(fparser_datum_t) +
+                                      sizeof(char))) == NULL) {
                         FAIL("malloc");
                     }
                     fparser_datum_init(dat, FPARSER_BOOL);
@@ -161,17 +164,21 @@ compile_value(struct tokenizer_ctx *ctx,
         if (numkind == _NUMKIND_INT) {
             int64_t *value;
 
-            if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(int64_t))) == NULL) {
+            if ((dat = malloc(sizeof(fparser_datum_t) +
+                              sizeof(int64_t))) == NULL) {
                 FAIL("malloc");
             }
             fparser_datum_init(dat, FPARSER_INT);
             value = (int64_t *)(dat->body);
-            *value = (int64_t)strtoll((const char *)SDATA(bs, ctx->tokstart), NULL, 10);
+            *value = (int64_t)strtoll((const char *)SDATA(bs, ctx->tokstart),
+                                      NULL,
+                                      10);
 
         } else if (numkind == _NUMKIND_FLOAT) {
             double *value;
 
-            if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(double))) == NULL) {
+            if ((dat = malloc(sizeof(fparser_datum_t) +
+                              sizeof(double))) == NULL) {
                 FAIL("malloc");
             }
             fparser_datum_init(dat, FPARSER_FLOAT);
@@ -185,7 +192,8 @@ compile_value(struct tokenizer_ctx *ctx,
         } else {
             bytes_t *value;
 
-            if ((dat = malloc(sizeof(fparser_datum_t) + sizeof(bytes_t) + sz + 1)) == NULL) {
+            if ((dat = malloc(sizeof(fparser_datum_t) +
+                              sizeof(bytes_t) + sz + 1)) == NULL) {
                 FAIL("malloc");
             }
             fparser_datum_init(dat, FPARSER_WORD);
@@ -223,7 +231,6 @@ compile_value(struct tokenizer_ctx *ctx,
 
         ctx->form = dat;
 
-        ctx->form->seqout = 0;
         if (cb != NULL && cb(SDATA(bs, ctx->tokstart), dat, udata) != 0) {
             TRRET(COMPILE_VALUE + 6);
         }
@@ -240,8 +247,8 @@ compile_value(struct tokenizer_ctx *ctx,
             /* root */
             assert(0);
         }
-        ctx->form->seqout = 1;
-        if (cb != NULL && cb(SDATA(bs, ctx->tokstart), ctx->form, udata) != 0) {
+        if (cb != NULL &&
+            cb(SDATA(bs, ctx->tokstart), ctx->form, udata) != 0) {
             TRRET(COMPILE_VALUE + 8);
         }
         ctx->form = ctx->form->parent;
@@ -278,7 +285,7 @@ tokenize(struct tokenizer_ctx *ctx,
                 }
                 ctx->state = LEX_SEQIN;
 
-            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+            } else if (ctx->state & LEX_QSTR) {
                 ctx->state = LEX_QSTRMID;
 
             } else if (ctx->state & LEX_COMIN) {
@@ -300,7 +307,7 @@ tokenize(struct tokenizer_ctx *ctx,
                 }
                 ctx->state = LEX_SEQOUT;
 
-            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+            } else if (ctx->state & LEX_QSTR) {
                 ctx->state = LEX_QSTRMID;
 
             } else if (ctx->state & LEX_COMIN) {
@@ -318,7 +325,7 @@ tokenize(struct tokenizer_ctx *ctx,
             } else if (ctx->state & LEX_TOK) {
                 ctx->state = LEX_TOKOUT;
 
-            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+            } else if (ctx->state & LEX_QSTR) {
                 ctx->state = LEX_QSTRMID;
 
             } else if (ctx->state & LEX_COMIN) {
@@ -336,7 +343,7 @@ tokenize(struct tokenizer_ctx *ctx,
             } else if (ctx->state & LEX_TOK) {
                 ctx->state = LEX_TOKOUT;
 
-            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+            } else if (ctx->state & LEX_QSTR) {
                 ctx->state = LEX_QSTRMID;
 
             } else if (ctx->state & LEX_COM) {
@@ -366,7 +373,7 @@ tokenize(struct tokenizer_ctx *ctx,
             }
 
         } else if (ch == '\\') {
-            if (ctx->state & LEX_QSTR) {
+            if (ctx->state & (LEX_QSTRIN | LEX_QSTRMID)) {
                 ctx->state = LEX_QSTRESC;
 
             } else if (ctx->state & LEX_QSTRESC) {
@@ -389,7 +396,7 @@ tokenize(struct tokenizer_ctx *ctx,
                 }
                 ctx->state = LEX_COMIN;
 
-            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+            } else if (ctx->state & LEX_QSTR) {
                 ctx->state = LEX_QSTRMID;
 
             } else if (ctx->state & LEX_COMIN) {
@@ -400,14 +407,14 @@ tokenize(struct tokenizer_ctx *ctx,
             }
 
         } else {
-            if (ctx->state & (LEX_SEQ | LEX_SPACE | LEX_OUT)) {
+            if (ctx->state & (LEX_SEQ | LEX_OUT | LEX_SPACE)) {
                 ctx->state = LEX_TOKIN;
                 ctx->tokstart = SPOS(bs);
 
             } else if (ctx->state & LEX_TOKIN) {
                 ctx->state = LEX_TOKMID;
 
-            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRESC)) {
+            } else if (ctx->state & LEX_QSTR) {
                 ctx->state = LEX_QSTRMID;
 
             } else if (ctx->state & LEX_COMIN) {
@@ -428,6 +435,32 @@ tokenize(struct tokenizer_ctx *ctx,
     return 0;
 }
 
+#define FPARSER_PARSE_BODY(tokenize_fn) \
+    ssize_t nread; \
+    bytestream_t bs; \
+    struct tokenizer_ctx ctx; \
+    fparser_datum_t *root = NULL; \
+    ctx.indent = 0; \
+    if ((root = malloc(sizeof(fparser_datum_t) + sizeof(array_t))) == NULL) { \
+        TRRETNULL(FPARSER_PARSE + 1); \
+    } \
+    if (fparser_datum_init(root, FPARSER_SEQ) != 0) { \
+        TRRETNULL(FPARSER_PARSE + 2); \
+    } \
+    bytestream_init(&bs, BLOCKSZ); \
+    ctx.form = root; \
+    ctx.tokstart = SPOS(&bs); \
+    ctx.state = LEX_SPACE; \
+    while (SNEEDMORE(&bs)) { \
+        nread = bytestream_read_more(&bs, fd, BLOCKSZ); \
+        if (nread <= 0) { \
+            break; \
+        } \
+        (void)tokenize_fn(&ctx, &bs, cb, udata); \
+    } \
+    bytestream_fini(&bs); \
+    return root
+
 
 fparser_datum_t *
 fparser_parse(int fd,
@@ -436,46 +469,7 @@ fparser_parse(int fd,
                         void *),
               void *udata)
 {
-    ssize_t nread;
-    bytestream_t bs;
-    struct tokenizer_ctx ctx;
-    fparser_datum_t *root = NULL;
-
-    ctx.indent = 0;
-
-    if ((root = malloc(sizeof(fparser_datum_t) + sizeof(array_t))) == NULL) {
-        TRRETNULL(FPARSER_PARSE + 1);
-    }
-
-    if (fparser_datum_init(root, FPARSER_SEQ) != 0) {
-        TRRETNULL(FPARSER_PARSE + 2);
-    }
-
-    bytestream_init(&bs, BLOCKSZ);
-
-    ctx.form = root;
-    ctx.tokstart = SPOS(&bs);
-    ctx.state = LEX_SPACE;
-
-    while (SNEEDMORE(&bs)) {
-        //if (SPOS(&bs) > 0) {
-        //    (void)bytestream_recycle(&bs, 0, SDPOS(&bs, ctx.tokstart));
-        //}
-        nread = bytestream_read_more(&bs, fd, BLOCKSZ);
-        if (nread <= 0) {
-            break;
-        }
-
-        //D64(SPDATA(&bs), SEOD(&bs) - SPOS(&bs));
-        //if (ctx.state & (LEX_TOK | LEX_QSTR)) {
-        //    SPOS(&bs) = SDPOS(&bs, ctx.tokstart);
-        //}
-
-        (void)tokenize(&ctx, &bs, cb, udata);
-    }
-
-    bytestream_fini(&bs);
-    return root;
+    FPARSER_PARSE_BODY(tokenize);
 }
 
 
@@ -513,7 +507,6 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
     if (rdat->tag == FPARSER_SEQ) {
         array_t *form = (array_t *)(&rdat->body);
 
-        //TRACE("%s form len %ld", rdat->seqout? "<<<" : ">>>", form->elnum);
         TRACE("SEQ:%ld", form->elnum);
 
         array_traverse(form, (array_traverser_t)fparser_datum_dump, udata);
@@ -538,6 +531,9 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
 
     } else if (rdat->tag == FPARSER_BOOL) {
         TRACE("BOOL '#%c'", *((char *)(rdat->body)) ? 't' : 'f');
+
+    } else {
+        FAIL("fparser_datum_dump");
     }
 
     return 0;
@@ -731,7 +727,6 @@ fparser_datum_init(fparser_datum_t *dat, fparser_tag_t tag)
 {
     dat->tag = tag;
     dat->parent = NULL;
-    dat->seqout = 0;
     dat->error = 0;
 
     if (tag == FPARSER_SEQ) {
@@ -767,32 +762,117 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
     return 0;
 }
 
-fparser_datum_t *
-fparser_datum_build_str_mpool(mpool_ctx_t *mpool, const char *str)
-{
-    fparser_datum_t *dat;
-    bytes_t *value;
-    size_t sz;
-    ssize_t escaped;
 
-    sz = strlen(str);
-    if ((dat = mpool_malloc(mpool,
-                           sizeof(fparser_datum_t) +
-                           sizeof(bytes_t) +
-                           sz +
-                           1)) == NULL) {
-        FAIL("malloc");
-    }
-    fparser_datum_init(dat, FPARSER_STR);
-    value = (bytes_t *)(dat->body);
-    value->nref = 0;
-    value->hash = 0;
-    value->sz = sz + 1;
-
-    escaped = unesc((char *)value->data, str, sz);
-    value->sz -= escaped;
+#define FPARSER_DATUM_BUILD_INT_BODY(ty, tag, malloc_fn) \
+    fparser_datum_t *dat; \
+    ty *value; \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
+                         sizeof(ty))) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    fparser_datum_init(dat, tag); \
+    value = (ty *)(dat->body); \
+    *value = val; \
     return dat;
+
+
+fparser_datum_t *
+fparser_datum_build_int(int64_t val)
+{
+    FPARSER_DATUM_BUILD_INT_BODY(int64_t, FPARSER_INT, malloc);
 }
+
+
+fparser_datum_t *
+fparser_datum_build_float(double val)
+{
+    FPARSER_DATUM_BUILD_INT_BODY(double, FPARSER_FLOAT, malloc);
+}
+
+
+fparser_datum_t *
+fparser_datum_build_bool(char val)
+{
+    FPARSER_DATUM_BUILD_INT_BODY(char, FPARSER_BOOL, malloc);
+}
+
+
+#define FPARSER_DATUM_BUILD_STR_BODY(malloc_fn, tag) \
+    fparser_datum_t *dat; \
+    bytes_t *value; \
+    size_t sz; \
+    ssize_t escaped; \
+    sz = strlen(str); \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
+                         sizeof(bytes_t) + \
+                         sz + \
+                         1)) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    fparser_datum_init(dat, tag); \
+    value = (bytes_t *)(dat->body); \
+    value->nref = 0; \
+    value->hash = 0; \
+    value->sz = sz + 1; \
+    escaped = unesc((char *)value->data, str, sz); \
+    value->sz -= escaped; \
+    return dat;
+
+
+fparser_datum_t *
+fparser_datum_build_word(const char *str)
+{
+    FPARSER_DATUM_BUILD_STR_BODY(malloc, FPARSER_WORD);
+}
+
+
+fparser_datum_t *
+fparser_datum_build_str(const char *str)
+{
+    FPARSER_DATUM_BUILD_STR_BODY(malloc, FPARSER_STR);
+}
+
+#define FPARSER_DATUM_BUILD_STR_BUF_BODY(malloc_fn) \
+    fparser_datum_t *dat; \
+    bytes_t *value; \
+    ssize_t escaped; \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
+                         sizeof(bytes_t) + \
+                         sz)) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    fparser_datum_init(dat, FPARSER_STR); \
+    value = (bytes_t *)(dat->body); \
+    value->nref = 0; \
+    value->hash = 0; \
+    value->sz = sz; \
+    escaped = unesc((char *)value->data, str, sz); \
+    value->sz -= escaped; \
+    return dat;
+
+
+fparser_datum_t *
+fparser_datum_build_str_buf(const char *str, size_t sz)
+{
+    FPARSER_DATUM_BUILD_STR_BUF_BODY(malloc);
+}
+
+#define FPARSER_DATUM_BUILD_SEQ_BODY(malloc_fn) \
+    fparser_datum_t *dat; \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
+                         sizeof(array_t))) == NULL) { \
+        FAIL("malloc"); \
+    } \
+    fparser_datum_init(dat, FPARSER_SEQ); \
+    return dat;
+
+
+fparser_datum_t *
+fparser_datum_build_seq(void)
+{
+    FPARSER_DATUM_BUILD_SEQ_BODY(malloc);
+}
+
 /*
  * vim:softtabstop=4
  */

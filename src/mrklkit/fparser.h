@@ -32,7 +32,7 @@ extern "C" {
 #define LEX_SEQ      (LEX_SEQIN | LEX_SEQOUT)
 #define LEX_OUT      (LEX_TOKOUT | LEX_QSTROUT | LEX_COMOUT)
 #define LEX_TOK      (LEX_TOKIN | LEX_TOKMID)
-#define LEX_QSTR     (LEX_QSTRIN | LEX_QSTRMID)
+#define LEX_QSTR     (LEX_QSTRIN | LEX_QSTRMID | LEX_QSTRESC)
 #define LEX_COM      (LEX_COMIN | LEX_COMMID)
 
 #define LEX_FOUNDVAL   (LEX_SEQ | LEX_TOKOUT | LEX_QSTROUT)
@@ -76,7 +76,6 @@ typedef enum {
 typedef struct _fparser_datum {
     fparser_tag_t tag;
     struct _fparser_datum *parent;
-    int seqout:1;
     int error:1;
     char body[];
 } fparser_datum_t;
@@ -98,8 +97,13 @@ fparser_datum_t *fparser_parse(int fd,
                                          void *),
                                void *udata);
 
-fparser_datum_t *fparser_datum_build_str_mpool(mpool_ctx_t *,
-                                               const char *);
+fparser_datum_t *fparser_datum_build_int(int64_t);
+fparser_datum_t *fparser_datum_build_float(double);
+fparser_datum_t *fparser_datum_build_bool(char);
+fparser_datum_t *fparser_datum_build_word(const char *);
+fparser_datum_t *fparser_datum_build_str(const char *);
+fparser_datum_t *fparser_datum_build_str_buf(const char *, size_t);
+fparser_datum_t *fparser_datum_build_seq(void);
 #ifdef __cplusplus
 }
 #endif
