@@ -18,7 +18,6 @@
 
 static int fparser_datum_init(fparser_datum_t *, fparser_tag_t);
 static int fparser_datum_fini(fparser_datum_t *);
-static int fparser_datum_form_add(fparser_datum_t *, fparser_datum_t *);
 
 
 static ssize_t
@@ -744,7 +743,7 @@ fparser_datum_init(fparser_datum_t *dat, fparser_tag_t tag)
 }
 
 
-static int
+int
 fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
 {
     assert(parent->tag == FPARSER_SEQ);
@@ -763,7 +762,7 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
 }
 
 
-#define FPARSER_DATUM_BUILD_INT_BODY(ty, tag, malloc_fn) \
+#define FPARSER_DATUM_BUILD_TY_BODY(ty, tag, malloc_fn) \
     fparser_datum_t *dat; \
     ty *value; \
     if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
@@ -779,21 +778,21 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
 fparser_datum_t *
 fparser_datum_build_int(int64_t val)
 {
-    FPARSER_DATUM_BUILD_INT_BODY(int64_t, FPARSER_INT, malloc);
+    FPARSER_DATUM_BUILD_TY_BODY(int64_t, FPARSER_INT, malloc);
 }
 
 
 fparser_datum_t *
 fparser_datum_build_float(double val)
 {
-    FPARSER_DATUM_BUILD_INT_BODY(double, FPARSER_FLOAT, malloc);
+    FPARSER_DATUM_BUILD_TY_BODY(double, FPARSER_FLOAT, malloc);
 }
 
 
 fparser_datum_t *
 fparser_datum_build_bool(char val)
 {
-    FPARSER_DATUM_BUILD_INT_BODY(char, FPARSER_BOOL, malloc);
+    FPARSER_DATUM_BUILD_TY_BODY(char, FPARSER_BOOL, malloc);
 }
 
 

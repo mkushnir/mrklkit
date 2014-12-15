@@ -88,6 +88,7 @@ int fparser_datum_dump(fparser_datum_t **, void *);
 void fparser_datum_dump_formatted(fparser_datum_t *);
 void fparser_datum_dump_bytestream(fparser_datum_t *, bytestream_t *);
 
+int fparser_datum_form_add(fparser_datum_t *, fparser_datum_t *);
 
 void fparser_datum_destroy(fparser_datum_t **);
 
