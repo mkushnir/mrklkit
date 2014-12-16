@@ -232,7 +232,7 @@ null_init(void **v)
 }
 
 
-#define MRKLKIT_RT_ARRAY_NEW_BODY(malloc_fn) \
+#define MRKLKIT_RT_ARRAY_NEW_BODY(malloc_fn, array_ensure_datasz_fn) \
     rt_array_t *res; \
  \
     if ((res = malloc_fn(sizeof(rt_array_t))) == NULL) { \
@@ -245,7 +245,7 @@ null_init(void **v)
                0, \
                (array_initializer_t)null_init, \
                NULL); \
-    array_ensure_datasz(&res->fields, ty->nreserved, 0); \
+    array_ensure_datasz_fn(&res->fields, ty->nreserved, 0); \
     return res
 
 
@@ -253,7 +253,7 @@ null_init(void **v)
 rt_array_t *
 mrklkit_rt_array_new(lkit_array_t *ty)
 {
-    MRKLKIT_RT_ARRAY_NEW_BODY(malloc);
+    MRKLKIT_RT_ARRAY_NEW_BODY(malloc, array_ensure_datasz);
 }
 
 
@@ -261,8 +261,10 @@ rt_array_t *
 mrklkit_rt_array_new_gc(lkit_array_t *ty)
 {
 #define _malloc(sz) mpool_malloc(mpool, (sz))
-    MRKLKIT_RT_ARRAY_NEW_BODY(_malloc);
+#define _array_ensure_datasz(ar, datasz, flags) array_ensure_datasz_mpool(mpool, (ar), (datasz), (flags))
+    MRKLKIT_RT_ARRAY_NEW_BODY(_malloc, _array_ensure_datasz);
 #undef _malloc
+#undef _array_ensure_datasz
 }
 
 
@@ -270,8 +272,10 @@ rt_array_t *
 mrklkit_rt_array_new_mpool(mpool_ctx_t *mpool, lkit_array_t *ty)
 {
 #define _malloc(sz) mpool_malloc(mpool, (sz))
-    MRKLKIT_RT_ARRAY_NEW_BODY(_malloc);
+#define _array_ensure_datasz(ar, datasz, flags) array_ensure_datasz_mpool(mpool, (ar), (datasz), (flags))
+    MRKLKIT_RT_ARRAY_NEW_BODY(_malloc, _array_ensure_datasz);
 #undef _malloc
+#undef _array_ensure_datasz
 }
 
 
