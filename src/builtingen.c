@@ -450,7 +450,8 @@ compile_str_join(mrklkit_ctx_t *mctx,
     array_iter_t it;
     LLVMValueRef v = NULL;
     UNUSED LLVMValueRef sz;
-    LLVMValueRef tmp, accum, bifn, bnfn, bcfn, bdfn;
+    LLVMValueRef tmp, accum, bnfn, bcfn;
+    UNUSED LLVMValueRef bifn, bdfn;
     LLVMValueRef *av, *asz;
     LLVMValueRef const0, const1;
 
@@ -463,10 +464,10 @@ compile_str_join(mrklkit_ctx_t *mctx,
     if ((asz = malloc(sizeof(LLVMValueRef) * expr->subs.elnum)) == NULL) {
         FAIL("malloc");
     }
-    if ((bifn = LLVMGetNamedFunction(module,
-                                     "bytes_incref")) == NULL) {
-        FAIL("LLVMGetNamedFunction");
-    }
+    //if ((bifn = LLVMGetNamedFunction(module,
+    //                                 "bytes_incref")) == NULL) {
+    //    FAIL("LLVMGetNamedFunction");
+    //}
     for (arg = array_first(&expr->subs, &it);
          arg != NULL;
          arg = array_next(&expr->subs, &it)) {
@@ -483,20 +484,25 @@ compile_str_join(mrklkit_ctx_t *mctx,
                                           NEWVAR("gep"));
         asz[it.iter] = LLVMBuildLoad(builder, asz[it.iter], NEWVAR("load"));
         accum = LLVMBuildAdd(builder, accum, asz[it.iter], NEWVAR("plus"));
+        // minus intermediate zero term
+        accum = LLVMBuildSub(builder, accum, const1, NEWVAR("dec"));
         //(void)LLVMBuildCall(builder, bifn, av + it.iter, 1, NEWVAR("call"));
     }
+    // plus final zero term
+    accum = LLVMBuildAdd(builder, accum, const1, NEWVAR("plus"));
+
     if ((bnfn = LLVMGetNamedFunction(module,
                                      "mrklkit_rt_bytes_new_gc")) == NULL) {
         FAIL("LLVMGetNamedFunction");
     }
     if ((bcfn = LLVMGetNamedFunction(module,
-                                     "bytes_copy")) == NULL) {
+                                     "bytes_copyz")) == NULL) {
         FAIL("LLVMGetNamedFunction");
     }
-    if ((bdfn = LLVMGetNamedFunction(module,
-                                     "bytes_decref_fast")) == NULL) {
-        FAIL("LLVMGetNamedFunction");
-    }
+    //if ((bdfn = LLVMGetNamedFunction(module,
+    //                                 "bytes_decref_fast")) == NULL) {
+    //    FAIL("LLVMGetNamedFunction");
+    //}
     v = LLVMBuildCall(builder, bnfn, &accum, 1, NEWVAR("call"));
     tmp = const0;
     for (i = 0; i < expr->subs.elnum; ++i) {
@@ -1686,20 +1692,59 @@ compile_function(mrklkit_ctx_t *mctx,
     } else if (strcmp(name , "tostr") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
+        LLVMValueRef fn, fnarg;
 
         //(sym tostr (func str undef))
         arg = array_first(&expr->subs, &it);
-        if ((v = lkit_compile_expr(mctx,
-                                   ectx,
-                                   module,
-                                   builder,
-                                   *arg,
-                                   udata)) == NULL) {
+        if ((fnarg = lkit_compile_expr(mctx,
+                                       ectx,
+                                       module,
+                                       builder,
+                                       *arg,
+                                       udata)) == NULL) {
             TR(COMPILE_FUNCTION + 2000);
             goto err;
         }
-        /* not implemented */
-        FAIL("compile_function, not supported: tostr");
+
+        switch ((*arg)->type->tag) {
+        case LKIT_INT:
+            if ((fn = LLVMGetNamedFunction(module,
+                        "mrklkit_rt_bytes_new_from_int_gc")) == NULL) {
+                TR(COMPILE_FUNCTION + 2100);
+                goto err;
+            }
+            break;
+
+        case LKIT_FLOAT:
+            if ((fn = LLVMGetNamedFunction(module,
+                        "mrklkit_rt_bytes_new_from_float_gc")) == NULL) {
+                TR(COMPILE_FUNCTION + 2101);
+                goto err;
+            }
+            break;
+
+        case LKIT_BOOL:
+            if ((fn = LLVMGetNamedFunction(module,
+                        "mrklkit_rt_bytes_new_from_bool_gc")) == NULL) {
+                TR(COMPILE_FUNCTION + 2102);
+                goto err;
+            }
+            break;
+
+        case LKIT_STR:
+            v = fnarg;
+            goto tostr_done;
+            break;
+
+        default:
+            lkit_expr_dump(expr);
+            FAIL("compile_function, tostr argument type is not supported");
+        }
+
+        v = LLVMBuildCall(builder, fn, &fnarg, 1, NEWVAR("call"));
+tostr_done:
+        ;
+
 
     } else if (strcmp(name, "in") == 0) {
         if (expr->subs.elnum < 2) {

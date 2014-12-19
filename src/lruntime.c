@@ -52,6 +52,45 @@ mrklkit_rt_bytes_new_from_str_gc(const char *s)
 
 
 bytes_t *
+mrklkit_rt_bytes_new_from_int_gc(int64_t i)
+{
+    char buf[1024];
+    bytes_t *res;
+
+    snprintf(buf, sizeof(buf), "%ld", i);
+    res = bytes_new_from_str_mpool(mpool, buf);
+    //TRACE("GC>>> %p", *res);
+    return res;
+}
+
+
+bytes_t *
+mrklkit_rt_bytes_new_from_float_gc(double f)
+{
+    char buf[1024];
+    bytes_t *res;
+
+    snprintf(buf, sizeof(buf), "%lf", f);
+    res = bytes_new_from_str_mpool(mpool, buf);
+    //TRACE("GC>>> %p", *res);
+    return res;
+}
+
+
+bytes_t *
+mrklkit_rt_bytes_new_from_bool_gc(char b)
+{
+    char buf[1024];
+    bytes_t *res;
+
+    snprintf(buf, sizeof(buf), "%s", b ? "true" : "false");
+    res = bytes_new_from_str_mpool(mpool, buf);
+    //TRACE("GC>>> %p", *res);
+    return res;
+}
+
+
+bytes_t *
 mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
 {
     bytes_t *res;

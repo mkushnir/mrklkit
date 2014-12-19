@@ -132,6 +132,9 @@ do { \
 
 bytes_t *mrklkit_rt_bytes_new_gc(size_t);
 bytes_t *mrklkit_rt_bytes_new_from_str_gc(const char *);
+bytes_t *mrklkit_rt_bytes_new_from_int_gc(int64_t);
+bytes_t *mrklkit_rt_bytes_new_from_float_gc(double);
+bytes_t *mrklkit_rt_bytes_new_from_bool_gc(char);
 
 rt_array_t *mrklkit_rt_array_new(lkit_array_t *);
 rt_array_t *mrklkit_rt_array_new_gc(lkit_array_t *);
