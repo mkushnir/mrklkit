@@ -149,33 +149,28 @@ _compile_cmp(mrklkit_ctx_t *mctx,
         v = LLVMBuildFCmp(builder, rp, va, vb, NEWVAR("cmp"));
 
     } else if (a->type->tag == LKIT_STR) {
-        LLVMValueRef ref, args[2], rv;
+        LLVMValueRef fn, args[2], rv;
 
-        ref = LLVMGetNamedFunction(module, "bytes_cmp");
-
-        if (ref == NULL) {
-            v = NULL;
-            TR(COMPILE_CMP + 3);
-            goto end;
-
-        } else {
-            args[0] = va;
-            args[1] = vb;
-            LLVMTypeRef ty;
-
-            ty = LLVMInt8TypeInContext(lctx);
-            rv = LLVMBuildCall(builder,
-                              ref,
-                              args,
-                              2,
-                              NEWVAR("strcmp"));
-            rv = LLVMBuildCast(builder, LLVMTrunc, rv, ty, NEWVAR("cast"));
-            v = LLVMBuildICmp(builder,
-                              ip,
-                              rv,
-                              LLVMConstInt(ty, 0, 0),
-                              NEWVAR("cmp"));
+        if ((fn = LLVMGetNamedFunction(module, "bytes_cmp")) == NULL) {
+            FAIL("LLVMGetNamedFunction");
         }
+
+        args[0] = va;
+        args[1] = vb;
+        LLVMTypeRef ty;
+
+        ty = LLVMInt8TypeInContext(lctx);
+        rv = LLVMBuildCall(builder,
+                          fn,
+                          args,
+                          2,
+                          NEWVAR("strcmp"));
+        rv = LLVMBuildCast(builder, LLVMTrunc, rv, ty, NEWVAR("cast"));
+        v = LLVMBuildICmp(builder,
+                          ip,
+                          rv,
+                          LLVMConstInt(ty, 0, 0),
+                          NEWVAR("cmp"));
 
     } else {
         TR(COMPILE_CMP + 4);
@@ -290,8 +285,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             }
 
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
-                TR(COMPILE_GET + 104);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
             args[0] = LLVMBuildPointerCast(builder,
                                            args[0],
@@ -340,8 +334,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             }
 
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
-                TR(COMPILE_GET + 203);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
 
             args[0] = LLVMBuildPointerCast(builder,
@@ -410,8 +403,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             args[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx), idx, 1);
 
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
-                TR(COMPILE_GET + 303);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
             args[0] = LLVMBuildPointerCast(builder,
                                            args[0],
@@ -677,8 +669,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
         // (sym print (func undef undef ...))
         if ((fn = LLVMGetNamedFunction(module, "printf")) == NULL) {
-            TR(COMPILE_FUNCTION + 300);
-            goto err;
+            FAIL("LLVMGetNamedFunction");
         } else {
             lkit_expr_t **arg;
             array_iter_t it;
@@ -1548,8 +1539,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
 
         if ((fn = LLVMGetNamedFunction(module, "mrklkit_strtoi64")) == NULL) {
-            TR(COMPILE_FUNCTION + 1600);
-            goto err;
+            FAIL("LLVMGetNamedFunction");
         }
 
         if ((arg = array_get(&expr->subs, 0)) == NULL) {
@@ -1590,8 +1580,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
 
         if ((fn = LLVMGetNamedFunction(module, "mrklkit_strtod")) == NULL) {
-            TR(COMPILE_FUNCTION + 1700);
-            goto err;
+            FAIL("LLVMGetNamedFunction");
         }
 
         if ((arg = array_get(&expr->subs, 0)) == NULL) {
@@ -1710,24 +1699,21 @@ compile_function(mrklkit_ctx_t *mctx,
         case LKIT_INT:
             if ((fn = LLVMGetNamedFunction(module,
                         "mrklkit_rt_bytes_new_from_int_gc")) == NULL) {
-                TR(COMPILE_FUNCTION + 2100);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
             break;
 
         case LKIT_FLOAT:
             if ((fn = LLVMGetNamedFunction(module,
                         "mrklkit_rt_bytes_new_from_float_gc")) == NULL) {
-                TR(COMPILE_FUNCTION + 2101);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
             break;
 
         case LKIT_BOOL:
             if ((fn = LLVMGetNamedFunction(module,
                         "mrklkit_rt_bytes_new_from_bool_gc")) == NULL) {
-                TR(COMPILE_FUNCTION + 2102);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
             break;
 
@@ -1819,8 +1805,7 @@ tostr_done:
 
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_slice_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 2200);
-            goto err;
+            FAIL("LLVMGetNamedFunction");
         }
 
         if ((arg = array_get(&expr->subs, 0)) == NULL) {
@@ -1883,8 +1868,7 @@ tostr_done:
         ty = lkit_type_get_array(mctx, LKIT_STR);
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_array_split_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 2300);
-            goto err;
+            FAIL("LLVMGetNamedFunction");
         }
 
         args[0] = LLVMConstIntToPtr(
@@ -1926,8 +1910,7 @@ tostr_done:
         //(sym split (func (array str) str str))
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_brushdown_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 2400);
-            goto err;
+            FAIL("LLVMGetNamedFunction");
         }
 
         if ((arg = array_get(&expr->subs, 0)) == NULL) {
@@ -1953,8 +1936,7 @@ tostr_done:
         //(sym split (func (array str) str str))
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_urldecode_gc")) == NULL) {
-            TR(COMPILE_FUNCTION + 2500);
-            goto err;
+            FAIL("LLVMGetNamedFunction");
         }
 
         if ((arg = array_get(&expr->subs, 0)) == NULL) {
@@ -1986,8 +1968,7 @@ tostr_done:
 
             fnname = "mrklkit_rt_array_len";
             if ((fn = LLVMGetNamedFunction(module, fnname)) == NULL) {
-                TR(COMPILE_FUNCTION + 2600);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
 
             if ((args[0] = lkit_compile_expr(mctx,
@@ -2049,8 +2030,7 @@ tostr_done:
         case LKIT_DICT:
             if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_dict_has_item")) == NULL) {
-                TR(COMPILE_FUNCTION + 2700);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
             if ((args[0] = lkit_compile_expr(mctx,
                                              ectx,
@@ -2123,8 +2103,7 @@ tostr_done:
         if (strcmp((char *)optname->data, "pos") == 0) {
             if ((ref = LLVMGetNamedFunction(module,
                     "dparse_struct_pi_pos")) == NULL) {
-                TR(COMPILE_FUNCTION + 4901);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
 
             v = LLVMBuildCall(builder,
@@ -2136,8 +2115,7 @@ tostr_done:
         } else if (strcmp((char *)optname->data, "data") == 0) {
             if ((ref = LLVMGetNamedFunction(module,
                     "mrklkit_rt_struct_pi_data_gc")) == NULL) {
-                TR(COMPILE_FUNCTION + 4902);
-                goto err;
+                FAIL("LLVMGetNamedFunction");
             }
 
             v = LLVMBuildCall(builder,
