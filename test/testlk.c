@@ -48,6 +48,7 @@ test1(void)
     int res;
     bytestream_t bs;
     size_t nlines = 0;
+    size_t nbytes = 0;
 
     if ((fd = open(prog, O_RDONLY)) == -1) {
         FAIL("open");
@@ -77,7 +78,8 @@ test1(void)
                            (dparser_read_lines_cb_t)testrt_run_once,
                            NULL,
                            &tctx,
-                           &nlines) != 0) {
+                           &nlines,
+                           &nbytes) != 0) {
         TRACE("error");
     }
 

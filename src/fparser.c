@@ -358,11 +358,11 @@ tokenize(struct tokenizer_ctx *ctx,
                 ctx->state = LEX_QSTRIN;
                 ctx->tokstart = SPOS(bs) + 1;
 
-            } else if (ctx->state & LEX_QSTR) {
-                ctx->state = LEX_QSTROUT;
-
             } else if (ctx->state & LEX_QSTRESC) {
                 ctx->state = LEX_QSTRMID;
+
+            } else if (ctx->state & (LEX_QSTRIN | LEX_QSTRMID)) {
+                ctx->state = LEX_QSTROUT;
 
             } else if (ctx->state & LEX_COMIN) {
                 ctx->state = LEX_COMMID;

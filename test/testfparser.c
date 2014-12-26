@@ -18,7 +18,7 @@ mycb(UNUSED const char *buf,
     return fparser_datum_dump(&dat, udata);
 }
 
-static void
+UNUSED static void
 test0(void)
 {
     struct {
@@ -38,7 +38,7 @@ test0(void)
 
 }
 
-static void
+UNUSED static void
 test1(void)
 {
     int fd;
@@ -54,10 +54,28 @@ test1(void)
     fparser_datum_destroy(&root);
 }
 
+static void
+test2(void)
+{
+    int fd;
+    fparser_datum_t *root = NULL;
+
+    if ((fd = open("data-03", O_RDONLY)) < 0) {
+        FAIL("open");
+    }
+
+    root = fparser_parse(fd, mycb, NULL);
+    assert(root != NULL);
+    close(fd);
+    fparser_datum_dump(&root, NULL);
+    fparser_datum_destroy(&root);
+}
+
 int
 main(void)
 {
     test0();
     test1();
+    test2();
     return 0;
 }
