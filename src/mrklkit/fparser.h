@@ -83,6 +83,7 @@ typedef struct _fparser_datum {
 #define FPARSER_DATUM_TAG(dat) ((dat)->tag)
 
 void fparser_escape(char *, size_t, const char *, size_t);
+ssize_t fparser_unescape(char *, const char *, ssize_t);
 
 int fparser_datum_dump(fparser_datum_t **, void *);
 void fparser_datum_dump_formatted(fparser_datum_t *);

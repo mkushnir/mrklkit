@@ -20,8 +20,8 @@ static int fparser_datum_init(fparser_datum_t *, fparser_tag_t);
 static int fparser_datum_fini(fparser_datum_t *);
 
 
-static ssize_t
-unesc(char *dst, const char *src, ssize_t sz)
+ssize_t
+fparser_unescape(char *dst, const char *src, ssize_t sz)
 {
     ssize_t res = 0;
     ssize_t i;
@@ -90,7 +90,7 @@ compile_value(struct tokenizer_ctx *ctx,
         value->hash = 0;
         value->sz = (size_t)sz + 1;
 
-        escaped = unesc((char *)value->data, SDATA(bs, ctx->tokstart), sz);
+        escaped = fparser_unescape((char *)value->data, SDATA(bs, ctx->tokstart), sz);
         value->sz -= escaped;
 
         if (fparser_datum_form_add(ctx->form, dat) != 0) {
@@ -813,7 +813,7 @@ fparser_datum_build_bool(char val)
     value->nref = 0; \
     value->hash = 0; \
     value->sz = sz + 1; \
-    escaped = unesc((char *)value->data, str, sz); \
+    escaped = fparser_unescape((char *)value->data, str, sz); \
     value->sz -= escaped; \
     return dat;
 
@@ -845,7 +845,7 @@ fparser_datum_build_str(const char *str)
     value->nref = 0; \
     value->hash = 0; \
     value->sz = sz; \
-    escaped = unesc((char *)value->data, str, sz); \
+    escaped = fparser_unescape((char *)value->data, str, sz); \
     value->sz -= escaped; \
     return dat;
 

@@ -1656,6 +1656,67 @@ compile_function(mrklkit_ctx_t *mctx,
                           LLVMInt64TypeInContext(lctx),
                           NEWVAR("zext"));
 
+    } else if (strcmp(name , "startswith") == 0) {
+        lkit_expr_t **arg;
+        LLVMValueRef fn, args[2];
+
+        if ((fn = LLVMGetNamedFunction(module, "bytes_startswith")) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        arg = array_get(&expr->subs, 0);
+        if ((args[0] = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg,
+                                   udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1950);
+            goto err;
+        }
+        arg = array_get(&expr->subs, 1);
+        if ((args[1] = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg,
+                                   udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1951);
+            goto err;
+        }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
+
+    } else if (strcmp(name , "endswith") == 0) {
+        lkit_expr_t **arg;
+        LLVMValueRef fn, args[2];
+
+        if ((fn = LLVMGetNamedFunction(module, "bytes_endswith")) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        arg = array_get(&expr->subs, 0);
+        if ((args[0] = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg,
+                                   udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1960);
+            goto err;
+        }
+        arg = array_get(&expr->subs, 1);
+        if ((args[1] = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg,
+                                   udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1961);
+            goto err;
+        }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
 #if 0
     } else if (strcmp(name , "startswith") == 0) {
         v = compile_strstr(mctx,
