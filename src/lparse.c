@@ -308,6 +308,28 @@ lparse_next_double(array_t *form,
 }
 
 int
+lparse_next_bool(array_t *form,
+                 array_iter_t *it,
+                 char *value,
+                 int seterror)
+{
+    fparser_datum_t **node;
+    fparser_tag_t tag;
+    if ((node = array_next(form, it)) == NULL) {
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*node);
+    if (tag == FPARSER_BOOL) {
+        char *v = (char *)((*node)->body);
+        *value = *v;
+        return 0;
+    }
+    (void)array_prev(form, it);
+    (*node)->error = seterror;
+    return 1;
+}
+
+int
 lparse_next_sequence(array_t *form,
                      array_iter_t *it,
                      fparser_datum_t **value,
