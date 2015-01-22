@@ -20,6 +20,7 @@ int lparse_first_word_bytes(array_t *, array_iter_t *, bytes_t **, int);
 int lparse_first_word_datum(array_t *, array_iter_t *, fparser_datum_t **, int);
 int lparse_next_word(array_t *, array_iter_t *, char **, int);
 int lparse_next_word_bytes(array_t *, array_iter_t *, bytes_t **, int);
+int lparse_next_alnum_bytes(array_t *, array_iter_t *, bytes_t **, int);
 int lparse_next_word_datum(array_t *, array_iter_t *, fparser_datum_t **, int);
 int lparse_next_str(array_t *, array_iter_t *, char **, int);
 int lparse_next_char(array_t *, array_iter_t *, char *, int);

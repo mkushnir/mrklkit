@@ -127,6 +127,40 @@ lparse_next_word_bytes(array_t *form,
 
 
 int
+lparse_next_alnum_bytes(array_t *form,
+                        array_iter_t *it,
+                        bytes_t **value,
+                        int seterror)
+{
+    fparser_datum_t **node;
+    fparser_tag_t tag;
+    if ((node = array_next(form, it)) == NULL) {
+        *value = NULL;
+        return 1;
+    }
+    tag = FPARSER_DATUM_TAG(*node);
+    if (tag == FPARSER_WORD) {
+        *value = (bytes_t *)((*node)->body);
+        return 0;
+    } else if (tag == FPARSER_INT) {
+        int64_t *v;
+        char buf[32];
+
+        v = (int64_t *)((*node)->body);
+        snprintf(buf, sizeof(buf), "%ld", *v);
+        fparser_datum_destroy(node);
+        *node = fparser_datum_build_str(buf);
+        *value = (bytes_t *)((*node)->body);
+        return 0;
+    }
+    (void)array_prev(form, it);
+    *value = NULL;
+    (*node)->error = seterror;
+    return 1;
+}
+
+
+int
 lparse_next_str(array_t *form,
                 array_iter_t *it,
                 char **value,
