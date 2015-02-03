@@ -34,7 +34,40 @@ fparser_unescape(char *dst, const char *src, ssize_t sz)
             ++i;
             ++res;
             if (i < sz) {
-                *(dst + j) = *(src + i);
+                ch = *(src + i);
+                switch (ch) {
+                case 'a':
+                    ch = '\a';
+                    break;
+
+                case 'b':
+                    ch = '\b';
+                    break;
+
+                case 'f':
+                    ch = '\f';
+                    break;
+
+                case 'n':
+                    ch = '\n';
+                    break;
+
+                case 'r':
+                    ch = '\r';
+                    break;
+
+                case 't':
+                    ch = '\t';
+                    break;
+
+                case 'v':
+                    ch = '\v';
+                    break;
+
+                default:
+                    break;
+                }
+                *(dst + j) = ch;
             }
         } else {
             *(dst + j) = ch;
