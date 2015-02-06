@@ -138,9 +138,19 @@ _compile_cmp(mrklkit_ctx_t *mctx,
 
     if (a->type->tag == LKIT_INT ||
         a->type->tag == LKIT_INT_MIN ||
-        a->type->tag == LKIT_INT_MAX ||
-        a->type->tag == LKIT_BOOL) {
+        a->type->tag == LKIT_INT_MAX) {
         v = LLVMBuildICmp(builder, ip, va, vb, NEWVAR("cmp"));
+
+    } else if (a->type->tag == LKIT_BOOL) {
+        LLVMTypeRef ty;
+
+        ty = LLVMInt64TypeInContext(lctx);
+
+        v = LLVMBuildICmp(builder,
+                          ip,
+                          LLVMBuildCast(builder, LLVMZExt, va, ty, NEWVAR("cast")),
+                          LLVMBuildCast(builder, LLVMZExt, vb, ty, NEWVAR("cast")),
+                          NEWVAR("cmp"));
 
     } else if (a->type->tag == LKIT_FLOAT ||
                a->type->tag == LKIT_FLOAT_MIN ||
