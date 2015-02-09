@@ -295,7 +295,7 @@ lkit_expr_build_ref(lkit_expr_t *ectx, bytes_t *name)
 
     expr = lkit_expr_new(ectx);
     expr->name = name;
-    expr->isref = 1;
+    expr->isref = -1;
     expr->value.ref = lkit_expr_find(ectx, name);
     expr->type = lkit_expr_type_of(expr->value.ref);
     return expr;
@@ -436,7 +436,7 @@ parse_expr_quals(array_t *form,
         int64_t value;
 
         if (lparse_next_int(form, it, &value, 1) != 0) {
-            expr->error = 1;
+            expr->error = -1;
             return 1;
         }
         expr->lazy_init = (int)value;
@@ -445,14 +445,14 @@ parse_expr_quals(array_t *form,
         int64_t value;
 
         if (lparse_next_int(form, it, &value, 1) != 0) {
-            expr->error = 1;
+            expr->error = -1;
             return 1;
         }
         expr->referenced = (int)value;
 
     } else if (strcmp(s, ":title") == 0) {
         if (lparse_next_str_bytes(form, it, &expr->title, 1) != 0) {
-            expr->error = 1;
+            expr->error = -1;
             return 1;
         }
     } else {
@@ -526,7 +526,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                 goto err;
             }
             //TRACE("ISREF by %s", expr->name->data);
-            expr->isref = 1;
+            expr->isref = -1;
             expr->type = expr->value.ref->type;
 
             break;
@@ -562,7 +562,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                     }
 
                     //TRACE("ISREF by %s", expr->name->data);
-                    expr->isref = 1;
+                    expr->isref = -1;
 
                     /*
                      * XXX (xxx) (xxx :q q :w w :e e)
