@@ -779,7 +779,7 @@ mrklkit_rt_struct_print(rt_struct_t *value)
             break;
 
         case LKIT_BOOL:
-            TRACEC("%ld", mrklkit_rt_get_struct_item_int(value, it.iter));
+            TRACEC("%hhd", mrklkit_rt_get_struct_item_bool(value, it.iter));
             break;
 
         case LKIT_ARRAY:
@@ -837,13 +837,13 @@ mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)
 }
 
 
-int64_t
+int8_t
 mrklkit_rt_get_struct_item_bool(rt_struct_t *value, int64_t idx)
 {
-    int64_t *v;
+    int8_t *v;
 
     assert(idx < (ssize_t)value->type->fields.elnum);
-    v = (int64_t *)(value->fields + idx);
+    v = (int8_t *)((intptr_t *)(value->fields + idx));
     return *v;
 }
 

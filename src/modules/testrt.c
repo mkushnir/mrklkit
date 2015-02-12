@@ -1161,12 +1161,12 @@ testrt_target_hash(testrt_target_t *tgt)
             case LKIT_BOOL:
                 {
                     union {
-                        uint64_t i;
+                        int8_t i;
                         unsigned char c;
                     } v;
 
                     v.i = mrklkit_rt_get_struct_item_bool(tgt->value, it.iter);
-                    tgt->hash = fasthash(tgt->hash, &v.c, sizeof(int64_t));
+                    tgt->hash = fasthash(tgt->hash, &v.c, sizeof(int8_t));
                 }
                 break;
 
@@ -1230,7 +1230,7 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
 
             case LKIT_BOOL:
                 {
-                    int64_t ab, bb;
+                    int8_t ab, bb;
 
                     ab = mrklkit_rt_get_struct_item_bool(a->value, it.iter);
                     bb = mrklkit_rt_get_struct_item_bool(b->value, it.iter);
