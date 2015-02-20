@@ -43,8 +43,7 @@ libmrklkit_la_SOURCES = \
 nodist_libmrklkit_la_SOURCES = diag.c
 
 if DEBUG
-DEBUG_FLAGS = -g -O0
-#DEBUG_FLAGS = -g -O0 @CLANG_DEBUG@
+DEBUG_FLAGS = -g -O0 @CLANG_DEBUG@
 else
 DEBUG_FLAGS = -DNDEBUG -O3
 endif

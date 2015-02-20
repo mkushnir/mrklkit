@@ -32,7 +32,7 @@ else
             AC_SUBST(CLANG_DEBUG, ['-ftrapv -fcatch-undefined-behavior'])
         else
             # we assume all others are 3.3+, add here options if needed
-            AC_SUBST(CLANG_DEBUG, ['-ftrapv -fcatch-undefined-behavior'])
+            AC_SUBST(CLANG_DEBUG, ['-ftrapv'])
         fi
     else
         CC="cc"
