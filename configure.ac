@@ -88,16 +88,18 @@ AC_TYPE_OFF_T
 
 
 # LLVM_CFALGS modulo -On
-if which llvm-config >/dev/null
+if which llvm-config34 >/dev/null
 then
-    AC_SUBST(LLVM_CFLAGS, ["`llvm-config --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
-    AC_SUBST(LLVM_LIBS, ["`llvm-config --libs engine ipo objcarcopts instrumentation`"])
-    AC_SUBST(LLVM_LDFLAGS, ["`llvm-config --ldflags` $cxxlib"])
+    llvmconfig=llvm-config34
+elif which llvm-config35 >/dev/null
+then
+    llvmconfig=llvm-config35
 else
-    AC_SUBST(LLVM_CFLAGS, ["`llvm-config34 --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
-    AC_SUBST(LLVM_LIBS, ["`llvm-config34 --libs engine ipo objcarcopts instrumentation`"])
-    AC_SUBST(LLVM_LDFLAGS, ["`llvm-config34 --ldflags` $cxxlib"])
+    llvmconfig=llvm-config
 fi
+AC_SUBST(LLVM_CFLAGS, ["`$llvmconfig --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
+AC_SUBST(LLVM_LIBS, [" `$llvmconfig --system-libs` $cxxlib  `$llvmconfig --libs engine ipo objcarcopts instrumentation`"])
+AC_SUBST(LLVM_LDFLAGS, ["`$llvmconfig --ldflags`"])
 
 AC_PRESERVE_HELP_ORDER
 
@@ -116,7 +118,7 @@ AC_SUBST(MRKLKIT_LOCAL_LDFLAGS, [-L\$\(top_srcdir\)/src/.libs])
 
 # pass LDFLAGS=-L${LOCALBASE}/lib in the environment
 AC_CHECK_LIB(mrkcommon, _fini, [], [AC_MSG_FAILURE(libmrkcommon.so is required. Please find it at git@github.com:mkushnir/mrkcommon.git)])
-export LDFLAGS="`llvm-config34 --ldflags` $LDFLAGS"
-AC_CHECK_LIB(LLVMCore, _fini, [], [AC_MSG_FAILURE(libLLVMCore.a is required. Please find it at ...)])
+#export LDFLAGS="`$llvmconfig --ldflags` $LDFLAGS"
+#AC_CHECK_LIB(LLVMCore, _fini, [], [AC_MSG_FAILURE(libLLVMCore.a is required. Please find it at ...)])
 
 AC_OUTPUT
