@@ -4,7 +4,7 @@ CLEANFILES = *.core
 
 noinst_PROGRAMS=testfoo testfparser testdparser testlk
 
-distdir = ../$(PACKAGE)-$(VERSION)/test
+distdir = $(top_srcdir)/$(PACKAGE)-$(VERSION)/test
 dist_HEADERS = unittest.h
 
 BUILT_SOURCES = ../src/diag.c ../src/diag.h
