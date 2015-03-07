@@ -467,30 +467,30 @@ tokenize(struct tokenizer_ctx *ctx,
     return 0;
 }
 
-#define FPARSER_PARSE_BODY(tokenize_fn) \
-    ssize_t nread; \
-    bytestream_t bs; \
-    struct tokenizer_ctx ctx; \
-    fparser_datum_t *root = NULL; \
-    ctx.indent = 0; \
-    if ((root = malloc(sizeof(fparser_datum_t) + sizeof(array_t))) == NULL) { \
-        TRRETNULL(FPARSER_PARSE + 1); \
-    } \
-    if (fparser_datum_init(root, FPARSER_SEQ) != 0) { \
-        TRRETNULL(FPARSER_PARSE + 2); \
-    } \
-    bytestream_init(&bs, BLOCKSZ); \
-    ctx.form = root; \
-    ctx.tokstart = SPOS(&bs); \
-    ctx.state = LEX_SPACE; \
-    while (SNEEDMORE(&bs)) { \
-        nread = bytestream_read_more(&bs, fd, BLOCKSZ); \
-        if (nread <= 0) { \
-            break; \
-        } \
-        (void)tokenize_fn(&ctx, &bs, cb, udata); \
-    } \
-    bytestream_fini(&bs); \
+#define FPARSER_PARSE_BODY(tokenize_fn)                                        \
+    ssize_t nread;                                                             \
+    bytestream_t bs;                                                           \
+    struct tokenizer_ctx ctx;                                                  \
+    fparser_datum_t *root = NULL;                                              \
+    ctx.indent = 0;                                                            \
+    if ((root = malloc(sizeof(fparser_datum_t) + sizeof(array_t))) == NULL) {  \
+        TRRETNULL(FPARSER_PARSE + 1);                                          \
+    }                                                                          \
+    if (fparser_datum_init(root, FPARSER_SEQ) != 0) {                          \
+        TRRETNULL(FPARSER_PARSE + 2);                                          \
+    }                                                                          \
+    bytestream_init(&bs, BLOCKSZ);                                             \
+    ctx.form = root;                                                           \
+    ctx.tokstart = SPOS(&bs);                                                  \
+    ctx.state = LEX_SPACE;                                                     \
+    while (SNEEDMORE(&bs)) {                                                   \
+        nread = bytestream_read_more(&bs, fd, BLOCKSZ);                        \
+        if (nread <= 0) {                                                      \
+            break;                                                             \
+        }                                                                      \
+        (void)tokenize_fn(&ctx, &bs, cb, udata);                               \
+    }                                                                          \
+    bytestream_fini(&bs);                                                      \
     return root
 
 
@@ -795,16 +795,16 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
 }
 
 
-#define FPARSER_DATUM_BUILD_TY_BODY(ty, tag, malloc_fn) \
-    fparser_datum_t *dat; \
-    ty *value; \
-    if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
-                         sizeof(ty))) == NULL) { \
-        FAIL("malloc"); \
-    } \
-    fparser_datum_init(dat, tag); \
-    value = (ty *)(dat->body); \
-    *value = val; \
+#define FPARSER_DATUM_BUILD_TY_BODY(ty, tag, malloc_fn)\
+    fparser_datum_t *dat;                              \
+    ty *value;                                         \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) +     \
+                         sizeof(ty))) == NULL) {       \
+        FAIL("malloc");                                \
+    }                                                  \
+    fparser_datum_init(dat, tag);                      \
+    value = (ty *)(dat->body);                         \
+    *value = val;                                      \
     return dat;
 
 
@@ -829,25 +829,25 @@ fparser_datum_build_bool(char val)
 }
 
 
-#define FPARSER_DATUM_BUILD_STR_BODY(malloc_fn, tag) \
-    fparser_datum_t *dat; \
-    bytes_t *value; \
-    size_t sz; \
-    ssize_t escaped; \
-    sz = strlen(str); \
-    if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
-                         sizeof(bytes_t) + \
-                         sz + \
-                         1)) == NULL) { \
-        FAIL("malloc"); \
-    } \
-    fparser_datum_init(dat, tag); \
-    value = (bytes_t *)(dat->body); \
-    value->nref = 0; \
-    value->hash = 0; \
-    value->sz = sz + 1; \
-    escaped = fparser_unescape((char *)value->data, str, sz); \
-    value->sz -= escaped; \
+#define FPARSER_DATUM_BUILD_STR_BODY(malloc_fn, tag)           \
+    fparser_datum_t *dat;                                      \
+    bytes_t *value;                                            \
+    size_t sz;                                                 \
+    ssize_t escaped;                                           \
+    sz = strlen(str);                                          \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) +             \
+                         sizeof(bytes_t) +                     \
+                         sz +                                  \
+                         1)) == NULL) {                        \
+        FAIL("malloc");                                        \
+    }                                                          \
+    fparser_datum_init(dat, tag);                              \
+    value = (bytes_t *)(dat->body);                            \
+    value->nref = 0;                                           \
+    value->hash = 0;                                           \
+    value->sz = sz + 1;                                        \
+    escaped = fparser_unescape((char *)value->data, str, sz);  \
+    value->sz -= escaped;                                      \
     return dat;
 
 
@@ -864,22 +864,22 @@ fparser_datum_build_str(const char *str)
     FPARSER_DATUM_BUILD_STR_BODY(malloc, FPARSER_STR);
 }
 
-#define FPARSER_DATUM_BUILD_STR_BUF_BODY(malloc_fn) \
-    fparser_datum_t *dat; \
-    bytes_t *value; \
-    ssize_t escaped; \
-    if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
-                         sizeof(bytes_t) + \
-                         sz)) == NULL) { \
-        FAIL("malloc"); \
-    } \
-    fparser_datum_init(dat, FPARSER_STR); \
-    value = (bytes_t *)(dat->body); \
-    value->nref = 0; \
-    value->hash = 0; \
-    value->sz = sz; \
-    escaped = fparser_unescape((char *)value->data, str, sz); \
-    value->sz -= escaped; \
+#define FPARSER_DATUM_BUILD_STR_BUF_BODY(malloc_fn)            \
+    fparser_datum_t *dat;                                      \
+    bytes_t *value;                                            \
+    ssize_t escaped;                                           \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) +             \
+                         sizeof(bytes_t) +                     \
+                         sz)) == NULL) {                       \
+        FAIL("malloc");                                        \
+    }                                                          \
+    fparser_datum_init(dat, FPARSER_STR);                      \
+    value = (bytes_t *)(dat->body);                            \
+    value->nref = 0;                                           \
+    value->hash = 0;                                           \
+    value->sz = sz;                                            \
+    escaped = fparser_unescape((char *)value->data, str, sz);  \
+    value->sz -= escaped;                                      \
     return dat;
 
 
@@ -889,13 +889,13 @@ fparser_datum_build_str_buf(const char *str, size_t sz)
     FPARSER_DATUM_BUILD_STR_BUF_BODY(malloc);
 }
 
-#define FPARSER_DATUM_BUILD_SEQ_BODY(malloc_fn) \
-    fparser_datum_t *dat; \
-    if ((dat = malloc_fn(sizeof(fparser_datum_t) + \
-                         sizeof(array_t))) == NULL) { \
-        FAIL("malloc"); \
-    } \
-    fparser_datum_init(dat, FPARSER_SEQ); \
+#define FPARSER_DATUM_BUILD_SEQ_BODY(malloc_fn)        \
+    fparser_datum_t *dat;                              \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) +     \
+                         sizeof(array_t))) == NULL) {  \
+        FAIL("malloc");                                \
+    }                                                  \
+    fparser_datum_init(dat, FPARSER_SEQ);              \
     return dat;
 
 

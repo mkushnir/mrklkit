@@ -1139,31 +1139,31 @@ parse_fielddef(mrklkit_ctx_t *mctx,
     array_iter_t it;
     bytes_t **name = NULL;
 
-#define DO_PARSE_FIELDDEF(var, type) \
-    type *var; \
-    var = (type *)ty; \
-    if ((name = array_incr(&var->names)) == NULL) { \
-        FAIL("array_incr"); \
-    } \
-    form = (array_t *)dat->body; \
-    if (lparse_first_word_bytes(form, &it, name, 1) == 0) { \
-        fparser_datum_t **node; \
-        lkit_type_t **fty; \
-        *name = bytes_new_from_bytes(*name); \
-        if ((node = array_next(form, &it)) == NULL) { \
-            dat->error = seterror; \
-            return 1; \
-        } \
-        if ((fty = array_incr(&var->fields)) == NULL) { \
-            FAIL("array_incr"); \
-        } \
+#define DO_PARSE_FIELDDEF(var, type)                                   \
+    type *var;                                                         \
+    var = (type *)ty;                                                  \
+    if ((name = array_incr(&var->names)) == NULL) {                    \
+        FAIL("array_incr");                                            \
+    }                                                                  \
+    form = (array_t *)dat->body;                                       \
+    if (lparse_first_word_bytes(form, &it, name, 1) == 0) {            \
+        fparser_datum_t **node;                                        \
+        lkit_type_t **fty;                                             \
+        *name = bytes_new_from_bytes(*name);                           \
+        if ((node = array_next(form, &it)) == NULL) {                  \
+            dat->error = seterror;                                     \
+            return 1;                                                  \
+        }                                                              \
+        if ((fty = array_incr(&var->fields)) == NULL) {                \
+            FAIL("array_incr");                                        \
+        }                                                              \
         if ((*fty = lkit_type_parse(mctx, *node, seterror)) == NULL) { \
-            (*node)->error = seterror; \
-            return 1; \
-        } \
-    } else { \
-        dat->error = seterror; \
-        return 1; \
+            (*node)->error = seterror;                                 \
+            return 1;                                                  \
+        }                                                              \
+    } else {                                                           \
+        dat->error = seterror;                                         \
+        return 1;                                                      \
     }
 
     if (ty->tag == LKIT_STRUCT) {

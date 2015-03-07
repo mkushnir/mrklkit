@@ -475,21 +475,21 @@ dparse_array_pos(bytestream_t *bs,
         FAIL("lkit_array_get_element_type");
     }
 
-#define DPARSE_ARRAY_CASE(ty, fn) \
-    idx = 0; \
-    while (spos < epos && SNCHR(bs, spos) != delim) { \
-        off_t fpos; \
-        union { \
-            void *v; \
-            ty x; \
-        } u; \
-        void **v; \
-        fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos); \
-        (void)fn(bs, fdelim, spos, fpos, &u.x); \
+#define DPARSE_ARRAY_CASE(ty, fn)                              \
+    idx = 0;                                                   \
+    while (spos < epos && SNCHR(bs, spos) != delim) {          \
+        off_t fpos;                                            \
+        union {                                                \
+            void *v;                                           \
+            ty x;                                              \
+        } u;                                                   \
+        void **v;                                              \
+        fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos);\
+        (void)fn(bs, fdelim, spos, fpos, &u.x);                \
         v = array_get_safe_mpool(mpool, &(*val)->fields, idx); \
-        *v = u.v; \
-        spos = dparser_reach_value_pos(bs, fdelim, fpos, epos); \
-        ++idx; \
+        *v = u.v;                                              \
+        spos = dparser_reach_value_pos(bs, fdelim, fpos, epos);\
+        ++idx;                                                 \
     }
 
     switch (afty->tag) {
@@ -536,27 +536,27 @@ dparse_dict_pos(bytestream_t *bs,
         _dparse_str_pos = dparse_str_pos;
     }
 
-#define DPARSE_DICT_CASE(ty, fn) \
-        while (spos < epos && SNCHR(bs, spos) != delim) { \
-            off_t kvpos, fpos; \
-            dict_item_t *it; \
-            bytes_t *key = NULL; \
-            union { \
-                void *v; \
-                ty x; \
-            } u; \
-            kvpos = dparser_reach_delim_pos(bs, kvdelim, spos, epos); \
-            (void)_dparse_str_pos(bs, kvdelim, spos, kvpos, &key); \
-            spos = dparser_reach_value_pos(bs, kvdelim, kvpos, epos); \
-            if ((it = dict_get_item(&(*val)->fields, key)) == NULL) { \
-                fpos = fn(bs, fdelim, spos, epos, &u.x); \
+#define DPARSE_DICT_CASE(ty, fn)                                       \
+        while (spos < epos && SNCHR(bs, spos) != delim) {              \
+            off_t kvpos, fpos;                                         \
+            dict_item_t *it;                                           \
+            bytes_t *key = NULL;                                       \
+            union {                                                    \
+                void *v;                                               \
+                ty x;                                                  \
+            } u;                                                       \
+            kvpos = dparser_reach_delim_pos(bs, kvdelim, spos, epos);  \
+            (void)_dparse_str_pos(bs, kvdelim, spos, kvpos, &key);     \
+            spos = dparser_reach_value_pos(bs, kvdelim, kvpos, epos);  \
+            if ((it = dict_get_item(&(*val)->fields, key)) == NULL) {  \
+                fpos = fn(bs, fdelim, spos, epos, &u.x);               \
                 dict_set_item_mpool(mpool, &(*val)->fields, key, u.v); \
-                fpos = dparser_reach_delim_pos(bs, fdelim, fpos, epos); \
-            } else { \
-                /* BYTES_DECREF(&key); */ \
-                fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos); \
-            } \
-            spos = dparser_reach_value_pos(bs, fdelim, fpos, epos); \
+                fpos = dparser_reach_delim_pos(bs, fdelim, fpos, epos);\
+            } else {                                                   \
+                /* BYTES_DECREF(&key); */                              \
+                fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos);\
+            }                                                          \
+            spos = dparser_reach_value_pos(bs, fdelim, fpos, epos);    \
         }
 
     switch (dfty->tag) {
@@ -614,49 +614,49 @@ dparse_struct_pi_pos(rt_struct_t *value)
 /**
  * struct item random access, implies "strict" delimiter grammar
  */
-#define DPARSE_STRUCT_ITEM_RA_BODY(ty, val, cb) \
-    assert(idx < (ssize_t)value->type->fields.elnum); \
-    assert(value->parser_info.bs != NULL); \
-    if (!(value->dpos[idx] & 0x80000000)) { \
-        bytestream_t *bs; \
-        off_t spos, epos; \
-        char delim; \
-        int nidx = idx + 1; \
-        off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t); \
-        bs = value->parser_info.bs; \
-        delim = value->type->delim; \
-        if (value->type->parser == LKIT_PARSER_MDELIM) { \
-            _dparser_reach_value = dparser_reach_value_m_pos; \
-        } else { \
-            _dparser_reach_value = dparser_reach_value_pos; \
-        } \
-        if (nidx >= value->next_delim) { \
-            off_t pos; \
-            pos = value->parser_info.pos; \
-            do { \
-                value->dpos[value->next_delim] = pos; \
-                pos = _dparser_reach_value(bs, \
-                                           delim, \
-                                           pos, \
-                                           value->parser_info.br.end); \
-                pos = dparser_reach_delim_pos(bs, \
-                                              delim, \
-                                              pos, \
-                                              value->parser_info.br.end); \
-            } while (value->next_delim++ < nidx); \
-            assert(value->next_delim == (nidx + 1)); \
-            value->parser_info.pos = pos; \
-        } \
-        spos = _dparser_reach_value(bs, \
-                                    delim, \
-                                    value->dpos[idx], \
-                                    value->parser_info.br.end); \
-        epos = value->dpos[nidx] & ~0x80000000; \
-        value->dpos[idx] |= 0x80000000; \
-        val = (ty)MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx); \
-        cb(bs, delim, spos, epos, val); \
-    } else { \
-        val = (ty)MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx); \
+#define DPARSE_STRUCT_ITEM_RA_BODY(ty, val, cb)                                \
+    assert(idx < (ssize_t)value->type->fields.elnum);                          \
+    assert(value->parser_info.bs != NULL);                                     \
+    if (!(value->dpos[idx] & 0x80000000)) {                                    \
+        bytestream_t *bs;                                                      \
+        off_t spos, epos;                                                      \
+        char delim;                                                            \
+        int nidx = idx + 1;                                                    \
+        off_t (*_dparser_reach_value)(bytestream_t *, char, off_t, off_t);     \
+        bs = value->parser_info.bs;                                            \
+        delim = value->type->delim;                                            \
+        if (value->type->parser == LKIT_PARSER_MDELIM) {                       \
+            _dparser_reach_value = dparser_reach_value_m_pos;                  \
+        } else {                                                               \
+            _dparser_reach_value = dparser_reach_value_pos;                    \
+        }                                                                      \
+        if (nidx >= value->next_delim) {                                       \
+            off_t pos;                                                         \
+            pos = value->parser_info.pos;                                      \
+            do {                                                               \
+                value->dpos[value->next_delim] = pos;                          \
+                pos = _dparser_reach_value(bs,                                 \
+                                           delim,                              \
+                                           pos,                                \
+                                           value->parser_info.br.end);         \
+                pos = dparser_reach_delim_pos(bs,                              \
+                                              delim,                           \
+                                              pos,                             \
+                                              value->parser_info.br.end);      \
+            } while (value->next_delim++ < nidx);                              \
+            assert(value->next_delim == (nidx + 1));                           \
+            value->parser_info.pos = pos;                                      \
+        }                                                                      \
+        spos = _dparser_reach_value(bs,                                        \
+                                    delim,                                     \
+                                    value->dpos[idx],                          \
+                                    value->parser_info.br.end);                \
+        epos = value->dpos[nidx] & ~0x80000000;                                \
+        value->dpos[idx] |= 0x80000000;                                        \
+        val = (ty)MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);                 \
+        cb(bs, delim, spos, epos, val);                                        \
+    } else {                                                                   \
+        val = (ty)MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);                 \
     }
 
 static void **

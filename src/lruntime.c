@@ -271,20 +271,20 @@ null_init(void **v)
 }
 
 
-#define MRKLKIT_RT_ARRAY_NEW_BODY(malloc_fn, array_ensure_datasz_fn) \
-    rt_array_t *res; \
- \
-    if ((res = malloc_fn(sizeof(rt_array_t))) == NULL) { \
-        FAIL("malloc"); \
-    } \
-    res->nref = 0; \
-    res->type = ty; \
-    array_init(&res->fields, \
-               sizeof(void *), \
-               0, \
-               (array_initializer_t)null_init, \
-               NULL); \
-    array_ensure_datasz_fn(&res->fields, ty->nreserved, 0); \
+#define MRKLKIT_RT_ARRAY_NEW_BODY(malloc_fn, array_ensure_datasz_fn)   \
+    rt_array_t *res;                                                   \
+                                                                       \
+    if ((res = malloc_fn(sizeof(rt_array_t))) == NULL) {               \
+        FAIL("malloc");                                                \
+    }                                                                  \
+    res->nref = 0;                                                     \
+    res->type = ty;                                                    \
+    array_init(&res->fields,                                           \
+               sizeof(void *),                                         \
+               0,                                                      \
+               (array_initializer_t)null_init,                         \
+               NULL);                                                  \
+    array_ensure_datasz_fn(&res->fields, ty->nreserved, 0);            \
     return res
 
 
@@ -533,18 +533,18 @@ mrklkit_rt_dict_print(rt_dict_t *value)
 }
 
 
-#define MRKLKIT_RT_DICT_NEW_BODY(malloc_fn, dict_init_fn) \
-    rt_dict_t *res; \
-    if ((res = malloc_fn(sizeof(rt_dict_t))) == NULL) { \
-        FAIL("malloc_fn"); \
-    } \
-    res->nref = 0; \
-    res->type = ty; \
-    dict_init_fn(&res->fields, \
-              17, \
-              (dict_hashfn_t)bytes_hash, \
-              (dict_item_comparator_t)bytes_cmp, \
-              NULL); \
+#define MRKLKIT_RT_DICT_NEW_BODY(malloc_fn, dict_init_fn)      \
+    rt_dict_t *res;                                            \
+    if ((res = malloc_fn(sizeof(rt_dict_t))) == NULL) {        \
+        FAIL("malloc_fn");                                     \
+    }                                                          \
+    res->nref = 0;                                             \
+    res->type = ty;                                            \
+    dict_init_fn(&res->fields,                                 \
+              17,                                              \
+              (dict_hashfn_t)bytes_hash,                       \
+              (dict_item_comparator_t)bytes_cmp,               \
+              NULL);                                           \
     return res
 
 rt_dict_t *
@@ -633,24 +633,24 @@ mrklkit_rt_dict_has_item(rt_dict_t *value, bytes_t *key)
  * struct
  */
 
-#define MRKLKIT_RT_STRUCT_NEW_BODY(malloc_fn) \
-    rt_struct_t *v; \
-    size_t sz = ty->fields.elnum * sizeof(void *) + \
-                (ty->fields.elnum + 1) * sizeof(off_t); \
-    if ((v = malloc_fn(sizeof(rt_struct_t) + sz)) == NULL) { \
-        FAIL("malloc"); \
-    } \
-    v->nref = 0; \
-    v->type = ty; \
-    v->parser_info.bs = NULL; \
-    v->parser_info.pos = 0; \
-    v->next_delim = 0; \
-    v->current = 0; \
-    v->dpos = (off_t *)(&v->fields[ty->fields.elnum]); \
-    (void)memset(v->dpos, '\0', (ty->fields.elnum + 1) * sizeof(off_t)); \
-    if (ty->init != NULL) { \
-        ty->init(v->fields); \
-    } \
+#define MRKLKIT_RT_STRUCT_NEW_BODY(malloc_fn)                                  \
+    rt_struct_t *v;                                                            \
+    size_t sz = ty->fields.elnum * sizeof(void *) +                            \
+                (ty->fields.elnum + 1) * sizeof(off_t);                        \
+    if ((v = malloc_fn(sizeof(rt_struct_t) + sz)) == NULL) {                   \
+        FAIL("malloc");                                                        \
+    }                                                                          \
+    v->nref = 0;                                                               \
+    v->type = ty;                                                              \
+    v->parser_info.bs = NULL;                                                  \
+    v->parser_info.pos = 0;                                                    \
+    v->next_delim = 0;                                                         \
+    v->current = 0;                                                            \
+    v->dpos = (off_t *)(&v->fields[ty->fields.elnum]);                         \
+    (void)memset(v->dpos, '\0', (ty->fields.elnum + 1) * sizeof(off_t));       \
+    if (ty->init != NULL) {                                                    \
+        ty->init(v->fields);                                                   \
+    }                                                                          \
     return v
 
 rt_struct_t *
@@ -978,42 +978,42 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
 }
 
 
-#define MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(bytes_new_fn) \
-    lkit_type_t **fty; \
-    array_iter_t it; \
-    assert(dst->type->fields.elnum == src->type->fields.elnum); \
-    for (fty = array_first(&dst->type->fields, &it); \
-         fty != NULL; \
-         fty = array_next(&dst->type->fields, &it)) { \
-        switch ((*fty)->tag) { \
-        case LKIT_STR: \
-            { \
-                bytes_t *a, *b; \
-                a = (bytes_t *)*(src->fields + it.iter); \
-                if (a != NULL) { \
-                    b = bytes_new_fn(a->sz); \
-                    BYTES_INCREF(b); \
-                    bytes_copy(b, a, 0); \
-                } else { \
-                    b = bytes_new_fn(1); \
-                    BYTES_INCREF(b); \
-                    b->data[0] = '\0'; \
-                } \
-                *((bytes_t **)dst->fields + it.iter) = b; \
-            } \
-            break; \
-        case LKIT_ARRAY: \
-            FAIL("mrklkit_rt_struct_deep_copy not implement array"); \
-            break; \
-        case LKIT_DICT: \
-            FAIL("mrklkit_rt_struct_deep_copy not implement array"); \
-            break; \
-        case LKIT_STRUCT: \
-            FAIL("mrklkit_rt_struct_deep_copy not implement array"); \
-            break; \
-        default: \
-            *(dst->fields + it.iter) = *(src->fields + it.iter); \
-        } \
+#define MRKLKIT_RT_STRUCT_DEEP_COPY_BODY(bytes_new_fn)                 \
+    lkit_type_t **fty;                                                 \
+    array_iter_t it;                                                   \
+    assert(dst->type->fields.elnum == src->type->fields.elnum);        \
+    for (fty = array_first(&dst->type->fields, &it);                   \
+         fty != NULL;                                                  \
+         fty = array_next(&dst->type->fields, &it)) {                  \
+        switch ((*fty)->tag) {                                         \
+        case LKIT_STR:                                                 \
+            {                                                          \
+                bytes_t *a, *b;                                        \
+                a = (bytes_t *)*(src->fields + it.iter);               \
+                if (a != NULL) {                                       \
+                    b = bytes_new_fn(a->sz);                           \
+                    BYTES_INCREF(b);                                   \
+                    bytes_copy(b, a, 0);                               \
+                } else {                                               \
+                    b = bytes_new_fn(1);                               \
+                    BYTES_INCREF(b);                                   \
+                    b->data[0] = '\0';                                 \
+                }                                                      \
+                *((bytes_t **)dst->fields + it.iter) = b;              \
+            }                                                          \
+            break;                                                     \
+        case LKIT_ARRAY:                                               \
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");   \
+            break;                                                     \
+        case LKIT_DICT:                                                \
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");   \
+            break;                                                     \
+        case LKIT_STRUCT:                                              \
+            FAIL("mrklkit_rt_struct_deep_copy not implement array");   \
+            break;                                                     \
+        default:                                                       \
+            *(dst->fields + it.iter) = *(src->fields + it.iter);       \
+        }                                                              \
     }
 
 

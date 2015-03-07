@@ -21,25 +21,25 @@ typedef struct _rt_array {
 
 #define ARRAY_INCREF(ar) (++(ar)->nref)
 
-#define ARRAY_DECREF(ar) \
-do { \
-    if (*(ar) != NULL) { \
-        --(*(ar))->nref; \
-        if ((*(ar))->nref <= 0) { \
-            array_fini(&(*(ar))->fields); \
-            free(*(ar)); \
-        } \
-        *(ar) = NULL; \
-    } \
+#define ARRAY_DECREF(ar)                       \
+do {                                           \
+    if (*(ar) != NULL) {                       \
+        --(*(ar))->nref;                       \
+        if ((*(ar))->nref <= 0) {              \
+            array_fini(&(*(ar))->fields);      \
+            free(*(ar));                       \
+        }                                      \
+        *(ar) = NULL;                          \
+    }                                          \
 } while (0)
 
-#define ARRAY_DECREF_FAST(ar) \
-do { \
-    --(ar)->nref; \
-    if ((ar)->nref <= 0) { \
-        array_fini(&(ar)->fields); \
-        free(ar); \
-    } \
+#define ARRAY_DECREF_FAST(ar)          \
+do {                                   \
+    --(ar)->nref;                      \
+    if ((ar)->nref <= 0) {             \
+        array_fini(&(ar)->fields);     \
+        free(ar);                      \
+    }                                  \
 } while (0)
 
 typedef struct _rt_dict {
@@ -50,25 +50,25 @@ typedef struct _rt_dict {
 
 #define DICT_INCREF(dc) (++(dc)->nref)
 
-#define DICT_DECREF(dc) \
-do { \
-    if (*(dc) != NULL) { \
-        --(*(dc))->nref; \
-        if ((*(dc))->nref <= 0) { \
-            dict_fini(&(*(dc))->fields); \
-            free(*(dc)); \
-        } \
-        *(dc) = NULL; \
-    } \
+#define DICT_DECREF(dc)                        \
+do {                                           \
+    if (*(dc) != NULL) {                       \
+        --(*(dc))->nref;                       \
+        if ((*(dc))->nref <= 0) {              \
+            dict_fini(&(*(dc))->fields);       \
+            free(*(dc));                       \
+        }                                      \
+        *(dc) = NULL;                          \
+    }                                          \
 } while (0)
 
-#define DICT_DECREF_FAST(dc) \
-do { \
-    --(dc)->nref; \
-    if ((dc)->nref <= 0) { \
-        dict_fini(&(dc)->fields); \
-        free(dc); \
-    } \
+#define DICT_DECREF_FAST(dc)           \
+do {                                   \
+    --(dc)->nref;                      \
+    if ((dc)->nref <= 0) {             \
+        dict_fini(&(dc)->fields);      \
+        free(dc);                      \
+    }                                  \
 } while (0)
 
 typedef struct _rt_struct {
@@ -88,46 +88,46 @@ typedef struct _rt_struct {
     void *fields[];
 } rt_struct_t;
 
-#define STRUCT_INCREF(st) \
-do { \
-    /* TRACE(">>> %ld %p", (st)->nref, (st)); */ \
-    (++(st)->nref); \
+#define STRUCT_INCREF(st)                              \
+do {                                                   \
+    /* TRACE(">>> %ld %p", (st)->nref, (st)); */       \
+    (++(st)->nref);                                    \
 } while (0)
 
-#define STRUCT_DECREF_NO_DESTRUCT(st) \
-do { \
-    if (*(st) != NULL) { \
-        --(*(st))->nref; \
-        if ((*(st))->nref <= 0) { \
-            free(*(st)); \
-        } \
-        *(st) = NULL; \
-    } \
+#define STRUCT_DECREF_NO_DESTRUCT(st)  \
+do {                                   \
+    if (*(st) != NULL) {               \
+        --(*(st))->nref;               \
+        if ((*(st))->nref <= 0) {      \
+            free(*(st));               \
+        }                              \
+        *(st) = NULL;                  \
+    }                                  \
 } while (0)
 
-#define STRUCT_DECREF(st) \
-do { \
-    if (*(st) != NULL) { \
-        --(*(st))->nref; \
-        if ((*(st))->nref <= 0) { \
-            if ((*(st))->type->fini != NULL) { \
-                (*(st))->type->fini((*(st))->fields); \
-            } \
-            free(*(st)); \
-        } \
-        *(st) = NULL; \
-    } \
+#define STRUCT_DECREF(st)                              \
+do {                                                   \
+    if (*(st) != NULL) {                               \
+        --(*(st))->nref;                               \
+        if ((*(st))->nref <= 0) {                      \
+            if ((*(st))->type->fini != NULL) {         \
+                (*(st))->type->fini((*(st))->fields);  \
+            }                                          \
+            free(*(st));                               \
+        }                                              \
+        *(st) = NULL;                                  \
+    }                                                  \
 } while (0)
 
-#define STRUCT_DECREF_FAST(st) \
-do { \
-    --(st)->nref; \
-    if ((st)->nref <= 0) { \
-        if ((st)->type->fini != NULL) { \
-            (st)->type->fini((st)->fields); \
-        } \
-        free(st); \
-    } \
+#define STRUCT_DECREF_FAST(st)                 \
+do {                                           \
+    --(st)->nref;                              \
+    if ((st)->nref <= 0) {                     \
+        if ((st)->type->fini != NULL) {        \
+            (st)->type->fini((st)->fields);    \
+        }                                      \
+        free(st);                              \
+    }                                          \
 } while (0)
 
 bytes_t *mrklkit_rt_bytes_new_gc(size_t);

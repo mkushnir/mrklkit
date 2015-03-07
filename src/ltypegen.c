@@ -387,28 +387,28 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                 gep1 = LLVMBuildStructGEP(b1, cast1, it.iter, NEWVAR("gep"));
                 gep2 = LLVMBuildStructGEP(b2, cast2, it.iter, NEWVAR("gep"));
 
-#               define BUILDCODE \
-                    { \
-                        UNUSED LLVMValueRef pnull, dtor, dparam; \
-                        /* ctor, just set NULL */ \
-                        pnull = LLVMConstPointerNull( \
-                                ltype_compile(mctx, *fty, module)); \
-                        LLVMBuildStore(b1, pnull, gep1); \
-                        /* dtor, call mrklkit_rt_NNN_destroy() */ \
-                        if (setnull) { \
-                        } else { \
-                            if ((dtor = LLVMGetNamedFunction(module, \
-                                    dtor_name)) == NULL) { \
-                                TRACE("no name: %s", dtor_name); \
-                                TRRET(LTYPE_COMPILE_METHODS + 3); \
-                            } \
-                            dparam = LLVMGetFirstParam(dtor); \
-                            gep2 = LLVMBuildPointerCast(b2, \
-                                                        gep2, \
-                                                        LLVMTypeOf(dparam), \
-                                                        NEWVAR("cast")); \
+#               define BUILDCODE                                               \
+                    {                                                          \
+                        UNUSED LLVMValueRef pnull, dtor, dparam;               \
+                        /* ctor, just set NULL */                              \
+                        pnull = LLVMConstPointerNull(                          \
+                                ltype_compile(mctx, *fty, module));            \
+                        LLVMBuildStore(b1, pnull, gep1);                       \
+                        /* dtor, call mrklkit_rt_NNN_destroy() */              \
+                        if (setnull) {                                         \
+                        } else {                                               \
+                            if ((dtor = LLVMGetNamedFunction(module,           \
+                                    dtor_name)) == NULL) {                     \
+                                TRACE("no name: %s", dtor_name);               \
+                                TRRET(LTYPE_COMPILE_METHODS + 3);              \
+                            }                                                  \
+                            dparam = LLVMGetFirstParam(dtor);                  \
+                            gep2 = LLVMBuildPointerCast(b2,                    \
+                                                        gep2,                  \
+                                                        LLVMTypeOf(dparam),    \
+                                                        NEWVAR("cast"));       \
                             LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
-                        } \
+                        }                                                      \
                     }
 
                 switch ((*fty)->tag) {

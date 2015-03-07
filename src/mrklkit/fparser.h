@@ -37,21 +37,21 @@ extern "C" {
 
 #define LEX_FOUNDVAL   (LEX_SEQ | LEX_TOKOUT | LEX_QSTROUT)
 
-#define LEXSTR(s) ( \
-    (s) == LEX_SPACE ? "SPACE" : \
-    (s) == LEX_SEQIN ? "SEQIN" : \
-    (s) == LEX_SEQOUT ? "SEQOUT" : \
-    (s) == LEX_TOKIN ? "TOKIN" : \
-    (s) == LEX_TOKMID ? "TOKMID" : \
-    (s) == LEX_TOKOUT ? "TOKOUT" : \
-    (s) == LEX_COMIN ? "COMIN" : \
-    (s) == LEX_COMMID ? "COMMID" : \
-    (s) == LEX_COMOUT ? "COMOUT" : \
-    (s) == LEX_QSTRIN ? "QSTRIN" : \
-    (s) == LEX_QSTRMID ? "QSTRMID" : \
-    (s) == LEX_QSTROUT ? "QSTROUT" : \
-    (s) == LEX_QSTRESC ? "QSTRESC" : \
-    "<unknown>" \
+#define LEXSTR(s) (                    \
+    (s) == LEX_SPACE ? "SPACE" :       \
+    (s) == LEX_SEQIN ? "SEQIN" :       \
+    (s) == LEX_SEQOUT ? "SEQOUT" :     \
+    (s) == LEX_TOKIN ? "TOKIN" :       \
+    (s) == LEX_TOKMID ? "TOKMID" :     \
+    (s) == LEX_TOKOUT ? "TOKOUT" :     \
+    (s) == LEX_COMIN ? "COMIN" :       \
+    (s) == LEX_COMMID ? "COMMID" :     \
+    (s) == LEX_COMOUT ? "COMOUT" :     \
+    (s) == LEX_QSTRIN ? "QSTRIN" :     \
+    (s) == LEX_QSTRMID ? "QSTRMID" :   \
+    (s) == LEX_QSTROUT ? "QSTROUT" :   \
+    (s) == LEX_QSTRESC ? "QSTRESC" :   \
+    "<unknown>"                        \
 )
 
 typedef enum {
@@ -63,14 +63,14 @@ typedef enum {
     FPARSER_SEQ,
 } fparser_tag_t;
 
-#define FPARSER_TAG_STR(tag) ( \
-    (tag) == FPARSER_STR ? "STR" : \
-    (tag) == FPARSER_WORD ? "WORD" : \
-    (tag) == FPARSER_INT ? "INT" : \
+#define FPARSER_TAG_STR(tag) (         \
+    (tag) == FPARSER_STR ? "STR" :     \
+    (tag) == FPARSER_WORD ? "WORD" :   \
+    (tag) == FPARSER_INT ? "INT" :     \
     (tag) == FPARSER_FLOAT ? "FLOAT" : \
-    (tag) == FPARSER_BOOL ? "BOOL" : \
-    (tag) == FPARSER_SEQ ? "SEQ" : \
-    "<unknown>" \
+    (tag) == FPARSER_BOOL ? "BOOL" :   \
+    (tag) == FPARSER_SEQ ? "SEQ" :     \
+    "<unknown>"                        \
 )
 
 typedef struct _fparser_datum {

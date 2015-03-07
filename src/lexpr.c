@@ -430,8 +430,6 @@ parse_expr_quals(array_t *form,
 {
     char *s = (char *)qual;
 
-#define EXPR_SET_INT(m) \
-
     if (strcmp(s, ":lazy") == 0) {
         int64_t value;
 
@@ -467,14 +465,14 @@ parse_expr_quals(array_t *form,
     return 0;
 }
 
-#define ETR(m, dat, ty) \
-do { \
-    TRACE(m); \
+#define ETR(m, dat, ty)                \
+do {                                   \
+    TRACE(m);                          \
     fparser_datum_dump_formatted(dat); \
-    TRACEC(" !~ "); \
+    TRACEC(" !~ ");                    \
     lkit_type_dump((lkit_type_t *)ty); \
-    TRACEC("\n"); \
-} while (0) \
+    TRACEC("\n");                      \
+} while (0)
 
 lkit_expr_t *
 lkit_expr_parse(mrklkit_ctx_t *mctx,

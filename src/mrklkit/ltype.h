@@ -43,25 +43,25 @@ typedef enum _lkit_tag {
      */
 } lkit_tag_t;
 
-#define LKIT_TAG_STR(tag) ( \
-    (tag) == LKIT_UNDEF ? "UNDEF" : \
-    (tag) == LKIT_VOID ? "VOID" : \
-    (tag) == LKIT_INT ? "INT" : \
-    (tag) == LKIT_INT_MIN ? "INTMIN" : \
-    (tag) == LKIT_INT_MAX ? "INTMAX" : \
-    (tag) == LKIT_STR ? "STR" : \
-    (tag) == LKIT_FLOAT ? "FLOAT" : \
-    (tag) == LKIT_FLOAT_MIN ? "FLOATMIN" : \
-    (tag) == LKIT_FLOAT_MAX ? "FLOATMAX" : \
-    (tag) == LKIT_BOOL ? "BOOL" : \
-    (tag) == LKIT_ANY ? "ANY" : \
-    (tag) == LKIT_VARARG ? "VARARG" : \
-    (tag) == LKIT_ARRAY ? "ARRAY" : \
-    (tag) == LKIT_DICT ? "DICT" : \
-    (tag) == LKIT_STRUCT ? "STRUCT" : \
-    (tag) == LKIT_FUNC ? "FUNC" : \
-    (tag) == LKIT_USER ? "USER" : \
-    "<unknown>" \
+#define LKIT_TAG_STR(tag) (                    \
+    (tag) == LKIT_UNDEF ? "UNDEF" :            \
+    (tag) == LKIT_VOID ? "VOID" :              \
+    (tag) == LKIT_INT ? "INT" :                \
+    (tag) == LKIT_INT_MIN ? "INTMIN" :         \
+    (tag) == LKIT_INT_MAX ? "INTMAX" :         \
+    (tag) == LKIT_STR ? "STR" :                \
+    (tag) == LKIT_FLOAT ? "FLOAT" :            \
+    (tag) == LKIT_FLOAT_MIN ? "FLOATMIN" :     \
+    (tag) == LKIT_FLOAT_MAX ? "FLOATMAX" :     \
+    (tag) == LKIT_BOOL ? "BOOL" :              \
+    (tag) == LKIT_ANY ? "ANY" :                \
+    (tag) == LKIT_VARARG ? "VARARG" :          \
+    (tag) == LKIT_ARRAY ? "ARRAY" :            \
+    (tag) == LKIT_DICT ? "DICT" :              \
+    (tag) == LKIT_STRUCT ? "STRUCT" :          \
+    (tag) == LKIT_FUNC ? "FUNC" :              \
+    (tag) == LKIT_USER ? "USER" :              \
+    "<unknown>"                                \
 )
 
 typedef enum _lkit_parser {

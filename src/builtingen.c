@@ -1316,59 +1316,67 @@ compile_function(mrklkit_ctx_t *mctx,
 
 
 
-#define MRKLKIT_BUILTINGEN_AND_OR_BODY(endvar, nextvar, trcode, testopcode, buildop) \
-        lkit_expr_t **arg; \
-        array_iter_t it; \
-        LLVMValueRef parent, zero, phi; \
-        LLVMBasicBlockRef currblock, nextblock, endblock; \
-        zero = LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0); \
-        currblock = LLVMGetInsertBlock(builder); \
-        parent = LLVMGetBasicBlockParent(currblock); \
-        endblock = LLVMAppendBasicBlockInContext(lctx, parent, NEWVAR(endvar)); \
-        LLVMMoveBasicBlockAfter(endblock, currblock); \
-        LLVMPositionBuilderAtEnd(builder, endblock); \
-        phi = LLVMBuildPhi(builder, LLVMTypeOf(zero), NEWVAR("phi")); \
-        LLVMPositionBuilderAtEnd(builder, currblock); \
-        arg = array_first(&expr->subs, &it); \
-        if ((v = lkit_compile_expr(mctx, \
-                                   ectx, \
-                                   module, \
-                                   builder, \
-                                   *arg, \
-                                   udata)) == NULL) { \
-            TR(COMPILE_FUNCTION + trcode); \
-            goto err; \
-        } \
-        currblock = LLVMGetInsertBlock(builder); \
-        LLVMAddIncoming(phi, &v, &currblock, 1); \
-        for (arg = array_next(&expr->subs, &it); \
-             arg != NULL; \
-             arg = array_next(&expr->subs, &it)) { \
-            LLVMValueRef rand, test; \
-            /* \
-             * short circuit \
-             */ \
-            nextblock = LLVMAppendBasicBlockInContext(lctx, parent, NEWVAR(nextvar)); \
-            LLVMMoveBasicBlockAfter(nextblock, currblock); \
-            test = LLVMBuildICmp(builder, testopcode, v, zero, NEWVAR("test")); \
-            (void)LLVMBuildCondBr(builder, test, endblock, nextblock); \
-            currblock = nextblock; \
-            LLVMPositionBuilderAtEnd(builder, currblock); \
-            if ((rand = lkit_compile_expr(mctx, \
-                                          ectx, \
-                                          module, \
-                                          builder, \
-                                          *arg, \
-                                          udata)) == NULL) { \
-                TR(COMPILE_FUNCTION + trcode + 1); \
-                goto err; \
-            } \
-            v = buildop(builder, v, rand, NEWVAR("and")); \
-            currblock = LLVMGetInsertBlock(builder); \
-            LLVMAddIncoming(phi, &v, &currblock, 1); \
-        } \
-        LLVMBuildBr(builder, endblock); \
-        LLVMPositionBuilderAtEnd(builder, endblock); \
+#define MRKLKIT_BUILTINGEN_AND_OR_BODY(endvar,                                 \
+                                       nextvar,                                \
+                                       trcode,                                 \
+                                       testopcode,                             \
+                                       buildop)                                \
+        lkit_expr_t **arg;                                                     \
+        array_iter_t it;                                                       \
+        LLVMValueRef parent, zero, phi;                                        \
+        LLVMBasicBlockRef currblock, nextblock, endblock;                      \
+        zero = LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0);                \
+        currblock = LLVMGetInsertBlock(builder);                               \
+        parent = LLVMGetBasicBlockParent(currblock);                           \
+        endblock = LLVMAppendBasicBlockInContext(lctx,                         \
+                                                 parent,                       \
+                                                 NEWVAR(endvar));              \
+        LLVMMoveBasicBlockAfter(endblock, currblock);                          \
+        LLVMPositionBuilderAtEnd(builder, endblock);                           \
+        phi = LLVMBuildPhi(builder, LLVMTypeOf(zero), NEWVAR("phi"));          \
+        LLVMPositionBuilderAtEnd(builder, currblock);                          \
+        arg = array_first(&expr->subs, &it);                                   \
+        if ((v = lkit_compile_expr(mctx,                                       \
+                                   ectx,                                       \
+                                   module,                                     \
+                                   builder,                                    \
+                                   *arg,                                       \
+                                   udata)) == NULL) {                          \
+            TR(COMPILE_FUNCTION + trcode);                                     \
+            goto err;                                                          \
+        }                                                                      \
+        currblock = LLVMGetInsertBlock(builder);                               \
+        LLVMAddIncoming(phi, &v, &currblock, 1);                               \
+        for (arg = array_next(&expr->subs, &it);                               \
+             arg != NULL;                                                      \
+             arg = array_next(&expr->subs, &it)) {                             \
+            LLVMValueRef rand, test;                                           \
+            /*                                                                 \
+             * short circuit                                                   \
+             */                                                                \
+            nextblock = LLVMAppendBasicBlockInContext(lctx,                    \
+                                                      parent,                  \
+                                                      NEWVAR(nextvar));        \
+            LLVMMoveBasicBlockAfter(nextblock, currblock);                     \
+            test = LLVMBuildICmp(builder, testopcode, v, zero, NEWVAR("test"));\
+            (void)LLVMBuildCondBr(builder, test, endblock, nextblock);         \
+            currblock = nextblock;                                             \
+            LLVMPositionBuilderAtEnd(builder, currblock);                      \
+            if ((rand = lkit_compile_expr(mctx,                                \
+                                          ectx,                                \
+                                          module,                              \
+                                          builder,                             \
+                                          *arg,                                \
+                                          udata)) == NULL) {                   \
+                TR(COMPILE_FUNCTION + trcode + 1);                             \
+                goto err;                                                      \
+            }                                                                  \
+            v = buildop(builder, v, rand, NEWVAR("and"));                      \
+            currblock = LLVMGetInsertBlock(builder);                           \
+            LLVMAddIncoming(phi, &v, &currblock, 1);                           \
+        }                                                                      \
+        LLVMBuildBr(builder, endblock);                                        \
+        LLVMPositionBuilderAtEnd(builder, endblock);                           \
         v = phi
 
 
