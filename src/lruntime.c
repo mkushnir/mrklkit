@@ -94,17 +94,17 @@ bytes_t *
 mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
 {
     bytes_t *res;
-    size_t sz0, sz1;
+    ssize_t sz0, sz1;
 
     assert(str->sz > 0);
     sz0 = str->sz - 1; /* cut off zero-term */
     if (sz0 == 0) {
         goto empty;
     }
-    begin = begin % sz0;
-    end = end % sz0;
+    begin = (begin + sz0) % sz0;
+    end = (end + sz0) % sz0;
     sz1 = end - begin;
-    if (sz1 >= sz0) {
+    if (sz1 <= 0) {
         goto empty;
     }
     ++sz1; /* "end" including the last char */
