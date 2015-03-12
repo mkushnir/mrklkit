@@ -104,7 +104,7 @@ mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
     begin = (begin + sz0) % sz0;
     end = (end + sz0) % sz0;
     sz1 = end - begin;
-    if (sz1 <= 0) {
+    if (sz1 < 0) {
         goto empty;
     }
     ++sz1; /* "end" including the last char */
