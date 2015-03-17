@@ -22,6 +22,8 @@
 
 #include "diag.h"
 
+#define DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR 1
+
 static mpool_ctx_t *mpool;
 
 typedef void (*dparse_struct_item_cb_t)(bytestream_t *, char, off_t, off_t, void **);
@@ -40,7 +42,7 @@ dparser_reach_delim(bytestream_t *bs, char delim, off_t epos)
 
 
 static int
-dparser_reach_delim_readmore(bytestream_t *bs, int fd, char delim, off_t epos)
+dparser_reach_delim_readmore_unix(bytestream_t *bs, int fd, off_t epos)
 {
     while (SPOS(bs) <= epos) {
         //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
@@ -52,7 +54,40 @@ dparser_reach_delim_readmore(bytestream_t *bs, int fd, char delim, off_t epos)
             }
             epos = SEOD(bs);
         }
-        if (SPCHR(bs) == delim || SPCHR(bs) == '\0') {
+        if (SPCHR(bs) == '\n' || SPCHR(bs) == '\0') {
+            return 0;
+        }
+        SINCR(bs);
+    }
+    return DPARSE_EOD;
+}
+
+
+static int
+dparser_reach_delim_readmore_win(bytestream_t *bs, int fd, off_t epos)
+{
+    int state;
+
+    state = 0;
+    while (SPOS(bs) <= epos) {
+        //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
+        //      SNEEDMORE(bs), SPOS(bs), epos);
+        //TRACE("SPCHR='%c'", SPCHR(bs));
+        if (SNEEDMORE(bs)) {
+            if (bytestream_read_more(bs, fd, bs->growsz) <= 0) {
+                return DPARSE_EOD;
+            }
+            epos = SEOD(bs);
+        }
+        if (SPCHR(bs) == '\r') {
+            state = DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR;
+        } else if (SPCHR(bs) == '\n') {
+            if (state == DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR) {
+                return 0;
+            } else {
+                state = 0;
+            }
+        } else if (SPCHR(bs) == '\0') {
             return 0;
         }
         SINCR(bs);
@@ -89,7 +124,9 @@ bytestream_read_more_bz2(bytestream_t *bs, BZFILE *bzf, ssize_t sz)
 
 
 static int
-dparser_reach_delim_readmore_bz2(bytestream_t *bs, BZFILE *bzf, char delim, off_t epos)
+dparser_reach_delim_readmore_bz2_unix(bytestream_t *bs,
+                                      BZFILE *bzf,
+                                      off_t epos)
 {
     while (SPOS(bs) <= epos) {
         //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
@@ -101,7 +138,42 @@ dparser_reach_delim_readmore_bz2(bytestream_t *bs, BZFILE *bzf, char delim, off_
             }
             epos = SEOD(bs);
         }
-        if (SPCHR(bs) == delim || SPCHR(bs) == '\0') {
+        if (SPCHR(bs) == '\n' || SPCHR(bs) == '\0') {
+            return 0;
+        }
+        SINCR(bs);
+    }
+    return DPARSE_EOD;
+}
+
+
+static int
+dparser_reach_delim_readmore_bz2_win(bytestream_t *bs,
+                                     BZFILE *bzf,
+                                     off_t epos)
+{
+    int state;
+
+    state = 0;
+    while (SPOS(bs) <= epos) {
+        //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
+        //      SNEEDMORE(bs), SPOS(bs), epos);
+        //TRACE("SPCHR='%c'", SPCHR(bs));
+        if (SNEEDMORE(bs)) {
+            if (bytestream_read_more_bz2(bs, bzf, bs->growsz) <= 0) {
+                return DPARSE_EOD;
+            }
+            epos = SEOD(bs);
+        }
+        if (SPCHR(bs) == '\r') {
+            state = DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR;
+        } else if (SPCHR(bs) == '\n') {
+            if (state == DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR) {
+                return 0;
+            } else {
+                state = 0;
+            }
+        } else if (SPCHR(bs) == '\0') {
             return 0;
         }
         SINCR(bs);
@@ -949,70 +1021,68 @@ dparse_rt_struct_dump(rt_struct_t *value)
  *
  */
 
-int
-dparser_read_lines(int fd,
-                   bytestream_t *bs,
-                   dparser_read_lines_cb_t cb,
-                   dparser_bytestream_recycle_cb_t rcb,
-                   void *udata,
-                   size_t *nlines,
-                   size_t *nbytes)
-{
-    int res = 0;
-    off_t diff;
-    byterange_t br;
-    br.end = OFF_MAX;
-    bytestream_rewind(bs);
-    while (1) {
-
-        br.start = SPOS(bs);
-        if (dparser_reach_delim_readmore(bs,
-                                         fd,
-                                         '\n',
-                                         br.end) == DPARSE_EOD) {
-            res = DPARSE_EOD;
-            break;
-        }
-        br.end = SPOS(bs);
-
-        (*nbytes) += br.end - br.start + 1;
-        ++(*nlines);
-
-        if ((res = cb(bs, &br, udata)) != 0) {
-            break;
-        }
-
-        dparser_reach_value(bs, '\n', SEOD(bs));
-        br.end = SEOD(bs);
-
-        if (SPOS(bs) >= bs->growsz - 8192) {
-            UNUSED off_t recycled;
-
-            recycled = bytestream_recycle(bs, 0, SPOS(bs));
-            br.end = SEOD(bs);
-            br.start -= recycled;
-
-            if (rcb != NULL && rcb(udata) != 0) {
-                res = DPARSER_READ_LINES + 1;
-                break;
-            }
-        }
-    }
-
-    diff = SPOS(bs) - SEOD(bs);
-    assert(diff <= 0);
-    /* shift back ... */
-    if (diff < 0) {
-        if (lseek(fd, diff, SEEK_CUR) < 0) {
-            res = DPARSER_READ_LINES + 2;
-        }
-    }
+#define DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_fn)       \
+    int res = 0;                                                       \
+    off_t diff;                                                        \
+    byterange_t br;                                                    \
+    br.end = OFF_MAX;                                                  \
+    bytestream_rewind(bs);                                             \
+    while (1) {                                                        \
+        br.start = SPOS(bs);                                           \
+        if (dparser_reach_delim_readmore_fn(bs,                        \
+                                            fd,                        \
+                                            br.end) == DPARSE_EOD) {   \
+            res = DPARSE_EOD;                                          \
+            break;                                                     \
+        }                                                              \
+        br.end = SPOS(bs);                                             \
+        (*nbytes) += br.end - br.start + 1;                            \
+        ++(*nlines);                                                   \
+                                                                       \
+        if ((res = cb(bs, &br, udata)) != 0) {                         \
+            break;                                                     \
+        }                                                              \
+        dparser_reach_value(bs, '\n', SEOD(bs));                       \
+        br.end = SEOD(bs);                                             \
+        if (SPOS(bs) >= bs->growsz - 8192) {                           \
+            UNUSED off_t recycled;                                     \
+                                                                       \
+            recycled = bytestream_recycle(bs, 0, SPOS(bs));            \
+            br.end = SEOD(bs);                                         \
+            br.start -= recycled;                                      \
+                                                                       \
+            if (rcb != NULL && rcb(udata) != 0) {                      \
+                res = DPARSER_READ_LINES + 1;                          \
+                break;                                                 \
+            }                                                          \
+        }                                                              \
+    }                                                                  \
+    diff = SPOS(bs) - SEOD(bs);                                        \
+    assert(diff <= 0);                                                 \
+    /* shift back ... */                                               \
+    if (diff < 0) {                                                    \
+        if (lseek(fd, diff, SEEK_CUR) < 0) {                           \
+            res = DPARSER_READ_LINES + 2;                              \
+        }                                                              \
+    }                                                                  \
     TRRET(res);
+
+
+int
+dparser_read_lines_unix(int fd,
+                        bytestream_t *bs,
+                        dparser_read_lines_cb_t cb,
+                        dparser_bytestream_recycle_cb_t rcb,
+                        void *udata,
+                        size_t *nlines,
+                        size_t *nbytes)
+{
+    DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_unix)
 }
 
 
 int
-dparser_read_lines_bz2(BZFILE *bzf,
+dparser_read_lines_win(int fd,
                        bytestream_t *bs,
                        dparser_read_lines_cb_t cb,
                        dparser_bytestream_recycle_cb_t rcb,
@@ -1020,74 +1090,94 @@ dparser_read_lines_bz2(BZFILE *bzf,
                        size_t *nlines,
                        size_t *nbytes)
 {
-    int res = 0;
-    off_t diff;
-    byterange_t br;
-    dparse_bz2_ctx_t *bz2ctx;
-
-    /*
-     * check for dparse_bz2_ctx_t *
-     */
-    assert(bs->udata != NULL);
-    bz2ctx = bs->udata;
-
-    bytestream_rewind(bs);
-    if (bz2ctx->tail != NULL) {
-        bytestream_cat(bs, bz2ctx->tail->sz, (char *)bz2ctx->tail->data);
-        BYTES_DECREF(&bz2ctx->tail);
-    }
-
-    while (1) {
-
-        br.start = SPOS(bs);
-        if (dparser_reach_delim_readmore_bz2(bs,
-                                             bzf,
-                                             '\n',
-                                             br.end) == DPARSE_EOD) {
-            res = DPARSE_EOD;
-            break;
-        }
-        br.end = SPOS(bs);
-
-        (*nbytes) += br.end - br.start + 1;
-        ++(*nlines);
-
-        if ((res = cb(bs, &br, udata)) != 0) {
-            break;
-        }
-
-        dparser_reach_value(bs, '\n', SEOD(bs));
-        br.end = SEOD(bs);
-
-        if (SPOS(bs) >= bs->growsz - 8192) {
-            UNUSED off_t recycled;
-
-            recycled = bytestream_recycle(bs, 0, SPOS(bs));
-            br.end = SEOD(bs);
-            br.start -= recycled;
-
-            if (rcb != NULL && rcb(udata) != 0) {
-                res = DPARSER_READ_LINES + 1;
-                break;
-            }
-        }
-    }
-
-    diff = SEOD(bs) - SPOS(bs);
-    assert(diff >= 0);
-    /*
-     * shift back ... save SPOS(bs)/SEOD(bs) to bz2ctx->tail
-     */
-    if (diff > 0) {
-        bz2ctx->fpos -= diff;
-        assert(bz2ctx->tail == NULL);
-        if ((bz2ctx->tail = bytes_new(diff)) == NULL) {
-            FAIL("malloc");
-        }
-        memcpy(bz2ctx->tail->data, SPDATA(bs), diff);
-    }
-    TRRET(res);
+    DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_win)
 }
+
+
+#define DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_fn)       \
+    int res = 0;                                                               \
+    off_t diff;                                                                \
+    byterange_t br;                                                            \
+    dparse_bz2_ctx_t *bz2ctx;                                                  \
+    /*                                                                         \
+     * check for dparse_bz2_ctx_t *                                            \
+     */                                                                        \
+    assert(bs->udata != NULL);                                                 \
+    bz2ctx = bs->udata;                                                        \
+    bytestream_rewind(bs);                                                     \
+    if (bz2ctx->tail != NULL) {                                                \
+        bytestream_cat(bs, bz2ctx->tail->sz, (char *)bz2ctx->tail->data);      \
+        BYTES_DECREF(&bz2ctx->tail);                                           \
+    }                                                                          \
+    while (1) {                                                                \
+        br.start = SPOS(bs);                                                   \
+        if (dparser_reach_delim_readmore_bz2_fn(bs,                            \
+                                                bzf,                           \
+                                                br.end) == DPARSE_EOD) {       \
+            res = DPARSE_EOD;                                                  \
+            break;                                                             \
+        }                                                                      \
+        br.end = SPOS(bs);                                                     \
+        (*nbytes) += br.end - br.start + 1;                                    \
+        ++(*nlines);                                                           \
+        if ((res = cb(bs, &br, udata)) != 0) {                                 \
+            break;                                                             \
+        }                                                                      \
+        dparser_reach_value(bs, '\n', SEOD(bs));                               \
+        br.end = SEOD(bs);                                                     \
+        if (SPOS(bs) >= bs->growsz - 8192) {                                   \
+            UNUSED off_t recycled;                                             \
+            recycled = bytestream_recycle(bs, 0, SPOS(bs));                    \
+            br.end = SEOD(bs);                                                 \
+            br.start -= recycled;                                              \
+                                                                               \
+            if (rcb != NULL && rcb(udata) != 0) {                              \
+                res = DPARSER_READ_LINES + 1;                                  \
+                break;                                                         \
+            }                                                                  \
+        }                                                                      \
+    }                                                                          \
+    diff = SEOD(bs) - SPOS(bs);                                                \
+    assert(diff >= 0);                                                         \
+    /*                                                                         \
+     * shift back ... save SPOS(bs)/SEOD(bs) to bz2ctx->tail                   \
+     */                                                                        \
+    if (diff > 0) {                                                            \
+        bz2ctx->fpos -= diff;                                                  \
+        assert(bz2ctx->tail == NULL);                                          \
+        if ((bz2ctx->tail = bytes_new(diff)) == NULL) {                        \
+            FAIL("malloc");                                                    \
+        }                                                                      \
+        memcpy(bz2ctx->tail->data, SPDATA(bs), diff);                          \
+    }                                                                          \
+    TRRET(res);
+
+
+int
+dparser_read_lines_bz2_unix(BZFILE *bzf,
+                            bytestream_t *bs,
+                            dparser_read_lines_cb_t cb,
+                            dparser_bytestream_recycle_cb_t rcb,
+                            void *udata,
+                            size_t *nlines,
+                            size_t *nbytes)
+{
+    DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_unix)
+}
+
+
+int
+dparser_read_lines_bz2_win(BZFILE *bzf,
+                           bytestream_t *bs,
+                           dparser_read_lines_cb_t cb,
+                           dparser_bytestream_recycle_cb_t rcb,
+                           void *udata,
+                           size_t *nlines,
+                           size_t *nbytes)
+{
+    DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_win)
+}
+
 
 void
 dparser_bz2_ctx_init(dparse_bz2_ctx_t *bz2ctx)

@@ -472,7 +472,7 @@ main(int argc, char *argv[])
         } else if (strcmp(dtype, "float") == 0) {
             //dparser_read_lines(fd, &bs, test_float, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "qstr") == 0) {
-            dparser_read_lines(fd, &bs, test_qstr, NULL, &mctx, &nlines, &nbytes);
+            dparser_read_lines_unix(fd, &bs, test_qstr, NULL, &mctx, &nlines, &nbytes);
         } else if (strcmp(dtype, "str") == 0) {
             //dparser_read_lines(fd, &bs, test_str, NULL, &mctx, &nlines);
         } else if (strcmp(dtype, "aint") == 0) {

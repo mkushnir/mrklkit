@@ -73,13 +73,13 @@ test1(void)
 
     bytestream_init(&bs, 1024*1024);
 
-    if (dparser_read_lines(fd,
-                           &bs,
-                           (dparser_read_lines_cb_t)testrt_run_once,
-                           NULL,
-                           &tctx,
-                           &nlines,
-                           &nbytes) != 0) {
+    if (dparser_read_lines_unix(fd,
+                                &bs,
+                                (dparser_read_lines_cb_t)testrt_run_once,
+                                NULL,
+                                &tctx,
+                                &nlines,
+                                &nbytes) != 0) {
         TRACE("error");
     }
 

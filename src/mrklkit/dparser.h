@@ -115,21 +115,37 @@ typedef int (*dparser_read_lines_cb_t)(bytestream_t *,
                                        const byterange_t *,
                                        void *);
 typedef int (*dparser_bytestream_recycle_cb_t)(void *);
-int dparser_read_lines(int,
-                       bytestream_t *,
-                       dparser_read_lines_cb_t,
-                       dparser_bytestream_recycle_cb_t,
-                       void *,
-                       size_t *,
-                       size_t *);
+int dparser_read_lines_unix(int,
+                            bytestream_t *,
+                            dparser_read_lines_cb_t,
+                            dparser_bytestream_recycle_cb_t,
+                            void *,
+                            size_t *,
+                            size_t *);
 
-int dparser_read_lines_bz2(BZFILE *,
+int dparser_read_lines_win(int,
                            bytestream_t *,
                            dparser_read_lines_cb_t,
                            dparser_bytestream_recycle_cb_t,
                            void *,
                            size_t *,
                            size_t *);
+
+int dparser_read_lines_bz2_unix(BZFILE *,
+                                bytestream_t *,
+                                dparser_read_lines_cb_t,
+                                dparser_bytestream_recycle_cb_t,
+                                void *,
+                                size_t *,
+                                size_t *);
+
+int dparser_read_lines_bz2_win(BZFILE *,
+                               bytestream_t *,
+                               dparser_read_lines_cb_t,
+                               dparser_bytestream_recycle_cb_t,
+                               void *,
+                               size_t *,
+                               size_t *);
 
 void dparser_set_mpool(mpool_ctx_t *);
 #ifdef __cplusplus
