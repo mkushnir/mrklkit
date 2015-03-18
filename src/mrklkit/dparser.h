@@ -58,9 +58,6 @@ rt_dict_t *dparse_struct_item_ra_dict(rt_struct_t *, int64_t);
 rt_struct_t *dparse_struct_item_ra_struct(rt_struct_t *, int64_t);
 
 void dparser_reach_delim(bytestream_t *, char, off_t);
-void dparser_reach_value(bytestream_t *,
-                         char,
-                         off_t);
 void dparser_reach_value_m(bytestream_t *,
                            char, off_t);
 int64_t dparser_strtoi64(char *, char **, char);

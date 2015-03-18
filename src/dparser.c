@@ -182,14 +182,13 @@ dparser_reach_delim_readmore_bz2_win(bytestream_t *bs,
 }
 
 
-void
-dparser_reach_value(bytestream_t *bs, UNUSED char delim, off_t epos)
+static void
+dparser_reach_end(bytestream_t *bs, off_t epos)
 {
     if (SPOS(bs) < epos) {
         SINCR(bs);
     }
 }
-
 
 void
 dparser_reach_value_m(bytestream_t *bs, char delim, off_t epos)
@@ -1038,19 +1037,16 @@ dparse_rt_struct_dump(rt_struct_t *value)
         br.end = SPOS(bs);                                             \
         (*nbytes) += br.end - br.start + 1;                            \
         ++(*nlines);                                                   \
-                                                                       \
         if ((res = cb(bs, &br, udata)) != 0) {                         \
             break;                                                     \
         }                                                              \
-        dparser_reach_value(bs, '\n', SEOD(bs));                       \
+        dparser_reach_end(bs, SEOD(bs));                               \
         br.end = SEOD(bs);                                             \
         if (SPOS(bs) >= bs->growsz - 8192) {                           \
-            UNUSED off_t recycled;                                     \
-                                                                       \
+            off_t recycled;                                            \
             recycled = bytestream_recycle(bs, 0, SPOS(bs));            \
             br.end = SEOD(bs);                                         \
             br.start -= recycled;                                      \
-                                                                       \
             if (rcb != NULL && rcb(udata) != 0) {                      \
                 res = DPARSER_READ_LINES + 1;                          \
                 break;                                                 \
@@ -1123,26 +1119,25 @@ dparser_read_lines_win(int fd,
         if ((res = cb(bs, &br, udata)) != 0) {                                 \
             break;                                                             \
         }                                                                      \
-        dparser_reach_value(bs, '\n', SEOD(bs));                               \
+        dparser_reach_end(bs, SEOD(bs));                                       \
         br.end = SEOD(bs);                                                     \
         if (SPOS(bs) >= bs->growsz - 8192) {                                   \
-            UNUSED off_t recycled;                                             \
+            off_t recycled;                                                    \
             recycled = bytestream_recycle(bs, 0, SPOS(bs));                    \
             br.end = SEOD(bs);                                                 \
             br.start -= recycled;                                              \
-                                                                               \
             if (rcb != NULL && rcb(udata) != 0) {                              \
                 res = DPARSER_READ_LINES + 1;                                  \
                 break;                                                         \
             }                                                                  \
         }                                                                      \
     }                                                                          \
-    diff = SEOD(bs) - SPOS(bs);                                                \
-    assert(diff >= 0);                                                         \
+    diff = SPOS(bs) - SEOD(bs);                                                \
+    assert(diff <= 0);                                                         \
     /*                                                                         \
      * shift back ... save SPOS(bs)/SEOD(bs) to bz2ctx->tail                   \
      */                                                                        \
-    if (diff > 0) {                                                            \
+    if (diff < 0) {                                                            \
         bz2ctx->fpos -= diff;                                                  \
         assert(bz2ctx->tail == NULL);                                          \
         if ((bz2ctx->tail = bytes_new(diff)) == NULL) {                        \
