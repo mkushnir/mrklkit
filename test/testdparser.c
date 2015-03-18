@@ -163,7 +163,7 @@ test_qstr(bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
         if (DPFLAGS & DPARSE_MERGEDELIM) {
             dparser_reach_value_m(bs, FDELIM, br->end);
         } else {
-            dparser_reach_value(bs, FDELIM, br->end);
+            dparser_reach_value_m(bs, FDELIM, br->end);
         }
         //D8(SPDATA(bs), br->end - SPOS(bs));
         bytes_decref(&value);
