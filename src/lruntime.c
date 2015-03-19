@@ -156,6 +156,17 @@ mrklkit_strtoi64(bytes_t *str, int64_t dflt)
     return res;
 }
 
+
+int64_t
+mrklkit_strtoi64_loose(bytes_t *str)
+{
+    char *endptr;
+    int64_t res;
+    res = dparser_strtoi64((char *)str->data, &endptr, '\0');
+    return res;
+}
+
+
 double
 mrklkit_strtod(bytes_t *str, double dflt)
 {
@@ -165,6 +176,19 @@ mrklkit_strtod(bytes_t *str, double dflt)
     if (errno == EINVAL) {
         res = dflt;
     }
+    return res;
+}
+
+
+/*
+ * The same as mrklkit_strtod() except ignoring errno
+ */
+double
+mrklkit_strtod_loose(bytes_t *str)
+{
+    char *endptr;
+    double res;
+    res = dparser_strtod((char *)str->data, &endptr, '\0');
     return res;
 }
 

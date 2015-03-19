@@ -1553,7 +1553,7 @@ compile_function(mrklkit_ctx_t *mctx,
     } else if (strcmp(name, "atoi") == 0) {
         LLVMValueRef fn, args[2];
         lkit_expr_t **arg;
-        // (builtin atoi (func int str))
+        // (builtin atoi (func int str int))
 
 
         if ((fn = LLVMGetNamedFunction(module, "mrklkit_strtoi64")) == NULL) {
@@ -1590,11 +1590,36 @@ compile_function(mrklkit_ctx_t *mctx,
 
         v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
 
+    } else if (strcmp(name, "atoi-loose") == 0) {
+        LLVMValueRef fn, args[1];
+        lkit_expr_t **arg;
+        // (builtin atoi (func int str))
+
+
+        if ((fn = LLVMGetNamedFunction(module, "mrklkit_strtoi64_loose")) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        if ((arg = array_get(&expr->subs, 0)) == NULL) {
+            FAIL("array_get");
+        }
+
+        if ((args[0] = lkit_compile_expr(mctx,
+                                     ectx,
+                                     module,
+                                     builder,
+                                     *arg,
+                                     udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1610);
+            goto err;
+        }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
 
     } else if (strcmp(name, "atof") == 0) {
         LLVMValueRef fn, args[2];
         lkit_expr_t **arg;
-        // (builtin atof (func float str))
+        // (builtin atof (func float str float))
 
 
         if ((fn = LLVMGetNamedFunction(module, "mrklkit_strtod")) == NULL) {
@@ -1626,6 +1651,33 @@ compile_function(mrklkit_ctx_t *mctx,
                                      *arg,
                                      udata)) == NULL) {
             TR(COMPILE_FUNCTION + 1702);
+            goto err;
+        }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
+
+    } else if (strcmp(name, "atof-loose") == 0) {
+        LLVMValueRef fn, args[1];
+        lkit_expr_t **arg;
+        // (builtin atof-loose (func float str))
+
+
+        if ((fn = LLVMGetNamedFunction(module,
+                                       "mrklkit_strtod_loose")) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        if ((arg = array_get(&expr->subs, 0)) == NULL) {
+            FAIL("array_get");
+        }
+
+        if ((args[0] = lkit_compile_expr(mctx,
+                                     ectx,
+                                     module,
+                                     builder,
+                                     *arg,
+                                     udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1710);
             goto err;
         }
 
