@@ -1020,7 +1020,7 @@ dparse_rt_struct_dump(rt_struct_t *value)
  *
  */
 
-#define DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_fn)       \
+#define DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_fn, __a1) \
     int res = 0;                                                       \
     off_t diff;                                                        \
     byterange_t br;                                                    \
@@ -1037,6 +1037,7 @@ dparse_rt_struct_dump(rt_struct_t *value)
         br.end = SPOS(bs);                                             \
         (*nbytes) += br.end - br.start + 1;                            \
         ++(*nlines);                                                   \
+        __a1;                                                          \
         if ((res = cb(bs, &br, udata)) != 0) {                         \
             break;                                                     \
         }                                                              \
@@ -1073,7 +1074,7 @@ dparser_read_lines_unix(int fd,
                         size_t *nlines,
                         size_t *nbytes)
 {
-    DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_unix)
+    DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_unix,)
 }
 
 
@@ -1086,11 +1087,11 @@ dparser_read_lines_win(int fd,
                        size_t *nlines,
                        size_t *nbytes)
 {
-    DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_win)
+    DPARSER_READ_LINES_BODY(dparser_reach_delim_readmore_win, --br.end)
 }
 
 
-#define DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_fn)       \
+#define DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_fn, __a1) \
     int res = 0;                                                               \
     off_t diff;                                                                \
     byterange_t br;                                                            \
@@ -1116,6 +1117,7 @@ dparser_read_lines_win(int fd,
         br.end = SPOS(bs);                                                     \
         (*nbytes) += br.end - br.start + 1;                                    \
         ++(*nlines);                                                           \
+        __a1;                                                                  \
         if ((res = cb(bs, &br, udata)) != 0) {                                 \
             break;                                                             \
         }                                                                      \
@@ -1157,7 +1159,7 @@ dparser_read_lines_bz2_unix(BZFILE *bzf,
                             size_t *nlines,
                             size_t *nbytes)
 {
-    DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_unix)
+    DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_unix,)
 }
 
 
@@ -1170,7 +1172,7 @@ dparser_read_lines_bz2_win(BZFILE *bzf,
                            size_t *nlines,
                            size_t *nbytes)
 {
-    DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_win)
+    DPARSER_READ_LINES_BZ2_BODY(dparser_reach_delim_readmore_bz2_win, --br.end)
 }
 
 
