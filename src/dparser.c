@@ -685,7 +685,7 @@ dparse_struct_pi_pos(rt_struct_t *value)
 /**
  * struct item random access, implies "strict" delimiter grammar
  */
-#define DPARSE_STRUCT_ITEM_RA_BODY(ty, val, cb)                                \
+#define DPARSE_STRUCT_ITEM_RA_BODY(val, cb)                                    \
     assert(idx < (ssize_t)value->type->fields.elnum);                          \
     assert(value->parser_info.bs != NULL);                                     \
     if (!(value->dpos[idx] & 0x80000000)) {                                    \
@@ -724,10 +724,10 @@ dparse_struct_pi_pos(rt_struct_t *value)
                                     value->parser_info.br.end);                \
         epos = value->dpos[nidx] & ~0x80000000;                                \
         value->dpos[idx] |= 0x80000000;                                        \
-        val = (ty)MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);                 \
+        val = (__typeof(val))MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);        \
         cb(bs, delim, spos, epos, val);                                        \
     } else {                                                                   \
-        val = (ty)MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);                 \
+        val = (__typeof(val))MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);        \
     }
 
 static void **
@@ -881,7 +881,7 @@ dparse_struct_item_ra_int(rt_struct_t *value, int64_t idx)
     int64_t *val;
 
     assert(sizeof(int64_t) == sizeof(void *));
-    DPARSE_STRUCT_ITEM_RA_BODY(int64_t *, val, dparse_int_pos);
+    DPARSE_STRUCT_ITEM_RA_BODY(val, dparse_int_pos);
     return *val;
 }
 
@@ -895,7 +895,7 @@ dparse_struct_item_ra_float(rt_struct_t *value, int64_t idx)
     } u;
 
     assert(sizeof(double) == sizeof(void *));
-    DPARSE_STRUCT_ITEM_RA_BODY(void **, u.v, dparse_float_pos_pvoid);
+    DPARSE_STRUCT_ITEM_RA_BODY(u.v, dparse_float_pos_pvoid);
     return *u.d;
 }
 
@@ -918,7 +918,7 @@ dparse_struct_item_ra_str(rt_struct_t *value, int64_t idx)
     UNUSED bytes_t **val;
 
     assert(sizeof(bytes_t *) == sizeof(void *));
-    DPARSE_STRUCT_ITEM_RA_BODY(bytes_t **, val, dparse_str_pos);
+    DPARSE_STRUCT_ITEM_RA_BODY(val, dparse_str_pos);
     return *(bytes_t **)(value->fields + idx);
 }
 
