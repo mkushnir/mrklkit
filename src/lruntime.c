@@ -192,6 +192,20 @@ mrklkit_strtod_loose(bytes_t *str)
     return res;
 }
 
+
+int64_t
+mrklkit_strptime(const bytes_t *str, const bytes_t *fmt)
+{
+    char *rv;
+    struct tm t;
+
+    memset(&t, 0, sizeof(t));
+    rv = strptime((char *)str->data, (char *)fmt->data, &t);
+    if (rv == NULL) {
+        return 0;
+    }
+    return (int64_t)mktime(&t);
+}
 /**
  * array
  */
