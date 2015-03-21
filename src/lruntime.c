@@ -198,8 +198,10 @@ mrklkit_strptime(const bytes_t *str, const bytes_t *fmt)
 {
     char *rv;
     struct tm t;
+    time_t lt;
 
-    memset(&t, 0, sizeof(t));
+    time(&lt);
+    localtime_r(&lt, &t);
     rv = strptime((char *)str->data, (char *)fmt->data, &t);
     if (rv == NULL) {
         return 0;
