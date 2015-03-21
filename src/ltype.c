@@ -71,6 +71,7 @@ lkit_type_destroy(lkit_type_t **ty)
                 ts = (lkit_struct_t *)*ty;
                 array_fini(&ts->fields);
                 array_fini(&ts->names);
+                array_fini(&ts->parsers);
             }
             break;
 
@@ -101,6 +102,14 @@ static int
 lkit_array_names_fini(bytes_t **pname)
 {
     BYTES_DECREF(pname);
+    return 0;
+}
+
+
+static int
+lkit_array_parsers_init(lkit_parser_t *parser)
+{
+    *parser = LKIT_PARSER_NONE;
     return 0;
 }
 
@@ -158,7 +167,6 @@ lkit_type_new(lkit_tag_t tag)
             }
             tc->base.tag = tag;
             tc->base.name = "str";
-            tc->parser = LKIT_PARSER_NONE;
             ty = (lkit_type_t *)tc;
         }
         break;
@@ -273,6 +281,11 @@ lkit_type_new(lkit_tag_t tag)
                        0,
                        NULL,
                        (array_finalizer_t)lkit_array_names_fini);
+            array_init(&ts->parsers,
+                       sizeof(lkit_parser_t),
+                       0,
+                       (array_initializer_t)lkit_array_parsers_init,
+                       NULL);
             ty = (lkit_type_t *)ts;
         }
         break;
@@ -1066,7 +1079,7 @@ parse_dict_quals(array_t *form,
             TRRET(PARSE_DICT_QUALS + 6);
         }
     } else {
-        /* unknown array qualifier */
+        /* unknown dict qualifier */
         TRACE("unknown qual: %s", s);
     }
     return 0;
@@ -1111,7 +1124,39 @@ parse_struct_quals(array_t *form,
             TRRET(PARSE_STRUCT_QUALS + 6);
         }
     } else {
-        /* unknown array qualifier */
+        /* unknown struct qualifier */
+        TRACE("unknown qual: %s", s);
+    }
+    return 0;
+}
+
+static int
+parse_fielddef_quals(array_t *form,
+                     array_iter_t *it,
+                     char *qual,
+                     lkit_parser_t *p)
+{
+    char *s = (char *)qual;
+
+    if (strcmp(s, ":parser") == 0) {
+        char *parser = NULL;
+
+        if (lparse_next_word(form, it, &parser, 1) == 0) {
+            if (strcmp((char *) parser, "quoted") == 0) {
+                *p = LKIT_PARSER_QSTR;
+            } else if (strcmp((char *) parser, "opt-quoted") == 0) {
+                *p = LKIT_PARSER_OPTQSTR;
+            } else {
+                /* unknown parser */
+                *p = LKIT_PARSER_NONE;
+                TRRET(PARSE_FIELDDEF_QUALS + 2);
+            }
+        } else {
+            /* a WORD expected after :parser */
+            TRRET(PARSE_FIELDDEF_QUALS + 3);
+        }
+    } else {
+        /* unknown fielddef qualifier */
         TRACE("unknown qual: %s", s);
     }
     return 0;
@@ -1120,7 +1165,7 @@ parse_struct_quals(array_t *form,
  * name ::= WORD
  * delim|delim1|delim2 ::= STR
  * simple_type ::= int | str | float | bool
- * fielddef ::= (name type)
+ * fielddef ::= (name quals type)
  * complex_type ::= (array quals type) |
  *                  (dict kvdelim fdelim type) |
  *                  (struct quals *fielddef) |
@@ -1138,18 +1183,31 @@ parse_fielddef(mrklkit_ctx_t *mctx,
     array_t *form;
     array_iter_t it;
     bytes_t **name = NULL;
+    lkit_parser_t *parser;
 
-#define DO_PARSE_FIELDDEF(var, type)                                   \
-    type *var;                                                         \
-    var = (type *)ty;                                                  \
+#define DO_PARSE_FIELDDEF(var)                                         \
+    var = (__typeof(var))ty;                                           \
+                                                                       \
     if ((name = array_incr(&var->names)) == NULL) {                    \
         FAIL("array_incr");                                            \
     }                                                                  \
+                                                                       \
+    if ((parser = array_incr(&var->parsers)) == NULL) {                \
+        FAIL("array_incr");                                            \
+    }                                                                  \
+                                                                       \
     form = (array_t *)dat->body;                                       \
+                                                                       \
     if (lparse_first_word_bytes(form, &it, name, 1) == 0) {            \
         fparser_datum_t **node;                                        \
         lkit_type_t **fty;                                             \
         *name = bytes_new_from_bytes(*name);                           \
+        if (lparse_quals(form, &it,                                    \
+                         (quals_parser_t)parse_fielddef_quals,         \
+                         parser) != 0) {                               \
+            dat->error = seterror;                                     \
+            return 1;                                                  \
+        }                                                              \
         if ((node = array_next(form, &it)) == NULL) {                  \
             dat->error = seterror;                                     \
             return 1;                                                  \
@@ -1164,12 +1222,14 @@ parse_fielddef(mrklkit_ctx_t *mctx,
     } else {                                                           \
         dat->error = seterror;                                         \
         return 1;                                                      \
-    }
+    }                                                                  \
+
 
     if (ty->tag == LKIT_STRUCT) {
-        DO_PARSE_FIELDDEF(ts, lkit_struct_t);
+        lkit_struct_t *ts;
+        DO_PARSE_FIELDDEF(ts);
     } else {
-        FAIL("parse_field");
+        FAIL("parse_fielddef");
     }
 
     return 0;
@@ -1201,14 +1261,6 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
             ty = lkit_type_get(mctx, LKIT_INT);
         } else if (strcmp(typename, "str") == 0) {
             ty = lkit_type_get(mctx, LKIT_STR);
-        } else if (strcmp(typename, "qstr") == 0) {
-            {
-                lkit_str_t *ts;
-
-                ty = lkit_type_get(mctx, LKIT_STR);
-                ts = (lkit_str_t *)ty;
-                ts->parser = LKIT_PARSER_QSTR;
-            }
         } else if (strcmp(typename, "float") == 0) {
             ty = lkit_type_get(mctx, LKIT_FLOAT);
         } else if (strcmp(typename, "bool") == 0) {

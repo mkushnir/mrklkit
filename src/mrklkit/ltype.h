@@ -70,7 +70,21 @@ typedef enum _lkit_parser {
     LKIT_PARSER_MDELIM, /* normal multiple */
     LKIT_PARSER_SMARTDELIM, /* smart for dictionaries and arrays */
     LKIT_PARSER_QSTR,
+    LKIT_PARSER_OPTQSTR,
 } lkit_parser_t;
+
+
+#define LKIT_PARSER_STR(p) (                           \
+    (p) == LKIT_PARSER_NONE ? "NONE" :                 \
+    (p) == LKIT_PARSER_DELIM ? "DELIM" :               \
+    (p) == LKIT_PARSER_MDELIM ? "MDELIM" :             \
+    (p) == LKIT_PARSER_SMARTDELIM ? "SMARDELIM" :      \
+    (p) == LKIT_PARSER_QSTR ? "QSTR" :                 \
+    (p) == LKIT_PARSER_OPTQSTR ? "OPTQSTR" :           \
+    "<unknown>"                                        \
+                                                       \
+)                                                      \
+
 
 struct _lkit_type;
 struct _lkit_expr;
@@ -121,7 +135,6 @@ typedef struct _lkit_vararg {
 
 typedef struct _lkit_str {
     struct _lkit_type base;
-    lkit_parser_t parser;
 } lkit_str_t;
 
 typedef struct _lkit_array {
@@ -158,6 +171,7 @@ typedef struct _lkit_struct {
     array_t fields;
     /* weak refs */
     array_t names;
+    array_t parsers;
 } lkit_struct_t;
 
 typedef struct _lkit_func {
