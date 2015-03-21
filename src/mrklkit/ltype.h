@@ -70,7 +70,6 @@ typedef enum _lkit_parser {
     LKIT_PARSER_MDELIM, /* normal multiple */
     LKIT_PARSER_SMARTDELIM, /* smart for dictionaries and arrays */
     LKIT_PARSER_QSTR,
-    LKIT_PARSER_NQSTR,
 } lkit_parser_t;
 
 struct _lkit_type;
