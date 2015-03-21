@@ -1209,6 +1209,14 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                 ts = (lkit_str_t *)ty;
                 ts->parser = LKIT_PARSER_QSTR;
             }
+        } else if (strcmp(typename, "nqstr") == 0) {
+            {
+                lkit_str_t *ts;
+
+                ty = lkit_type_get(mctx, LKIT_STR);
+                ts = (lkit_str_t *)ty;
+                ts->parser = LKIT_PARSER_NQSTR;
+            }
         } else if (strcmp(typename, "float") == 0) {
             ty = lkit_type_get(mctx, LKIT_FLOAT);
         } else if (strcmp(typename, "bool") == 0) {

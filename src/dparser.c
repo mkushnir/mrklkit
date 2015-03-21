@@ -16,6 +16,8 @@
 #include <mrkcommon/mpool.h>
 #include <mrkcommon/util.h>
 
+#define W3CQSTR_SUPPORT
+
 #include <mrklkit/dparser.h>
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
@@ -445,7 +447,6 @@ qstr_unescape(char *dst, const char *src, size_t sz)
 
 static off_t
 dparse_qstr_pos(bytestream_t *bs,
-                UNUSED char delim,
                 off_t spos,
                 off_t epos,
                 bytes_t **val)
@@ -527,6 +528,24 @@ end:
 
     return br.end;
 }
+
+
+
+static off_t
+dparse_nqstr_pos(bytestream_t *bs,
+                 char delim,
+                 off_t spos,
+                 off_t epos,
+                 bytes_t **val)
+{
+    if (SPCHR(bs) == '"') {
+        return dparse_qstr_pos(bs, spos, epos, val);
+    } else {
+        return dparse_str_pos(bs, delim, spos, epos, val);
+    }
+    return -1;
+}
+
 #endif
 
 
@@ -791,16 +810,31 @@ dparse_struct_item_ra(rt_struct_t *value,
                 if ((*fty)->tag == LKIT_STR &&
                     (*tc)->parser == LKIT_PARSER_QSTR) {
 
-                    /*
-                     * Special case for quoted string.
-                     */
-                    val = MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, value->next_delim);
-                    pos = dparse_qstr_pos(bs,
-                                          delim,
-                                          pos,
-                                          value->parser_info.br.end,
-                                          (bytes_t **)val);
-                    value->dpos[value->next_delim] |= 0x80000000;
+                    if ((*tc)->parser == LKIT_PARSER_QSTR) {
+                        /*
+                         * Special case for quoted string.
+                         */
+                        val = MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, value->next_delim);
+                        pos = dparse_qstr_pos(bs,
+                                              pos,
+                                              value->parser_info.br.end,
+                                              (bytes_t **)val);
+                        value->dpos[value->next_delim] |= 0x80000000;
+                    } else if ((*tc)->parser == LKIT_PARSER_NQSTR) {
+                        /*
+                         * Special case for optionally quoted string.
+                         */
+                        val = MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, value->next_delim);
+                        pos = dparse_nqstr_pos(bs,
+                                               delim,
+                                               pos,
+                                               value->parser_info.br.end,
+                                               (bytes_t **)val);
+                        value->dpos[value->next_delim] |= 0x80000000;
+                    } else {
+                        FAIL("dparse_struct_item_ra");
+                    }
+
 
                 } else {
                     pos = dparser_reach_delim_pos(bs,
