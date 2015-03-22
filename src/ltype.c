@@ -1068,7 +1068,7 @@ parse_dict_quals(array_t *form,
                     /* delim requires a string argument */
                     TRRET(PARSE_DICT_QUALS + 4);
                 }
-            } else if (strcmp((char *) parser, "optqstrdelim") == 0) {
+            } else if (strcmp((char *) parser, "delim-opt-quoted") == 0) {
                 td->parser = LKIT_PARSER_OPTQSTRDELIM;
                 if (lparse_next_char(form, it, &td->kvdelim, 1) != 0) {
                     /* delim requires a string argument */
