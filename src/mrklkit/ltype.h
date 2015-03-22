@@ -19,6 +19,7 @@ extern "C" {
 
 typedef enum _lkit_tag {
     LKIT_UNDEF,
+    LKIT_TY,
     LKIT_VOID,
     LKIT_INT,
     LKIT_INT_MIN,
@@ -45,6 +46,7 @@ typedef enum _lkit_tag {
 
 #define LKIT_TAG_STR(tag) (                    \
     (tag) == LKIT_UNDEF ? "UNDEF" :            \
+    (tag) == LKIT_TY ? "TY" :                  \
     (tag) == LKIT_VOID ? "VOID" :              \
     (tag) == LKIT_INT ? "INT" :                \
     (tag) == LKIT_INT_MIN ? "INTMIN" :         \
@@ -68,7 +70,8 @@ typedef enum _lkit_parser {
     LKIT_PARSER_NONE,
     LKIT_PARSER_DELIM, /* normal single */
     LKIT_PARSER_MDELIM, /* normal multiple */
-    LKIT_PARSER_SMARTDELIM, /* smart for dictionaries and arrays */
+    LKIT_PARSER_SMARTDELIM, /* smart for dict/arrays */
+    LKIT_PARSER_OPTQSTRDELIM, /* opt-qstr for dict/arrays */
     LKIT_PARSER_QSTR,
     LKIT_PARSER_OPTQSTR,
 } lkit_parser_t;
@@ -108,6 +111,10 @@ typedef struct _lkit_type {
 } lkit_type_t;
 
 #define LTYPE_ERROR(pty) (((lkit_type_t *)(pty))->error)
+
+typedef struct _lkit_ty {
+    struct _lkit_type base;
+} lkit_ty_t;
 
 typedef struct _lkit_void {
     struct _lkit_type base;

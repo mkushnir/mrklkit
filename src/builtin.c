@@ -730,6 +730,41 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             FAIL("builtin_remove_undef");
         }
 
+    } else if (strcmp(name, "new") == 0) {
+        /* (func undef ty undef) */
+        lkit_expr_t **ty, **arg;
+
+        ty = array_get(&expr->subs, 0);
+        assert(ty != NULL);
+
+        switch ((*ty)->type->tag) {
+        case LKIT_ARRAY:
+        case LKIT_DICT:
+        case LKIT_STRUCT:
+            break;
+
+        default:
+            (*ty)->error = 1;
+            TRACE("type is not  supported in new:");
+            lkit_expr_dump(expr);
+            TRRET(REMOVE_UNDEF + 52);
+        }
+
+        expr->type = (*ty)->type;
+
+        arg = array_get(&expr->subs, 1);
+        assert(arg != NULL);
+        if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
+            TRRET(REMOVE_UNDEF + 53);
+        }
+
+        if ((*arg)->type->tag != LKIT_STR) {
+            (*arg)->error = 1;
+            TRACE("argument must be a string in new:");
+            lkit_expr_dump(expr);
+            TRRET(REMOVE_UNDEF + 54);
+        }
+
     } else {
         /*
          * all others
@@ -743,11 +778,11 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             if ((ref = lkit_expr_find(ectx, expr->name)) == NULL) {
                 lkit_expr_dump(expr);
                 TRACE("name=%p", expr->name);
-                TRRET(REMOVE_UNDEF + 52);
+                TRRET(REMOVE_UNDEF + 55);
             }
 
             if (builtin_remove_undef(mctx, ectx, ref) != 0) {
-                TRRET(REMOVE_UNDEF + 53);
+                TRRET(REMOVE_UNDEF + 56);
             }
 
             /*
@@ -765,7 +800,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
 
                     if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-                        TRRET(REMOVE_UNDEF + 54);
+                        TRRET(REMOVE_UNDEF + 57);
                     }
 
                     if (!isvararg) {
@@ -783,7 +818,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                                 TRACE("type of the argument does not match "
                                       "function definition:");
                                 lkit_expr_dump(expr);
-                                TRRET(REMOVE_UNDEF + 55);
+                                TRRET(REMOVE_UNDEF + 58);
                             }
                         }
                     }
@@ -799,7 +834,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
                 exprty = lkit_expr_type_of(expr);
                 if (exprty->tag != refty->tag) {
-                    TRRET(REMOVE_UNDEF + 56);
+                    TRRET(REMOVE_UNDEF + 59);
                 }
             }
         }

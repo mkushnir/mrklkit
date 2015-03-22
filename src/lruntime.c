@@ -1047,10 +1047,10 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
             FAIL("mrklkit_rt_struct_deep_copy not implement array");   \
             break;                                                     \
         case LKIT_DICT:                                                \
-            FAIL("mrklkit_rt_struct_deep_copy not implement array");   \
+            FAIL("mrklkit_rt_struct_deep_copy not implement dict");    \
             break;                                                     \
         case LKIT_STRUCT:                                              \
-            FAIL("mrklkit_rt_struct_deep_copy not implement array");   \
+            FAIL("mrklkit_rt_struct_deep_copy not implement struct");  \
             break;                                                     \
         default:                                                       \
             *(dst->fields + it.iter) = *(src->fields + it.iter);       \

@@ -1313,9 +1313,6 @@ compile_function(mrklkit_ctx_t *mctx,
             goto err;
         }
 
-
-
-
 #define MRKLKIT_BUILTINGEN_AND_OR_BODY(endvar,                                 \
                                        nextvar,                                \
                                        trcode,                                 \
@@ -1378,9 +1375,6 @@ compile_function(mrklkit_ctx_t *mctx,
         LLVMBuildBr(builder, endblock);                                        \
         LLVMPositionBuilderAtEnd(builder, endblock);                           \
         v = phi
-
-
-
 
 
     } else if (strcmp(name , "and") == 0) {
@@ -2139,7 +2133,6 @@ tostr_done:
             FAIL("compile_function");
         }
 
-
     } else if (strcmp(name, "has") == 0 ||
                strcmp(name, "has-key") == 0) {
         lkit_expr_t **cont, **name;
@@ -2260,6 +2253,51 @@ tostr_done:
             goto err;
         }
 
+    } else if (strcmp(name, "new") == 0) {
+        lkit_expr_t **arg;
+        UNUSED LLVMValueRef fn, args[2];
+
+        arg = array_get(&expr->subs, 1);
+        assert(arg != NULL);
+
+        if ((args[1] = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         *arg,
+                                         udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 5001);
+            goto err;
+        }
+
+        if ((*arg)->type->tag == LKIT_STR) {
+            switch (expr->type->tag) {
+            case LKIT_DICT:
+                if ((fn = LLVMGetNamedFunction(module,
+                        "dparse_dict_from_bytes")) == NULL) {
+                    FAIL("LLVMGetNamedFunction");
+                }
+                break;
+
+            default:
+                TR(COMPILE_FUNCTION + 5002);
+                goto err;
+            }
+        } else {
+            TR(COMPILE_FUNCTION + 5003);
+            goto err;
+        }
+        args[0] = LLVMConstIntToPtr(
+                LLVMConstInt(LLVMInt64TypeInContext(lctx),
+                             (uintptr_t)expr->type,
+                             0),
+                LLVMTypeOf(LLVMGetParam(fn, 0)));
+
+        v = LLVMBuildCall(builder,
+                          fn,
+                          args,
+                          countof(args),
+                          NEWVAR("call"));
     } else {
         mrklkit_module_t **mod;
         array_iter_t it;

@@ -128,10 +128,21 @@ lkit_type_new(lkit_tag_t tag)
         ty->name = "undef";
         break;
 
+    case LKIT_TY:
+        {
+            lkit_ty_t *tt;
+            if ((tt = malloc(sizeof(lkit_ty_t))) == NULL) {
+                FAIL("malloc");
+            }
+            tt->base.tag = tag;
+            tt->base.name = "ty";
+            ty = (lkit_type_t *)tt;
+        }
+        break;
+
     case LKIT_VOID:
         {
             lkit_void_t *tv;
-            tv = (lkit_void_t *)ty;
             if ((tv = malloc(sizeof(lkit_void_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -146,7 +157,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_INT_MAX:
         {
             lkit_int_t *ti;
-            ti = (lkit_int_t *)ty;
             if ((ti = malloc(sizeof(lkit_int_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -161,7 +171,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_STR:
         {
             lkit_str_t *tc;
-            tc = (lkit_str_t *)ty;
             if ((tc = malloc(sizeof(lkit_str_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -176,7 +185,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_FLOAT_MAX:
         {
             lkit_float_t *tg;
-            tg = (lkit_float_t *)ty;
             if ((tg = malloc(sizeof(lkit_float_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -191,7 +199,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_BOOL:
         {
             lkit_bool_t *tb;
-            tb = (lkit_bool_t *)ty;
             if ((tb = malloc(sizeof(lkit_bool_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -204,7 +211,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_ANY:
         {
             lkit_any_t *tn;
-            tn = (lkit_any_t *)ty;
             if ((tn = malloc(sizeof(lkit_any_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -217,7 +223,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_VARARG:
         {
             lkit_vararg_t *tv;
-            tv = (lkit_vararg_t *)ty;
             if ((tv = malloc(sizeof(lkit_vararg_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -230,7 +235,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_ARRAY:
         {
             lkit_array_t *ta;
-            ta = (lkit_array_t *)ty;
             if ((ta = malloc(sizeof(lkit_array_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -248,7 +252,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_DICT:
         {
             lkit_dict_t *td;
-            td = (lkit_dict_t *)ty;
             if ((td = malloc(sizeof(lkit_dict_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -265,7 +268,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_STRUCT:
         {
             lkit_struct_t *ts;
-            ts = (lkit_struct_t *)ty;
             if ((ts = malloc(sizeof(lkit_struct_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -293,7 +295,6 @@ lkit_type_new(lkit_tag_t tag)
     case LKIT_FUNC:
         {
             lkit_func_t *tf;
-            tf = (lkit_func_t *)ty;
             if ((tf = malloc(sizeof(lkit_func_t))) == NULL) {
                 FAIL("malloc");
             }
@@ -1067,16 +1068,26 @@ parse_dict_quals(array_t *form,
                     /* delim requires a string argument */
                     TRRET(PARSE_DICT_QUALS + 4);
                 }
+            } else if (strcmp((char *) parser, "optqstrdelim") == 0) {
+                td->parser = LKIT_PARSER_OPTQSTRDELIM;
+                if (lparse_next_char(form, it, &td->kvdelim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_DICT_QUALS + 5);
+                }
+                if (lparse_next_char(form, it, &td->fdelim, 1) != 0) {
+                    /* delim requires a string argument */
+                    TRRET(PARSE_DICT_QUALS + 6);
+                }
             } else if (strcmp((char *) parser, "none") == 0) {
                 td->parser = LKIT_PARSER_NONE;
             } else {
                 /* unknown parser */
                 td->parser = -1;
-                TRRET(PARSE_DICT_QUALS + 5);
+                TRRET(PARSE_DICT_QUALS + 7);
             }
         } else {
             /* a WORD expected after :parser */
-            TRRET(PARSE_DICT_QUALS + 6);
+            TRRET(PARSE_DICT_QUALS + 8);
         }
     } else {
         /* unknown dict qualifier */
@@ -1255,6 +1266,8 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
         /* simple types */
         if (strcmp(typename, "undef") == 0) {
             ty = lkit_type_get(mctx, LKIT_UNDEF);
+        } else if (strcmp(typename, "ty") == 0) {
+            ty = lkit_type_get(mctx, LKIT_TY);
         } else if (strcmp(typename, "void") == 0) {
             ty = lkit_type_get(mctx, LKIT_VOID);
         } else if (strcmp(typename, "int") == 0) {
@@ -1664,6 +1677,12 @@ mrklkit_init_types(dict_t *types,
 
     ty = lkit_type_new(LKIT_UNDEF);
     if ((pty = array_get(builtin_types, LKIT_UNDEF)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = lkit_type_finalize(ty);
+
+    ty = lkit_type_new(LKIT_TY);
+    if ((pty = array_get(builtin_types, LKIT_TY)) == NULL) {
         FAIL("array_get");
     }
     *pty = lkit_type_finalize(ty);

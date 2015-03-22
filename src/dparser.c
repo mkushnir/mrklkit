@@ -28,7 +28,13 @@ static mpool_ctx_t *mpool;
 
 typedef void (*dparse_struct_item_cb_t)(bytestream_t *, char, off_t, off_t, void **);
 
+/*
+ * reach
+ */
 
+/*
+ * deprecate
+ */
 void
 dparser_reach_delim(bytestream_t *bs, char delim, off_t epos)
 {
@@ -199,6 +205,87 @@ dparser_reach_value_m(bytestream_t *bs, char delim, off_t epos)
 }
 
 
+/*
+ * __a1
+ *  bs: SNCHR(bs, spos)
+ *  bytes: str->data[spos]
+ */
+#define DPARSER_REACH_DELIM_POS_BODY(__a1)     \
+    while (spos < epos) {                      \
+        if (__a1 == delim || __a1 == '\0') {   \
+            break;                             \
+        }                                      \
+        ++spos;                                \
+    }                                          \
+    return spos;                               \
+
+
+static off_t
+dparser_reach_delim_pos_bs(bytestream_t *bs,
+                           char delim,
+                           off_t spos,
+                           off_t epos)
+{
+    DPARSER_REACH_DELIM_POS_BODY(SNCHR(bs, spos))
+}
+
+
+static off_t
+dparser_reach_delim_pos_bytes(bytes_t *str,
+                              char delim,
+                              off_t spos,
+                              off_t epos)
+{
+    DPARSER_REACH_DELIM_POS_BODY(str->data[spos])
+}
+
+
+/*
+ * __a1
+ *  bs: SNCHR(bs, spos)
+ *  bytes: str->data[spos]
+ */
+#define DPARSER_REACH_VALUE_POS_BODY(__a1)     \
+    if (spos < epos && __a1 == delim) {        \
+        ++spos;                                \
+    }                                          \
+    return spos;                               \
+
+
+static off_t
+dparser_reach_value_pos_bs(bytestream_t *bs,
+                           char delim,
+                           off_t spos,
+                           off_t epos)
+{
+    DPARSER_REACH_VALUE_POS_BODY(SNCHR(bs, spos))
+}
+
+
+static off_t
+dparser_reach_value_pos_bytes(bytes_t *str,
+                              char delim,
+                              off_t spos,
+                              off_t epos)
+{
+    DPARSER_REACH_VALUE_POS_BODY(str->data[spos])
+}
+
+
+static off_t
+dparser_reach_value_m_pos(bytestream_t *bs, char delim, off_t spos, off_t epos)
+{
+    while (spos < epos && SNCHR(bs, spos) == delim) {
+        ++spos;
+    }
+    return spos;
+}
+
+
+/*
+ * strto*
+ */
+
 int64_t
 dparser_strtoi64(char *ptr, char **endptr, char delim)
 {
@@ -296,66 +383,79 @@ err:
 }
 
 
+/*
+ * int
+ */
+
+/*
+ * __a1
+ *  bs: SDATA(bs, spos)
+ *  bytes: str->data + spos
+ */
+#define DPARSE_INT_POS_BODY(__a1)                      \
+    char *ptr = (char *)__a1;                          \
+    char *endptr = ptr;                                \
+    *val = dparser_strtoi64(ptr, &endptr, delim);      \
+    return spos + endptr - ptr;                        \
+
+
 static off_t
-dparser_reach_delim_pos(bytestream_t *bs, char delim, off_t spos, off_t epos)
+dparse_int_pos_bs(bytestream_t *bs,
+                  char delim,
+                  off_t spos,
+                  UNUSED off_t epos,
+                  int64_t *val)
 {
-    while (spos < epos) {
-        if (SNCHR(bs, spos) == delim || SNCHR(bs, spos) == '\0') {
-            break;
-        }
-        ++spos;
-    }
-    return spos;
+    DPARSE_INT_POS_BODY(SDATA(bs, spos))
 }
 
 
 static off_t
-dparser_reach_value_pos(bytestream_t *bs, char delim, off_t spos, off_t epos)
+dparse_int_pos_bytes(bytes_t *str,
+                     char delim,
+                     off_t spos,
+                     UNUSED off_t epos,
+                     int64_t *val)
 {
-    if (spos < epos && SNCHR(bs, spos) == delim) {
-        ++spos;
-    }
-    return spos;
+    DPARSE_INT_POS_BODY(str->data + spos)
+}
+
+
+/*
+ * float
+ */
+
+/*
+ * __a1
+ *  bs: SDATA(bs, spos)
+ *  bytes: str->data + spos
+ */
+#define DPARSE_FLOAT_POS_BODY(__a1)            \
+    char *ptr = (char *)__a1;                  \
+    char *endptr = ptr;                        \
+    *val = dparser_strtod(ptr, &endptr, delim);\
+    return spos + endptr - ptr;                \
+
+
+static off_t
+dparse_float_pos_bs(bytestream_t *bs,
+                    char delim,
+                    off_t spos,
+                    UNUSED off_t epos,
+                    double *val)
+{
+    DPARSE_FLOAT_POS_BODY(SDATA(bs, spos))
 }
 
 
 static off_t
-dparser_reach_value_m_pos(bytestream_t *bs, char delim, off_t spos, off_t epos)
+dparse_float_pos_bytes(bytes_t *str,
+                       char delim,
+                       off_t spos,
+                       UNUSED off_t epos,
+                       double *val)
 {
-    while (spos < epos && SNCHR(bs, spos) == delim) {
-        ++spos;
-    }
-    return spos;
-}
-
-
-static off_t
-dparse_int_pos(bytestream_t *bs,
-               char delim,
-               off_t spos,
-               UNUSED off_t epos,
-               int64_t *val)
-{
-    char *ptr = (char *)SDATA(bs, spos);
-    char *endptr = ptr;
-
-    *val = dparser_strtoi64(ptr, &endptr, delim);
-    return spos + endptr - ptr;
-}
-
-
-static off_t
-dparse_float_pos(bytestream_t *bs,
-               char delim,
-               off_t spos,
-               UNUSED off_t epos,
-               double *val)
-{
-    char *ptr = (char *)SDATA(bs, spos);
-    char *endptr = ptr;
-
-    *val = dparser_strtod(ptr, &endptr, delim);
-    return spos + endptr - ptr;
+    DPARSE_FLOAT_POS_BODY(str->data + spos)
 }
 
 
@@ -379,46 +479,83 @@ dparse_float_pos_pvoid(bytestream_t *bs,
 }
 
 
+/*
+ * str
+ */
+
+/*
+ * __a1
+ *  bs: SNCHR(bs, i)
+ *  bytes: (str)->data[i]
+ *
+ * __a2
+ *  bs: SDATA(bs, spos)
+ *  bytes: (str)->data + spos
+ */
+#define DPARSE_STR_POS_BODY(__a1, __a2)                        \
+    off_t i;                                                   \
+    for (i = spos; i < epos && (char)__a1 != delim; ++i) {     \
+        ;                                                      \
+    }                                                          \
+    *val = mrklkit_rt_bytes_new_gc(i - spos + 1);              \
+    memcpy((*val)->data, __a2, (*val)->sz - 1);                \
+    *((*val)->data + (*val)->sz - 1) = '\0';                   \
+    return i;                                                  \
+
+
 static off_t
-dparse_str_pos(bytestream_t *bs,
-               char delim,
-               off_t spos,
-               off_t epos,
-               bytes_t **val)
+dparse_str_pos_bs(bytestream_t *bs,
+                  char delim,
+                  off_t spos,
+                  off_t epos,
+                  bytes_t **val)
 {
-    off_t i;
-
-    for (i = spos; i < epos && SNCHR(bs, i) != delim; ++i) {
-        ;
-    }
-
-    *val = mrklkit_rt_bytes_new_gc(i - spos + 1);
-    memcpy((*val)->data, SDATA(bs, spos), (*val)->sz - 1);
-    *((*val)->data + (*val)->sz - 1) = '\0';
-    //BYTES_INCREF(*val);
-    return i;
+    DPARSE_STR_POS_BODY(SNCHR(bs, i), SDATA(bs, spos))
 }
 
 
 static off_t
-dparse_str_pos_brushdown(bytestream_t *bs,
-                         char delim,
-                         off_t spos,
-                         off_t epos,
-                         bytes_t **val)
+dparse_str_pos_bytes(bytes_t *str,
+                     char delim,
+                     off_t spos,
+                     off_t epos,
+                     bytes_t **val)
 {
-    off_t i;
+    DPARSE_STR_POS_BODY(str->data[i], str->data + spos)
+}
 
-    for (i = spos; i < epos && SNCHR(bs, i) != delim; ++i) {
-        ;
-    }
 
-    *val = mrklkit_rt_bytes_new_gc(i - spos + 1);
-    memcpy((*val)->data, SDATA(bs, spos), (*val)->sz - 1);
-    *((*val)->data + (*val)->sz - 1) = '\0';
-    bytes_brushdown(*val);
-    //BYTES_INCREF(*val);
-    return i;
+#define DPARSE_STR_POS_BRUSHDOWN_BODY(__a1, __a2)              \
+    off_t i;                                                   \
+    for (i = spos; i < epos && (char)__a1 != delim; ++i) {     \
+        ;                                                      \
+    }                                                          \
+    *val = mrklkit_rt_bytes_new_gc(i - spos + 1);              \
+    memcpy((*val)->data, __a2, (*val)->sz - 1);                \
+    *((*val)->data + (*val)->sz - 1) = '\0';                   \
+    bytes_brushdown(*val);                                     \
+    return i;                                                  \
+
+
+static off_t
+dparse_str_pos_brushdown_bs(bytestream_t *bs,
+                            char delim,
+                            off_t spos,
+                            off_t epos,
+                            bytes_t **val)
+{
+    DPARSE_STR_POS_BRUSHDOWN_BODY(SNCHR(bs, i), SDATA(bs, spos))
+}
+
+
+static off_t
+dparse_str_pos_brushdown_bytes(bytes_t *str,
+                               char delim,
+                               off_t spos,
+                               off_t epos,
+                               bytes_t **val)
+{
+    DPARSE_STR_POS_BRUSHDOWN_BODY(str->data[i], str->data + spos)
 }
 
 
@@ -443,112 +580,139 @@ qstr_unescape(char *dst, const char *src, size_t sz)
 }
 
 
-static off_t
-dparse_qstr_pos(bytestream_t *bs,
-                off_t spos,
-                off_t epos,
-                bytes_t **val)
-{
-    byterange_t br;
 #   define QSTR_ST_START   (0)
 #   define QSTR_ST_QUOTE   (1)
 #   define QSTR_ST_IN      (2)
 #   define QSTR_ST_OUT     (3)
-    int state;
-    size_t sz;
-
-    state = QSTR_ST_START;
-    br.start = spos;
-    br.end = spos;
-
-    for (br.end = spos; br.end < epos; ++br.end) {
-        char ch;
-
-        ch = SNCHR(bs, br.end);
-        //TRACE("ch='%c'", ch);
-
-        switch (state) {
-        case QSTR_ST_START:
-            if (ch == '"') {
-                state = QSTR_ST_IN;
-            } else {
-                /*
-                 * garbage before the opening "
-                 */
-                goto end;
-            }
-            break;
-
-        case QSTR_ST_IN:
-            if (ch == '"') {
-                state = QSTR_ST_QUOTE;
-            }
-            break;
-
-        case QSTR_ST_QUOTE:
-            if (ch == '"') {
-                state = QSTR_ST_IN;
-            } else {
-                /* one beyond the closing " */
-                state = QSTR_ST_OUT;
-                goto end;
-            }
-
-            break;
-
-        default:
-            assert(0);
-        }
-
-    }
-
-end:
-    //TRACE("st=%s",
-    //      (state == QSTR_ST_START) ? "START" :
-    //      (state == QSTR_ST_QUOTE) ? "QUOTE" :
-    //      (state == QSTR_ST_IN) ? "IN" :
-    //      (state == QSTR_ST_OUT) ? "OUT" :
-    //      "...");
-
-    if (state != QSTR_ST_OUT) {
-        sz = 0;
-    } else {
-        sz = br.end - br.start;
-    }
-    *val = mrklkit_rt_bytes_new_gc(sz + 1);
-    /* unescape starting from next to the starting " */
-    if (sz > 2) {
-        sz = qstr_unescape((char *)(*val)->data,
-                      SDATA(bs, br.start + 1),
-                      /* minus "" */
-                      br.end - br.start - 2);
-    } else {
-        sz = 0;
-    }
-    (*val)->data[sz] = '\0';
-    (*val)->sz = sz + 1;
-
-    return br.end;
-}
-
+/*
+ * __a1
+ *  bs: SNCHR(bs, br.end)
+ *  bytes: str->data[br.end]
+ *
+ * __a2
+ *  bs: SDATA(bs, br.start + 1)
+ *  bytes: str->data + br.start + 1
+ */
+#define DPARSE_QSTR_POS_BODY(__a1, __a2)               \
+    byterange_t br;                                    \
+    int state;                                         \
+    size_t sz;                                         \
+    state = QSTR_ST_START;                             \
+    br.start = spos;                                   \
+    br.end = spos;                                     \
+    for (br.end = spos; br.end < epos; ++br.end) {     \
+        char ch;                                       \
+        ch = (char)__a1;                               \
+        switch (state) {                               \
+        case QSTR_ST_START:                            \
+            if (ch == '"') {                           \
+                state = QSTR_ST_IN;                    \
+            } else {                                   \
+                /*                                     \
+                 * garbage before the opening "        \
+                 */                                    \
+                goto end;                              \
+            }                                          \
+            break;                                     \
+        case QSTR_ST_IN:                               \
+            if (ch == '"') {                           \
+                state = QSTR_ST_QUOTE;                 \
+            }                                          \
+            break;                                     \
+        case QSTR_ST_QUOTE:                            \
+            if (ch == '"') {                           \
+                state = QSTR_ST_IN;                    \
+            } else {                                   \
+                /* one beyond the closing " */         \
+                state = QSTR_ST_OUT;                   \
+                goto end;                              \
+            }                                          \
+                                                       \
+            break;                                     \
+        default:                                       \
+            assert(0);                                 \
+        }                                              \
+    }                                                  \
+end:                                                   \
+    if (state != QSTR_ST_OUT) {                        \
+        sz = 0;                                        \
+    } else {                                           \
+        sz = br.end - br.start;                        \
+    }                                                  \
+    *val = mrklkit_rt_bytes_new_gc(sz + 1);            \
+    /* unescape starting from next to the starting " */\
+    if (sz > 2) {                                      \
+        sz = qstr_unescape((char *)(*val)->data,       \
+                           (char *)__a2,               \
+                           /* minus "" */              \
+                           br.end - br.start - 2);     \
+    } else {                                           \
+        sz = 0;                                        \
+    }                                                  \
+    (*val)->data[sz] = '\0';                           \
+    (*val)->sz = sz + 1;                               \
+    return br.end;                                     \
 
 
 static off_t
-dparse_optqstr_pos(bytestream_t *bs,
-                   char delim,
+dparse_qstr_pos_bs(bytestream_t *bs,
                    off_t spos,
                    off_t epos,
                    bytes_t **val)
 {
-    if (SNCHR(bs, spos) == '"') {
-        return dparse_qstr_pos(bs, spos, epos, val);
-    } else {
-        return dparse_str_pos(bs, delim, spos, epos, val);
-    }
-    return -1;
+    DPARSE_QSTR_POS_BODY(SNCHR(bs, br.end), SDATA(bs, br.start + 1))
 }
 
 
+static off_t
+dparse_qstr_pos_bytes(bytes_t *str,
+                      off_t spos,
+                      off_t epos,
+                      bytes_t **val)
+{
+    DPARSE_QSTR_POS_BODY(str->data[br.end], str->data + br.start + 1)
+}
+
+
+/*
+ * __a1
+ *  bs: SNCHR(bs, spos)
+ *  bytes: str->data[spos]
+ */
+#define DPARSE_OPTQSTR_POS_BODY(kind, in, __a1)                        \
+    if (__a1 == '"') {                                                 \
+        return dparse_qstr_pos_##kind(in, spos, epos, val);            \
+    } else {                                                           \
+        return dparse_str_pos_##kind(in, delim, spos, epos, val);      \
+    }                                                                  \
+    return -1;                                                         \
+
+
+static off_t
+dparse_optqstr_pos_bs(bytestream_t *bs,
+                      char delim,
+                      off_t spos,
+                      off_t epos,
+                      bytes_t **val)
+{
+    DPARSE_OPTQSTR_POS_BODY(bs, bs, SNCHR(bs, spos))
+}
+
+
+static off_t
+dparse_optqstr_pos_bytes(bytes_t *str,
+                         char delim,
+                         off_t spos,
+                         off_t epos,
+                         bytes_t **val)
+{
+    DPARSE_OPTQSTR_POS_BODY(bytes, str, str->data[spos])
+}
+
+
+/*
+ * array
+ */
 static void
 dparse_array_pos(bytestream_t *bs,
                  char delim,
@@ -565,34 +729,34 @@ dparse_array_pos(bytestream_t *bs,
         FAIL("lkit_array_get_element_type");
     }
 
-#define DPARSE_ARRAY_CASE(ty, fn)                              \
-    idx = 0;                                                   \
-    while (spos < epos && SNCHR(bs, spos) != delim) {          \
-        off_t fpos;                                            \
-        union {                                                \
-            void *v;                                           \
-            ty x;                                              \
-        } u;                                                   \
-        void **v;                                              \
-        fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos);\
-        (void)fn(bs, fdelim, spos, fpos, &u.x);                \
-        v = array_get_safe_mpool(mpool, &(*val)->fields, idx); \
-        *v = u.v;                                              \
-        spos = dparser_reach_value_pos(bs, fdelim, fpos, epos);\
-        ++idx;                                                 \
-    }
+#define DPARSE_ARRAY_CASE(ty, fn)                                      \
+    idx = 0;                                                           \
+    while (spos < epos && SNCHR(bs, spos) != delim) {                  \
+        off_t fpos;                                                    \
+        union {                                                        \
+            void *v;                                                   \
+            ty x;                                                      \
+        } u;                                                           \
+        void **v;                                                      \
+        fpos = dparser_reach_delim_pos_bs(bs, fdelim, spos, epos);     \
+        (void)fn(bs, fdelim, spos, fpos, &u.x);                        \
+        v = array_get_safe_mpool(mpool, &(*val)->fields, idx);         \
+        *v = u.v;                                                      \
+        spos = dparser_reach_value_pos_bs(bs, fdelim, fpos, epos);     \
+        ++idx;                                                         \
+    }                                                                  \
 
     switch (afty->tag) {
     case LKIT_STR:
-        DPARSE_ARRAY_CASE(bytes_t *, dparse_str_pos);
+        DPARSE_ARRAY_CASE(bytes_t *, dparse_str_pos_bs);
         break;
 
     case LKIT_INT:
-        DPARSE_ARRAY_CASE(int64_t, dparse_int_pos);
+        DPARSE_ARRAY_CASE(int64_t, dparse_int_pos_bs);
         break;
 
     case LKIT_FLOAT:
-        DPARSE_ARRAY_CASE(double, dparse_float_pos);
+        DPARSE_ARRAY_CASE(double, dparse_float_pos_bs);
         break;
 
     default:
@@ -601,75 +765,123 @@ dparse_array_pos(bytestream_t *bs,
     }
 }
 
+/*
+ * dict
+ */
+
+/*
+ * __a1
+ *  bs: SNCHR(bs, spos)
+ *  bytes: str->data[spos]
+ */
+#define DPARSE_DICT_CASE(kind, in, ty, fn, __a1)                               \
+    while (spos < epos && __a1 != delim) {                                     \
+        off_t kvpos, fpos;                                                     \
+        dict_item_t *it;                                                       \
+        bytes_t *key = NULL;                                                   \
+        union {                                                                \
+            void *v;                                                           \
+            ty x;                                                              \
+        } u;                                                                   \
+        kvpos = dparser_reach_delim_pos_##kind(in, kvdelim, spos, epos);       \
+        (void)_dparse_str_pos_k(in, kvdelim, spos, kvpos, &key);               \
+        spos = dparser_reach_value_pos_##kind(in, kvdelim, kvpos, epos);       \
+        if ((it = dict_get_item(&(*val)->fields, key)) == NULL) {              \
+            fpos = fn(in, fdelim, spos, epos, &u.x);                           \
+            dict_set_item_mpool(mpool, &(*val)->fields, key, u.v);             \
+            fpos = dparser_reach_delim_pos_##kind(in, fdelim, fpos, epos);     \
+        } else {                                                               \
+            /* BYTES_DECREF(&key); */                                          \
+            fpos = dparser_reach_delim_pos_##kind(in, fdelim, spos, epos);     \
+        }                                                                      \
+        spos = dparser_reach_value_pos_##kind(in, fdelim, fpos, epos);         \
+    }                                                                          \
+
+
+
+#define DPARSE_DICT_POS_BODY(kind, in, __a1)                                   \
+    char kvdelim;                                                              \
+    char fdelim;                                                               \
+    lkit_type_t *dfty;                                                         \
+    off_t (*_dparse_str_pos_k)(__typeof(in), char, off_t, off_t, bytes_t **);  \
+    kvdelim = (*val)->type->kvdelim;                                           \
+    fdelim = (*val)->type->fdelim;                                             \
+    if ((dfty = lkit_dict_get_element_type((*val)->type)) == NULL) {           \
+        FAIL("lkit_dict_get_element_type");                                    \
+    }                                                                          \
+    if ((*val)->type->parser == LKIT_PARSER_SMARTDELIM) {                      \
+        _dparse_str_pos_k = dparse_str_pos_brushdown_##kind;                   \
+    } else {                                                                   \
+        _dparse_str_pos_k = dparse_str_pos_##kind;                             \
+    }                                                                          \
+    switch (dfty->tag) {                                                       \
+    case LKIT_STR:                                                             \
+        {                                                                      \
+            off_t (*_dparse_str_pos_v)(__typeof(in),                           \
+                                       char,                                   \
+                                       off_t,                                  \
+                                       off_t,                                  \
+                                       bytes_t **);                            \
+            if ((*val)->type->parser == LKIT_PARSER_OPTQSTRDELIM) {            \
+                _dparse_str_pos_v = dparse_optqstr_pos_##kind;                 \
+            } else {                                                           \
+                _dparse_str_pos_v = dparse_str_pos_##kind;                     \
+            }                                                                  \
+            DPARSE_DICT_CASE(kind, in, bytes_t *, _dparse_str_pos_v, __a1);    \
+        }                                                                      \
+        break;                                                                 \
+                                                                               \
+    case LKIT_INT:                                                             \
+        DPARSE_DICT_CASE(kind, in, int64_t, dparse_int_pos_##kind, __a1);      \
+        break;                                                                 \
+                                                                               \
+    case LKIT_FLOAT:                                                           \
+        DPARSE_DICT_CASE(kind, in, double, dparse_float_pos_##kind, __a1);     \
+        break;                                                                 \
+                                                                               \
+    default:                                                                   \
+        /* cannot be recursively nested */                                     \
+        FAIL("dparse_dict_pos");                                               \
+    }                                                                          \
+
+
 
 static void
-dparse_dict_pos(bytestream_t *bs,
+dparse_dict_pos_bs(bytestream_t *bs,
                 char delim,
                 off_t spos,
                 off_t epos,
                 rt_dict_t **val)
 {
-    char kvdelim;
-    char fdelim;
-    lkit_type_t *dfty;
-    off_t (*_dparse_str_pos)(bytestream_t *, char, off_t, off_t, bytes_t **);
-
-    kvdelim = (*val)->type->kvdelim;
-    fdelim = (*val)->type->fdelim;
-    if ((dfty = lkit_dict_get_element_type((*val)->type)) == NULL) {
-        FAIL("lkit_dict_get_element_type");
-    }
-
-    if ((*val)->type->parser == LKIT_PARSER_SMARTDELIM) {
-        _dparse_str_pos = dparse_str_pos_brushdown;
-    } else {
-        _dparse_str_pos = dparse_str_pos;
-    }
-
-#define DPARSE_DICT_CASE(ty, fn)                                       \
-        while (spos < epos && SNCHR(bs, spos) != delim) {              \
-            off_t kvpos, fpos;                                         \
-            dict_item_t *it;                                           \
-            bytes_t *key = NULL;                                       \
-            union {                                                    \
-                void *v;                                               \
-                ty x;                                                  \
-            } u;                                                       \
-            kvpos = dparser_reach_delim_pos(bs, kvdelim, spos, epos);  \
-            (void)_dparse_str_pos(bs, kvdelim, spos, kvpos, &key);     \
-            spos = dparser_reach_value_pos(bs, kvdelim, kvpos, epos);  \
-            if ((it = dict_get_item(&(*val)->fields, key)) == NULL) {  \
-                fpos = fn(bs, fdelim, spos, epos, &u.x);               \
-                dict_set_item_mpool(mpool, &(*val)->fields, key, u.v); \
-                fpos = dparser_reach_delim_pos(bs, fdelim, fpos, epos);\
-            } else {                                                   \
-                /* BYTES_DECREF(&key); */                              \
-                fpos = dparser_reach_delim_pos(bs, fdelim, spos, epos);\
-            }                                                          \
-            spos = dparser_reach_value_pos(bs, fdelim, fpos, epos);    \
-        }
-
-    switch (dfty->tag) {
-    case LKIT_STR:
-        DPARSE_DICT_CASE(bytes_t *, dparse_str_pos);
-        break;
-
-    case LKIT_INT:
-        DPARSE_DICT_CASE(int64_t, dparse_int_pos);
-        break;
-
-    case LKIT_FLOAT:
-        DPARSE_DICT_CASE(double, dparse_float_pos);
-        break;
-
-    default:
-        /* cannot be recursively nested */
-        FAIL("dparse_dict_pos");
-    }
-
+    DPARSE_DICT_POS_BODY(bs, bs, SNCHR(bs, spos))
 }
 
 
+static void
+dparse_dict_pos_bytes(bytes_t *str,
+                      char delim,
+                      off_t spos,
+                      off_t epos,
+                      rt_dict_t **val)
+{
+    DPARSE_DICT_POS_BODY(bytes, str, str->data[spos])
+}
+
+
+rt_dict_t *
+dparse_dict_from_bytes(lkit_dict_t *ty, bytes_t *str)
+{
+    rt_dict_t *val;
+
+    val = mrklkit_rt_dict_new_gc(ty);
+    dparse_dict_pos_bytes(str, '\0', 0, str->sz, &val);
+    return val;
+}
+
+
+/*
+ * struct
+ */
 static void
 dparse_struct_pos(bytestream_t *bs,
                 UNUSED char delim,
@@ -717,7 +929,7 @@ dparse_struct_pi_pos(rt_struct_t *value)
         if (value->type->parser == LKIT_PARSER_MDELIM) {                       \
             _dparser_reach_value = dparser_reach_value_m_pos;                  \
         } else {                                                               \
-            _dparser_reach_value = dparser_reach_value_pos;                    \
+            _dparser_reach_value = dparser_reach_value_pos_bs;                 \
         }                                                                      \
         if (nidx >= value->next_delim) {                                       \
             off_t pos;                                                         \
@@ -751,29 +963,29 @@ dparse_struct_pi_pos(rt_struct_t *value)
                               pos,                                             \
                               value->parser_info.br.end);                      \
  */                                                                            \
-                        pos = dparse_qstr_pos(bs,                              \
-                                              pos,                             \
-                                              value->parser_info.br.end,       \
-                                              (bytes_t **)val);                \
+                        pos = dparse_qstr_pos_bs(bs,                           \
+                                                 pos,                          \
+                                                 value->parser_info.br.end,    \
+                                                 (bytes_t **)val);             \
                         value->dpos[value->next_delim] |= 0x80000000;          \
                     } else if (*fpa == LKIT_PARSER_OPTQSTR) {                  \
                         /*                                                     \
                          * Special case for optionally quoted string.          \
                          */                                                    \
-                        pos = dparse_optqstr_pos(bs,                           \
-                                               delim,                          \
-                                               pos,                            \
-                                               value->parser_info.br.end,      \
-                                               (bytes_t **)val);               \
+                        pos = dparse_optqstr_pos_bs(bs,                        \
+                                                    delim,                     \
+                                                    pos,                       \
+                                                    value->parser_info.br.end, \
+                                                    (bytes_t **)val);          \
                         value->dpos[value->next_delim] |= 0x80000000;          \
                     } else {                                                   \
-                        pos = dparser_reach_delim_pos(                         \
+                        pos = dparser_reach_delim_pos_bs(                      \
                             bs, delim, pos, value->parser_info.br.end);        \
                         }                                                      \
                                                                                \
                                                                                \
                 } else {                                                       \
-                    pos = dparser_reach_delim_pos(                             \
+                    pos = dparser_reach_delim_pos_bs(                          \
                         bs, delim, pos, value->parser_info.br.end);            \
                 }                                                              \
             } while (value->next_delim++ < nidx &&                             \
@@ -802,7 +1014,7 @@ dparse_struct_item_ra_int(rt_struct_t *value, int64_t idx)
     int64_t *val;
 
     assert(sizeof(int64_t) == sizeof(void *));
-    DPARSE_STRUCT_ITEM_RA_BODY(val, dparse_int_pos,);
+    DPARSE_STRUCT_ITEM_RA_BODY(val, dparse_int_pos_bs,);
     return *val;
 }
 
@@ -828,7 +1040,7 @@ dparse_struct_item_ra_bool(rt_struct_t *value, int64_t idx)
 
     assert(sizeof(int64_t) == sizeof(void *));
     DPARSE_STRUCT_ITEM_RA_BODY(val,
-                               dparse_int_pos,);
+                               dparse_int_pos_bs,);
     return *val;
 }
 
@@ -839,7 +1051,7 @@ dparse_struct_item_ra_str(rt_struct_t *value, int64_t idx)
     bytes_t **val;
 
     assert(sizeof(bytes_t *) == sizeof(void *));
-    DPARSE_STRUCT_ITEM_RA_BODY(val, dparse_str_pos,);
+    DPARSE_STRUCT_ITEM_RA_BODY(val, dparse_str_pos_bs,);
     return *(bytes_t **)(value->fields + idx);
 }
 
@@ -868,7 +1080,7 @@ dparse_struct_item_ra_dict(rt_struct_t *value, int64_t idx)
     assert(sizeof(rt_dict_t *) == sizeof(void *));
     DPARSE_STRUCT_ITEM_RA_BODY(
         val,
-        dparse_dict_pos,
+        dparse_dict_pos_bs,
             fty = ARRAY_GET(lkit_type_t *, &value->type->fields, idx);
             *val = mrklkit_rt_dict_new_gc((lkit_dict_t *)*fty);
     );

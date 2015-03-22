@@ -28,11 +28,7 @@ lkit_expr_qual_name(lkit_expr_t *ectx, bytes_t *name)
     bytes_t *res;
 
     if (ectx->name != NULL) {
-        res = bytes_new(ectx->name->sz + name->sz + 3);
-        snprintf((char *)res->data,
-                 res->sz, "%s::%s",
-                 ectx->name->data,
-                 name->data);
+        res = bytes_printf("%s::%s", ectx->name->data, name->data);
     } else {
         res = bytes_new_from_str((char *)name->data);
     }
@@ -68,7 +64,8 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr, int level)
         if (expr->name != NULL) {
             if (expr->error) {
                 bytestream_nprintf(bs,
-                    strlen((char *)expr->name->data) + 8 + SIZEOFCOLOR(ERRCOLOR),
+                    strlen((char *)expr->name->data) + 8 +
+                    SIZEOFCOLOR(ERRCOLOR),
                     ERRCOLOR("<REF %s>\n"), expr->name->data);
             } else {
                 bytestream_nprintf(bs,
@@ -546,13 +543,16 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
 
                 tag = FPARSER_DATUM_TAG(*node);
                 if (tag == FPARSER_WORD) {
-                    if (lparse_first_word_bytes(form, &it, &expr->name, 1) != 0) {
+                    if (lparse_first_word_bytes(form,
+                                                &it,
+                                                &expr->name,
+                                                1) != 0) {
                         TR(LKIT_EXPR_PARSE + 3);
                         goto err;
                     }
 
-                    if ((expr->value.ref = lkit_expr_find(ectx,
-                                                          expr->name)) == NULL) {
+                    if ((expr->value.ref = lkit_expr_find(
+                            ectx, expr->name)) == NULL) {
                         TRACEN("cannot find definition: ");
                         TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
                         TR(LKIT_EXPR_PARSE + 4);
@@ -631,7 +631,8 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                                     goto err;
                                 }
 
-                                if ((argtype = lkit_expr_type_of(*arg)) == NULL) {
+                                if ((argtype =
+                                        lkit_expr_type_of(*arg)) == NULL) {
                                     TR(LKIT_EXPR_PARSE + 9);
                                     goto err;
                                 }
@@ -639,8 +640,10 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                                 if ((*paramtype)->tag == LKIT_VARARG) {
                                     isvararg = 1;
                                 } else {
-                                    if ((*paramtype)->tag != LKIT_UNDEF &&
-                                        argtype->tag != LKIT_UNDEF) {
+                                    if (((*paramtype)->tag != LKIT_UNDEF &&
+                                         (*paramtype)->tag != LKIT_TY) &&
+                                        (argtype->tag != LKIT_UNDEF &&
+                                         argtype->tag != LKIT_TY)) {
 
                                         if (lkit_type_cmp(*paramtype,
                                                           argtype) != 0) {
@@ -663,7 +666,8 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                             }
                         }
 
-                        if ((paramtype = array_last(&tf->fields, &it)) == NULL) {
+                        if ((paramtype = array_last(&tf->fields,
+                                                    &it)) == NULL) {
                             FAIL("array_get");
                         }
 
