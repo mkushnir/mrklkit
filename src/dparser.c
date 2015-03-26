@@ -1288,6 +1288,7 @@ dparser_read_lines_win(int fd,
      * shift back ... save SPOS(bs)/SEOD(bs) to bz2ctx->tail                   \
      */                                                                        \
     if (diff < 0) {                                                            \
+        diff = -diff;                                                          \
         bz2ctx->fpos -= diff;                                                  \
         assert(bz2ctx->tail == NULL);                                          \
         if ((bz2ctx->tail = bytes_new(diff)) == NULL) {                        \
