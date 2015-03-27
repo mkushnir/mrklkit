@@ -916,7 +916,6 @@ dparse_struct_pi_pos(rt_struct_t *value)
 #define DPARSE_STRUCT_ITEM_RA_BODY(val, cb, __a1)                              \
     assert(idx < (ssize_t)value->type->fields.elnum);                          \
     assert(value->parser_info.bs != NULL);                                     \
-    /* TRACE("idx=%ld next_delim=%d", idx, value->next_delim); */              \
     if (!(value->dpos[idx] & 0x80000000)) {                                    \
         bytestream_t *bs;                                                      \
         off_t spos, epos;                                                      \
@@ -936,60 +935,51 @@ dparse_struct_pi_pos(rt_struct_t *value)
             pos = value->parser_info.pos;                                      \
             do {                                                               \
                 lkit_parser_t *fpa;                                            \
-                                                                               \
                 value->dpos[value->next_delim] = pos;                          \
                 pos = _dparser_reach_value(bs,                                 \
                                            delim,                              \
                                            pos,                                \
                                            value->parser_info.br.end);         \
-                /* TRACE("initial pos=%ld", pos); */                           \
-                fty = ARRAY_GET(lkit_type_t *,                                 \
-                                &value->type->fields,                          \
-                                value->next_delim);                            \
-                fpa = ARRAY_GET(lkit_parser_t,                                 \
-                                &value->type->parsers,                         \
-                                value->next_delim);                            \
-                                                                               \
-                if ((*fty)->tag == LKIT_STR) {                                 \
-                    val = (__typeof(val))MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value,\
-                        value->next_delim);                                    \
-                    /* TRACE("parser=%s", LKIT_PARSER_STR(*fpa)); */           \
-                    if (*fpa == LKIT_PARSER_QSTR) {                            \
-                        /*                                                     \
-                         * Special case for quoted string.                     \
-                         */                                                    \
-/*                                                                             \
-                        TRACE("pos=%ld end=%ld",                               \
-                              pos,                                             \
-                              value->parser_info.br.end);                      \
- */                                                                            \
-                        pos = dparse_qstr_pos_bs(bs,                           \
-                                                 pos,                          \
-                                                 value->parser_info.br.end,    \
-                                                 (bytes_t **)val);             \
-                        value->dpos[value->next_delim] |= 0x80000000;          \
-                    } else if (*fpa == LKIT_PARSER_OPTQSTR) {                  \
-                        /*                                                     \
-                         * Special case for optionally quoted string.          \
-                         */                                                    \
-                        pos = dparse_optqstr_pos_bs(bs,                        \
-                                                    delim,                     \
-                                                    pos,                       \
-                                                    value->parser_info.br.end, \
-                                                    (bytes_t **)val);          \
-                        value->dpos[value->next_delim] |= 0x80000000;          \
+                if (value->next_delim < (ssize_t)value->type->fields.elnum) {  \
+                    fty = ARRAY_GET(lkit_type_t *,                             \
+                                    &value->type->fields,                      \
+                                    value->next_delim);                        \
+                    fpa = ARRAY_GET(lkit_parser_t,                             \
+                                    &value->type->parsers,                     \
+                                    value->next_delim);                        \
+                    if ((*fty)->tag == LKIT_STR) {                             \
+                        val = (__typeof(val))                                  \
+                                MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value,         \
+                            value->next_delim);                                \
+                        if (*fpa == LKIT_PARSER_QSTR) {                        \
+                            /*                                                 \
+                             * Special case for quoted string.                 \
+                             */                                                \
+                            pos = dparse_qstr_pos_bs(                          \
+                                bs, pos, value->parser_info.br.end,            \
+                                (bytes_t **)val);                              \
+                            value->dpos[value->next_delim] |= 0x80000000;      \
+                        } else if (*fpa == LKIT_PARSER_OPTQSTR) {              \
+                            /*                                                 \
+                             * Special case for optionally quoted string.      \
+                             */                                                \
+                            pos = dparse_optqstr_pos_bs(                       \
+                                bs, delim, pos, value->parser_info.br.end,     \
+                                (bytes_t **)val);                              \
+                            value->dpos[value->next_delim] |= 0x80000000;      \
+                        } else {                                               \
+                            pos = dparser_reach_delim_pos_bs(                  \
+                                bs, delim, pos, value->parser_info.br.end);    \
+                        }                                                      \
                     } else {                                                   \
                         pos = dparser_reach_delim_pos_bs(                      \
                             bs, delim, pos, value->parser_info.br.end);        \
-                        }                                                      \
-                                                                               \
-                                                                               \
+                    }                                                          \
                 } else {                                                       \
                     pos = dparser_reach_delim_pos_bs(                          \
                         bs, delim, pos, value->parser_info.br.end);            \
                 }                                                              \
-            } while (value->next_delim++ < nidx &&                             \
-                     value->next_delim < (ssize_t)value->type->fields.elnum);  \
+            } while (value->next_delim++ < nidx);                              \
             assert(value->next_delim == (nidx + 1) ||                          \
                    value->next_delim == (ssize_t)value->type->fields.elnum);   \
             value->parser_info.pos = pos;                                      \
