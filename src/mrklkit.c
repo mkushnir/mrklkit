@@ -527,19 +527,29 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
 
     PROFILE_START(setup_runtime_p);
 
-    LLVMLinkInMCJIT();
-    LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
-    opts.EnableFastISel = 1;
-    opts.OptLevel = 3;
-
-    if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
+    LLVMLinkInJIT();
+    if (LLVMCreateJITCompilerForModule(&ctx->ee,
                                        ctx->module,
-                                       &opts,
-                                       sizeof(opts),
+                                       3,
                                        &error_msg) != 0) {
         TRACE("%s", error_msg);
-        FAIL("LLVMCreateExecutionEngineForModule");
+        FAIL("LLVMCreateJITCompilerForModule");
     }
+
+    //LLVMLinkInMCJIT();
+    //LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
+    //opts.EnableFastISel = 1;
+    //opts.OptLevel = 3;
+
+    //if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
+    //                                   ctx->module,
+    //                                   &opts,
+    //                                   sizeof(opts),
+    //                                   &error_msg) != 0) {
+    //    TRACE("%s", error_msg);
+    //    FAIL("LLVMCreateExecutionEngineForModule");
+    //}
+
     LLVMRunStaticConstructors(ctx->ee);
 
     for (mod = array_last(&ctx->modules, &it);
