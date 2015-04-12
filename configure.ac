@@ -98,7 +98,7 @@ else
     llvmconfig=llvm-config
 fi
 AC_SUBST(LLVM_CFLAGS, ["`$llvmconfig --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
-AC_SUBST(LLVM_LIBS, [" `$llvmconfig --system-libs` $cxxlib  `$llvmconfig --libs engine ipo objcarcopts instrumentation`"])
+AC_SUBST(LLVM_LIBS, [" `$llvmconfig --system-libs` $cxxlib  `$llvmconfig --libs engine ipo objcarcopts instrumentation mcjit`"])
 AC_SUBST(LLVM_LDFLAGS, ["`$llvmconfig --ldflags`"])
 
 AC_PRESERVE_HELP_ORDER

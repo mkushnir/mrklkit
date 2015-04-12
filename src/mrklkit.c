@@ -522,40 +522,24 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
 {
     array_iter_t it;
     mrklkit_module_t **mod;
+    UNUSED struct LLVMMCJITCompilerOptions opts;
     char *error_msg = NULL;
 
     PROFILE_START(setup_runtime_p);
 
-    LLVMLinkInJIT();
+    LLVMLinkInMCJIT();
+    LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
+    opts.EnableFastISel = 1;
+    opts.OptLevel = 3;
 
-    if (LLVMCreateJITCompilerForModule(&ctx->ee,
+    if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
                                        ctx->module,
-                                       0,
+                                       &opts,
+                                       sizeof(opts),
                                        &error_msg) != 0) {
         TRACE("%s", error_msg);
         FAIL("LLVMCreateExecutionEngineForModule");
     }
-    //LLVMLinkInInterpreter();
-    //if (LLVMCreateInterpreterForModule(&ctx->ee,
-    //if (LLVMCreateExecutionEngineForModule(&ctx->ee,
-    //                                       ctx->module,
-    //                                       &error_msg) != 0) {
-    //    TRACE("%s", error_msg);
-    //    FAIL("LLVMCreateExecutionEngineForModule");
-    //}
-
-    //LLVMLinkInMCJIT();
-    //LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
-    //opts.NoFramePointerElim = 1;
-    //opts.EnableFastISel = 1;
-    //if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
-    //                                     ctx->module,
-    //                                     &opts, sizeof(opts),
-    //                                     &error_msg) != 0) {
-    //    TRACE("%s", error_msg);
-    //    FAIL("LLVMCreateMCJITCompilerForModule");
-    //}
-
     LLVMRunStaticConstructors(ctx->ee);
 
     for (mod = array_last(&ctx->modules, &it);
@@ -635,8 +619,6 @@ static void
 llvm_init(void)
 {
     LLVMPassRegistryRef pr;
-    UNUSED char *error_msg = NULL;
-    UNUSED struct LLVMMCJITCompilerOptions opts;
 
     LLVMInitializeNativeAsmPrinter();
     LLVMInitializeNativeTarget();
