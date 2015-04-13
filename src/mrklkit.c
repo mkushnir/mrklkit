@@ -33,6 +33,10 @@
 
 #include "diag.h"
 
+#ifndef LLVM_VERSION_NUM
+#error LLVM_VERSION_NUM must be defined to %d%03d, llvm_version_mjr, llvm_version_mnr
+#endif
+
 UNUSED static const profile_t *parse_p;
 UNUSED static const profile_t *compile_p;
 UNUSED static const profile_t *analyze_p;
@@ -127,11 +131,16 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin >= (func bool undef undef))\n"
 "\n"
 "(builtin bswap (func int int))\n"
-"(builtin stpop (func int int))\n"
+"(sym llvm.bswap.i64 (func int int))\n"
+"(builtin bcnt (func int int))\n"
+"(builtin ctpop (func int int))\n"
+"(sym llvm.ctpop.i64 (func int int))\n"
 "(builtin ffs (func int int))\n"
 "(builtin cttz (func int int))\n"
+"(sym llvm.cttz.i64 (func int int))\n"
 "(builtin fls (func int int))\n"
 "(builtin ctlz (func int int))\n"
+"(sym llvm.ctlz.i64 (func int int))\n"
 "\n"
 "(builtin parse (func undef undef undef ...))\n"
 "(builtin get (func undef undef undef ...))\n"
@@ -534,6 +543,7 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
 
     PROFILE_START(setup_runtime_p);
 
+#if LLVM_VERSION_NUM < 3006
     LLVMLinkInJIT();
     if (LLVMCreateJITCompilerForModule(&ctx->ee,
                                        ctx->module,
@@ -542,20 +552,21 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
         TRACE("%s", error_msg);
         FAIL("LLVMCreateJITCompilerForModule");
     }
+#else
+    LLVMLinkInMCJIT();
+    LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
+    opts.EnableFastISel = 1;
+    opts.OptLevel = 3;
 
-    //LLVMLinkInMCJIT();
-    //LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
-    //opts.EnableFastISel = 1;
-    //opts.OptLevel = 3;
-
-    //if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
-    //                                   ctx->module,
-    //                                   &opts,
-    //                                   sizeof(opts),
-    //                                   &error_msg) != 0) {
-    //    TRACE("%s", error_msg);
-    //    FAIL("LLVMCreateExecutionEngineForModule");
-    //}
+    if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
+                                       ctx->module,
+                                       &opts,
+                                       sizeof(opts),
+                                       &error_msg) != 0) {
+        TRACE("%s", error_msg);
+        FAIL("LLVMCreateExecutionEngineForModule");
+    }
+#endif
 
     LLVMRunStaticConstructors(ctx->ee);
 
