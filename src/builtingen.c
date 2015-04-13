@@ -1476,6 +1476,31 @@ compile_function(mrklkit_ctx_t *mctx,
                         LLVMRealUGE,
                         udata);
 
+    } else if (strcmp(name , "bswap") == 0) {
+        //(sym bswap (func int int )) done
+        lkit_expr_t **arg;
+        array_iter_t it;
+        LLVMValueRef fn, args[1];
+
+
+        if ((fn = LLVMGetNamedFunction(module, "llvm.bswap.i64")) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        arg = array_first(&expr->subs, &it);
+        if ((args[0] = lkit_compile_expr(mctx,
+                                   ectx,
+                                   module,
+                                   builder,
+                                   *arg,
+                                   udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 1350);
+            goto err;
+        }
+
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
+
+
     } else if (strcmp(name, "get") == 0 ||
                strcmp(name, "get-index") == 0 || /* compat */
                strcmp(name, "get-key") == 0 /* compat */
