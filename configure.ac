@@ -88,16 +88,25 @@ AC_TYPE_OFF_T
 
 
 # LLVM_CFALGS modulo -On
-if which llvm-config34 >/dev/null
+if which llvm-config36 >/dev/null
 then
-    llvmconfig=llvm-config34
+    llvmconfig=llvm-config36
 elif which llvm-config35 >/dev/null
 then
     llvmconfig=llvm-config35
+elif which llvm-config34 >/dev/null
+then
+    llvmconfig=llvm-config34
 else
     llvmconfig=llvm-config
 fi
-AC_SUBST(LLVM_CFLAGS, ["`$llvmconfig --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'`"])
+llvm_version="`$llvmconfig --version`"
+llvm_version_maj="`echo $llvm_version | awk -F. '{print $1;}'`"
+llvm_version_min="`echo $llvm_version | awk -F. '{print $2;}'`"
+llvm_version_num="`printf '%d%03d' $llvm_version_maj $llvm_version_min`"
+test "$llvm_version_num" -lt 3004 && AC_MSG_FAILURE(LLVM version 3.4 or higher is required. Cannot proceed ...)
+AC_SUBST(LLVM_VERSION_NUM, [$llvm_version_num])
+AC_SUBST(LLVM_CFLAGS, ["`$llvmconfig --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'` -DLLVM_VERSION_NUM=$llvm_version_num"])
 AC_SUBST(LLVM_LIBS, [" `$llvmconfig --system-libs` $cxxlib  `$llvmconfig --libs engine ipo objcarcopts instrumentation mcjit`"])
 AC_SUBST(LLVM_LDFLAGS, ["`$llvmconfig --ldflags`"])
 
