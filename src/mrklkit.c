@@ -5,6 +5,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Initialization.h>
 #include <llvm-c/ExecutionEngine.h>
+#include <llvm-c/Linker.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Transforms/IPO.h>
@@ -287,8 +288,9 @@ err:
 
 
 static void
-do_analysis(mrklkit_ctx_t *ctx)
+do_analysis(LLVMModuleRef module)
 {
+    //LLVMModuleRef *paux;
     LLVMPassManagerBuilderRef pmb;
     LLVMPassManagerRef fpm;
     LLVMPassManagerRef pm;
@@ -296,31 +298,36 @@ do_analysis(mrklkit_ctx_t *ctx)
     UNUSED int res = 0;
     LLVMValueRef fn = NULL;
 
-    if ((fpm = LLVMCreateFunctionPassManagerForModule(ctx->module)) == NULL) {
-        FAIL("LLVMCreateFunctionPassManagerForModule");
-    }
-
-    if ((pm = LLVMCreatePassManager()) == NULL) {
-        FAIL("LLVMCreatePassManager");
-    }
-
-    tdr = LLVMCreateTargetData("i1:64:64");
-    //TRACE("LLVMPointerSize=%d", LLVMPointerSize(tdr));
-    //TRACE("LLVMABIAlignmentOfType=%d", LLVMABIAlignmentOfType(tdr, LLVMInt1TypeInContext(ctx->lctx)));
-    LLVMAddTargetData(tdr, fpm);
-    LLVMAddTargetData(tdr, pm);
-
     pmb = LLVMPassManagerBuilderCreate();
     LLVMPassManagerBuilderSetOptLevel(pmb, 3);
 
-    LLVMPassManagerBuilderPopulateFunctionPassManager(pmb, fpm);
+    /*
+     * module
+     */
+    tdr = LLVMCreateTargetData("i1:64:64");
+    if ((pm = LLVMCreatePassManager()) == NULL) {
+        FAIL("LLVMCreatePassManager");
+    }
+    LLVMAddTargetData(tdr, pm);
+
     LLVMPassManagerBuilderPopulateModulePassManager(pmb, pm);
+
+    /*
+     * function
+     */
+    //tdr = LLVMCreateTargetData("i1:64:64");
+    if ((fpm = LLVMCreateFunctionPassManagerForModule(module)) == NULL) {
+        FAIL("LLVMCreateFunctionPassManagerForModule");
+    }
+    LLVMAddTargetData(tdr, fpm);
+
+    LLVMPassManagerBuilderPopulateFunctionPassManager(pmb, fpm);
 
     if (LLVMInitializeFunctionPassManager(fpm)) {
         TRACE("LLVMInitializeFunctionPassManager ...");
     }
 
-    for (fn = LLVMGetFirstFunction(ctx->module);
+    for (fn = LLVMGetFirstFunction(module);
          fn != NULL;
          fn = LLVMGetNextFunction(fn)) {
 
@@ -332,7 +339,7 @@ do_analysis(mrklkit_ctx_t *ctx)
         }
     }
 
-    res = LLVMRunPassManager(pm, ctx->module);
+    res = LLVMRunPassManager(pm, module);
     //TRACE("res=%d", res);
     //if (res != 0) {
     //    TRACE("module was modified");
@@ -356,6 +363,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     LLVMMemoryBufferRef mb = NULL;
     mrklkit_module_t **mod;
     array_iter_t it;
+    mrklkit_modaux_t *modaux;
 
     PROFILE_START(parse_p);
     /* parse */
@@ -425,7 +433,12 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
     PROFILE_START(analyze_p);
     /* LLVM analysis */
-    do_analysis(ctx);
+    for (modaux = array_first(&ctx->modaux, &it);
+         modaux != NULL;
+         modaux = array_next(&ctx->modaux, &it)) {
+        do_analysis(modaux->module);
+    }
+    do_analysis(ctx->module);
     PROFILE_STOP(analyze_p);
 
     if ((flags & MRKLKIT_COMPILE_DUMP1) == MRKLKIT_COMPILE_DUMP1) {
@@ -490,6 +503,43 @@ mrklkit_call_void(mrklkit_ctx_t *ctx, const char *name)
 }
 
 
+static int
+modaux_init(mrklkit_modaux_t *modaux)
+{
+    modaux->lctx = NULL;
+    modaux->buf = NULL;
+    modaux->module = NULL;
+    modaux->ee = NULL;
+    return 0;
+}
+
+
+static int
+modaux_fini(mrklkit_modaux_t *modaux)
+{
+    if (modaux->ee != NULL) {
+        LLVMRunStaticDestructors(modaux->ee);
+        LLVMDisposeExecutionEngine(modaux->ee);
+        modaux->ee = NULL;
+    }
+    if (modaux->buf != NULL) {
+        /*
+         * don't dispose the buffer, since it is owned by module
+         */
+        //LLVMDisposeMemoryBuffer(modaux->buf);
+        modaux->buf = NULL;
+    }
+    /*
+     * don't dispose the module, since it is owned by ee
+     */
+    modaux->module = NULL;
+    if (modaux->lctx != NULL) {
+        LLVMContextDispose(modaux->lctx);
+        modaux->lctx = NULL;
+    }
+    return 0;
+}
+
 void
 mrklkit_ctx_init(mrklkit_ctx_t *ctx,
                  const char *name,
@@ -520,6 +570,12 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
     }
     LLVMSetTarget(ctx->module, "x86_64-unknown-unknown");
 
+    array_init(&ctx->modaux,
+               sizeof(mrklkit_modaux_t),
+               0,
+               (array_initializer_t)modaux_init,
+               (array_finalizer_t)modaux_fini);
+
     for (pm = array_first(&ctx->modules, &it);
          pm != NULL;
          pm = array_next(&ctx->modules, &it)) {
@@ -539,12 +595,36 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
     array_iter_t it;
     mrklkit_module_t **mod;
     UNUSED struct LLVMMCJITCompilerOptions opts;
+    mrklkit_modaux_t *modaux;
     char *error_msg = NULL;
 
     PROFILE_START(setup_runtime_p);
 
 #if LLVM_VERSION_NUM < 3006
     LLVMLinkInJIT();
+    for (modaux = array_first(&ctx->modaux, &it);
+         modaux != NULL;
+         modaux = array_next(&ctx->modaux, &it)) {
+        //if (LLVMCreateJITCompilerForModule(&modaux->ee,
+        //                                   modaux->module,
+        //                                   3,
+        //                                   &error_msg) != 0) {
+        //    TRACE("%s", error_msg);
+        //    FAIL("LLVMCreateJITCompilerForModule");
+        //}
+        //LLVMRunStaticConstructors(modaux->ee);
+        if (LLVMLinkModules(ctx->module,
+                            modaux->module,
+                            LLVMLinkerPreserveSource,
+                            &error_msg) != 0) {
+            TRACE("%s", error_msg);
+            FAIL("LLVMLinkModules");
+        }
+        if (error_msg != NULL) {
+            free(error_msg);
+            error_msg = NULL;
+        }
+    }
     if (LLVMCreateJITCompilerForModule(&ctx->ee,
                                        ctx->module,
                                        3,
@@ -552,23 +632,47 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
         TRACE("%s", error_msg);
         FAIL("LLVMCreateJITCompilerForModule");
     }
+    LLVMRunStaticConstructors(ctx->ee);
 #else
     LLVMLinkInMCJIT();
     LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
     opts.EnableFastISel = 1;
     opts.OptLevel = 3;
 
+    for (modaux = array_first(&ctx->modaux, &it);
+         modaux != NULL;
+         modaux = array_next(&ctx->modaux, &it)) {
+        //if (LLVMCreateMCJITCompilerForModule(&modaux->ee,
+        //                                     modaux->module,
+        //                                     &opts,
+        //                                     sizeof(opts),
+        //                                     &error_msg) != 0) {
+        //    TRACE("%s", error_msg);
+        //    FAIL("LLVMCreateExecutionEngineForModule");
+        //}
+        //LLVMRunStaticConstructors(modaux->ee);
+        if (LLVMLinkModules(ctx->module,
+                            modaux->module,
+                            LLVMLinkerPreserveSource,
+                            &error_msg) != 0) {
+            TRACE("%s", error_msg);
+            FAIL("LLVMLinkModules");
+        }
+        if (error_msg != NULL) {
+            free(error_msg);
+            error_msg = NULL;
+        }
+    }
     if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
-                                       ctx->module,
-                                       &opts,
-                                       sizeof(opts),
-                                       &error_msg) != 0) {
+                                         ctx->module,
+                                         &opts,
+                                         sizeof(opts),
+                                         &error_msg) != 0) {
         TRACE("%s", error_msg);
         FAIL("LLVMCreateExecutionEngineForModule");
     }
-#endif
-
     LLVMRunStaticConstructors(ctx->ee);
+#endif
 
     for (mod = array_last(&ctx->modules, &it);
          mod != NULL;
@@ -622,6 +726,14 @@ mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *ctx, void *udata)
         ctx->module = NULL;
     }
 
+    array_fini(&ctx->modaux);
+    array_init(&ctx->modaux,
+               sizeof(mrklkit_modaux_t),
+               0,
+               (array_initializer_t)modaux_init,
+               (array_finalizer_t)modaux_fini);
+
+
     dict_cleanup(&ctx->backends);
 }
 
@@ -631,6 +743,7 @@ mrklkit_ctx_fini(mrklkit_ctx_t *ctx)
 {
     array_fini(&ctx->modules);
 
+    array_fini(&ctx->modaux);
     LLVMContextDispose(ctx->lctx);
     ctx->lctx = NULL;
     dict_fini(&ctx->backends);

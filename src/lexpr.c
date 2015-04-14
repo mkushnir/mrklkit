@@ -690,6 +690,20 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                                 goto err;
                             }
                         }
+                    } else if (expr->value.ref->type->tag == LKIT_IR) {
+                        /*
+                         * re-work it
+                         */
+                        expr->isref = 0;
+                        if (lparse_next_str_datum(form,
+                                                  &it,
+                                                  &expr->value.literal,
+                                                  1) != 0) {
+                            TRACEN("cannot find body: ");
+                            TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
+                            TR(LKIT_EXPR_PARSE + 14);
+                            goto err;
+                        }
                     } else {
                         /*
                          * (xxx) not a function

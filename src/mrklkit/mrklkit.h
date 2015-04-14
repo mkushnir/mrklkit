@@ -15,6 +15,13 @@
 extern "C" {
 #endif
 
+typedef struct _mrklkit_modaux {
+    LLVMContextRef lctx;
+    LLVMMemoryBufferRef buf;
+    LLVMModuleRef module;
+    LLVMExecutionEngineRef ee;
+} mrklkit_modaux_t;
+
 typedef struct _mrklkit_ctx {
     array_t modules;
 
@@ -25,6 +32,8 @@ typedef struct _mrklkit_ctx {
     dict_t backends;
     LLVMContextRef lctx;
     LLVMModuleRef module;
+    /* mrklkit_modaux_t */
+    array_t modaux;
     LLVMExecutionEngineRef ee;
 
     int mark_referenced:1;

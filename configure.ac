@@ -107,7 +107,7 @@ llvm_version_num="`printf '%d%03d' $llvm_version_maj $llvm_version_min`"
 test "$llvm_version_num" -lt 3004 && AC_MSG_FAILURE(LLVM version 3.4 or higher is required. Cannot proceed ...)
 AC_SUBST(LLVM_VERSION_NUM, [$llvm_version_num])
 AC_SUBST(LLVM_CFLAGS, ["`$llvmconfig --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'` -DLLVM_VERSION_NUM=$llvm_version_num"])
-AC_SUBST(LLVM_LIBS, [" `$llvmconfig --system-libs` $cxxlib  `$llvmconfig --libs engine ipo objcarcopts instrumentation mcjit`"])
+AC_SUBST(LLVM_LIBS, [" `$llvmconfig --system-libs` $cxxlib  `$llvmconfig --libs engine ipo objcarcopts instrumentation mcjit irreader linker`"])
 AC_SUBST(LLVM_LDFLAGS, ["`$llvmconfig --ldflags`"])
 
 AC_PRESERVE_HELP_ORDER

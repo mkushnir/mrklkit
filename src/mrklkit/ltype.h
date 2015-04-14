@@ -19,6 +19,7 @@ extern "C" {
 
 typedef enum _lkit_tag {
     LKIT_UNDEF,
+    LKIT_IR,
     LKIT_TY,
     LKIT_VOID,
     LKIT_INT,
@@ -46,6 +47,7 @@ typedef enum _lkit_tag {
 
 #define LKIT_TAG_STR(tag) (                    \
     (tag) == LKIT_UNDEF ? "UNDEF" :            \
+    (tag) == LKIT_IR ? "IR" :                  \
     (tag) == LKIT_TY ? "TY" :                  \
     (tag) == LKIT_VOID ? "VOID" :              \
     (tag) == LKIT_INT ? "INT" :                \
@@ -111,6 +113,10 @@ typedef struct _lkit_type {
 } lkit_type_t;
 
 #define LTYPE_ERROR(pty) (((lkit_type_t *)(pty))->error)
+
+typedef struct _lkit_ir {
+    struct _lkit_type base;
+} lkit_ir_t;
 
 typedef struct _lkit_ty {
     struct _lkit_type base;

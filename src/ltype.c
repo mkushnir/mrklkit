@@ -128,6 +128,18 @@ lkit_type_new(lkit_tag_t tag)
         ty->name = "undef";
         break;
 
+    case LKIT_IR:
+        {
+            lkit_ir_t *ti;
+            if ((ti = malloc(sizeof(lkit_ir_t))) == NULL) {
+                FAIL("malloc");
+            }
+            ti->base.tag = tag;
+            ti->base.name = "ir";
+            ty = (lkit_type_t *)ti;
+        }
+        break;
+
     case LKIT_TY:
         {
             lkit_ty_t *tt;
@@ -1266,6 +1278,8 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
         /* simple types */
         if (strcmp(typename, "undef") == 0) {
             ty = lkit_type_get(mctx, LKIT_UNDEF);
+        } else if (strcmp(typename, "ir") == 0) {
+            ty = lkit_type_get(mctx, LKIT_IR);
         } else if (strcmp(typename, "ty") == 0) {
             ty = lkit_type_get(mctx, LKIT_TY);
         } else if (strcmp(typename, "void") == 0) {
@@ -1677,6 +1691,12 @@ mrklkit_init_types(dict_t *types,
 
     ty = lkit_type_new(LKIT_UNDEF);
     if ((pty = array_get(builtin_types, LKIT_UNDEF)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = lkit_type_finalize(ty);
+
+    ty = lkit_type_new(LKIT_IR);
+    if ((pty = array_get(builtin_types, LKIT_IR)) == NULL) {
         FAIL("array_get");
     }
     *pty = lkit_type_finalize(ty);

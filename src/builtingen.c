@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/IRReader.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
@@ -2409,6 +2410,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                   udata);
         }
 
+
         if (v == NULL) {
             switch (expr->value.ref->type->tag) {
             case LKIT_FUNC:
@@ -2696,7 +2698,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
             case LKIT_STRUCT:
 
             default:
-                //lkit_expr_dump(expr);
+                lkit_expr_dump(expr);
                 //LLVMDumpModule(module);
                 TR(LKIT_COMPILE_EXPR + 6);
                 break;
@@ -2987,6 +2989,48 @@ _compile(lkit_gitem_t **gitem, void *udata)
                                      mrklkit_ctx_get_type_backend(
                                          params->mctx, expr->type));
                 LLVMAddFunctionAttr(fn, LLVMNoUnwindAttribute);
+                if (expr->subs.elnum) {
+                    lkit_expr_t **body;
+                    bytes_t *s;
+                    mrklkit_modaux_t *modaux;
+                    UNUSED char *error_msg;
+
+                    if ((body = array_get(&expr->subs, 0)) == NULL) {
+                        FAIL("array_get");
+                    }
+                    assert(*body != NULL);
+                    if ((*body)->type->tag != LKIT_IR) {
+                        TRRET(SYM_COMPILE + 1);
+                    }
+                    //lkit_expr_dump(expr);
+
+                    if ((modaux = array_incr(&params->mctx->modaux)) == NULL) {
+                        FAIL("array_incr");
+                    }
+
+                    s = (bytes_t *)((*body)->value.literal->body);
+                    //D8(s->data, s->sz);
+
+                    if ((modaux->buf =
+                            LLVMCreateMemoryBufferWithMemoryRange(
+                                (char *)s->data,
+                                s->sz - 1,
+                                NEWVAR("ir"), 0)) == NULL) {
+                        FAIL("LLVMCreateMemoryBufferWithMemoryRange");
+                    }
+                    LLVMContextRef lctx;
+                    lctx = LLVMGetModuleContext(params->module);
+                    modaux->lctx = LLVMContextCreate();
+                    if (LLVMParseIRInContext(lctx,
+                                             modaux->buf,
+                                             &modaux->module,
+                                             &error_msg) != 0) {
+                        TRACE("%s", error_msg);
+                        LLVMDisposeMessage(error_msg);
+                        error_msg = NULL;
+                        TRRET(SYM_COMPILE + 1);
+                    }
+                }
                 break;
 
             default:

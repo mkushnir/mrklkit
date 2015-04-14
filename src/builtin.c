@@ -48,7 +48,7 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
         goto err;
     }
 
-    /* type and value */
+    /* type or value ? */
     if ((node = array_next(form, it)) == NULL) {
         TR(LKIT_PARSE_EXPRDEF + 3);
         goto err;
@@ -59,12 +59,42 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
     }
 
     if ((*pexpr = lkit_expr_parse(mctx,
-                                ectx,
-                                *node,
-                                1)) == NULL) {
+                                  ectx,
+                                  *node,
+                                  1)) == NULL) {
         (*node)->error = 1;
         TR(LKIT_PARSE_EXPRDEF + 4);
         goto err;
+    }
+
+    if ((node = array_next(form, it)) != NULL) {
+        lkit_expr_t **body;
+
+        /*
+         * test if we have function def here
+         */
+        assert(*node != NULL);
+        if ((*pexpr)->isref) {
+            /*
+             * cannot be ref here
+             */
+            FAIL("builtin_parse_exprdef");
+        }
+        if ((*pexpr)->type->tag != LKIT_FUNC) {
+            (*node)->error = 1;
+            TRACE("only func can expect body in: %s", name->data);
+            TR(LKIT_PARSE_EXPRDEF + 5);
+            goto err;
+        }
+        if ((body = array_incr(&(*pexpr)->subs)) == NULL) {
+            FAIL("array_incr");
+        }
+        if ((*body = lkit_expr_parse(mctx, ectx, *node, 1)) == NULL) {
+            (*node)->error = 1;
+            TRACE("failed to parse function %s body", name->data);
+            TR(LKIT_PARSE_EXPRDEF + 6);
+            goto err;
+        }
     }
 
     (*pexpr)->isbuiltin = (flags & LKIT_BUILTIN_PARSE_EXPRDEF_ISBLTIN);
