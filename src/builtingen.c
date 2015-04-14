@@ -1476,7 +1476,7 @@ compile_function(mrklkit_ctx_t *mctx,
                         LLVMRealUGE,
                         udata);
 
-#define MRKLKIT_BUILTINGEN_INTRINSIC_BODY(n, t, m)                             \
+#define MRKLKIT_BUILTINGEN_INTRINSIC_BODY1(n, t, m)                            \
         lkit_expr_t **arg;                                                     \
         array_iter_t it;                                                       \
         LLVMValueRef fn, args[1];                                              \
@@ -1495,21 +1495,43 @@ compile_function(mrklkit_ctx_t *mctx,
         }                                                                      \
         v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));   \
 
+
+#define MRKLKIT_BUILTINGEN_INTRINSIC_BODY2(n, t, m)                            \
+        lkit_expr_t **arg;                                                     \
+        array_iter_t it;                                                       \
+        LLVMValueRef fn, args[2];                                              \
+        if ((fn = LLVMGetNamedFunction(module, "llvm." n "." t)) == NULL) {    \
+            FAIL("LLVMGetNamedFunction");                                      \
+        }                                                                      \
+        arg = array_first(&expr->subs, &it);                                   \
+        if ((args[0] = lkit_compile_expr(mctx,                                 \
+                                   ectx,                                       \
+                                   module,                                     \
+                                   builder,                                    \
+                                   *arg,                                       \
+                                   udata)) == NULL) {                          \
+            TR(COMPILE_FUNCTION + m);                                          \
+            goto err;                                                          \
+        }                                                                      \
+        args[1] = LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0);             \
+        v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));   \
+
+
     } else if (strcmp(name , "bswap") == 0) {
         //(sym bswap (func int int )) done
-        MRKLKIT_BUILTINGEN_INTRINSIC_BODY("bswap", "i64", 1351)
+        MRKLKIT_BUILTINGEN_INTRINSIC_BODY1("bswap", "i64", 1351)
 
     } else if (strcmp(name , "bcnt") == 0) {
         //(sym bswap (func int int )) done
-        MRKLKIT_BUILTINGEN_INTRINSIC_BODY("ctpop", "i64", 1352)
+        MRKLKIT_BUILTINGEN_INTRINSIC_BODY1("ctpop", "i64", 1352)
 
     } else if (strcmp(name , "ffs") == 0) {
         //(sym bswap (func int int )) done
-        MRKLKIT_BUILTINGEN_INTRINSIC_BODY("cttz", "i64", 1353)
+        MRKLKIT_BUILTINGEN_INTRINSIC_BODY2("cttz", "i64", 1353)
 
     } else if (strcmp(name , "fls") == 0) {
         //(sym bswap (func int int )) done
-        MRKLKIT_BUILTINGEN_INTRINSIC_BODY("ctlz", "i64", 1354)
+        MRKLKIT_BUILTINGEN_INTRINSIC_BODY2("ctlz", "i64", 1354)
 
     } else if (strcmp(name, "get") == 0 ||
                strcmp(name, "get-index") == 0 || /* compat */
