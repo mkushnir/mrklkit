@@ -2993,14 +2993,15 @@ _compile(lkit_gitem_t **gitem, void *udata)
                     lkit_expr_t **body;
                     bytes_t *s;
                     mrklkit_modaux_t *modaux;
-                    UNUSED char *error_msg;
+                    char *error_msg;
+                    LLVMContextRef lctx;
 
                     if ((body = array_get(&expr->subs, 0)) == NULL) {
                         FAIL("array_get");
                     }
                     assert(*body != NULL);
                     if ((*body)->type->tag != LKIT_IR) {
-                        TRRET(SYM_COMPILE + 1);
+                        TRRET(SYM_COMPILE + 2);
                     }
                     //lkit_expr_dump(expr);
 
@@ -3015,12 +3016,10 @@ _compile(lkit_gitem_t **gitem, void *udata)
                             LLVMCreateMemoryBufferWithMemoryRange(
                                 (char *)s->data,
                                 s->sz - 1,
-                                NEWVAR("ir"), 0)) == NULL) {
+                                NEWVAR("aux"), 0)) == NULL) {
                         FAIL("LLVMCreateMemoryBufferWithMemoryRange");
                     }
-                    LLVMContextRef lctx;
                     lctx = LLVMGetModuleContext(params->module);
-                    modaux->lctx = LLVMContextCreate();
                     if (LLVMParseIRInContext(lctx,
                                              modaux->buf,
                                              &modaux->module,
@@ -3028,7 +3027,7 @@ _compile(lkit_gitem_t **gitem, void *udata)
                         TRACE("%s", error_msg);
                         LLVMDisposeMessage(error_msg);
                         error_msg = NULL;
-                        TRRET(SYM_COMPILE + 1);
+                        TRRET(SYM_COMPILE + 3);
                     }
                 }
                 break;

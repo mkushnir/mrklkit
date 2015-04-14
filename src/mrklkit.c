@@ -301,26 +301,24 @@ do_analysis(LLVMModuleRef module)
     pmb = LLVMPassManagerBuilderCreate();
     LLVMPassManagerBuilderSetOptLevel(pmb, 3);
 
+    tdr = LLVMCreateTargetData("i1:64:64");
+
     /*
      * module
      */
-    tdr = LLVMCreateTargetData("i1:64:64");
     if ((pm = LLVMCreatePassManager()) == NULL) {
         FAIL("LLVMCreatePassManager");
     }
     LLVMAddTargetData(tdr, pm);
-
     LLVMPassManagerBuilderPopulateModulePassManager(pmb, pm);
 
     /*
      * function
      */
-    //tdr = LLVMCreateTargetData("i1:64:64");
     if ((fpm = LLVMCreateFunctionPassManagerForModule(module)) == NULL) {
         FAIL("LLVMCreateFunctionPassManagerForModule");
     }
     LLVMAddTargetData(tdr, fpm);
-
     LLVMPassManagerBuilderPopulateFunctionPassManager(pmb, fpm);
 
     if (LLVMInitializeFunctionPassManager(fpm)) {
@@ -340,6 +338,7 @@ do_analysis(LLVMModuleRef module)
     }
 
     res = LLVMRunPassManager(pm, module);
+
     //TRACE("res=%d", res);
     //if (res != 0) {
     //    TRACE("module was modified");
@@ -349,7 +348,6 @@ do_analysis(LLVMModuleRef module)
     LLVMDisposePassManager(pm);
     LLVMDisposePassManager(fpm);
     LLVMDisposeTargetData(tdr);
-
 }
 
 
@@ -605,14 +603,6 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
     for (modaux = array_first(&ctx->modaux, &it);
          modaux != NULL;
          modaux = array_next(&ctx->modaux, &it)) {
-        //if (LLVMCreateJITCompilerForModule(&modaux->ee,
-        //                                   modaux->module,
-        //                                   3,
-        //                                   &error_msg) != 0) {
-        //    TRACE("%s", error_msg);
-        //    FAIL("LLVMCreateJITCompilerForModule");
-        //}
-        //LLVMRunStaticConstructors(modaux->ee);
         if (LLVMLinkModules(ctx->module,
                             modaux->module,
                             LLVMLinkerPreserveSource,
@@ -642,15 +632,6 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
     for (modaux = array_first(&ctx->modaux, &it);
          modaux != NULL;
          modaux = array_next(&ctx->modaux, &it)) {
-        //if (LLVMCreateMCJITCompilerForModule(&modaux->ee,
-        //                                     modaux->module,
-        //                                     &opts,
-        //                                     sizeof(opts),
-        //                                     &error_msg) != 0) {
-        //    TRACE("%s", error_msg);
-        //    FAIL("LLVMCreateExecutionEngineForModule");
-        //}
-        //LLVMRunStaticConstructors(modaux->ee);
         if (LLVMLinkModules(ctx->module,
                             modaux->module,
                             LLVMLinkerPreserveSource,
