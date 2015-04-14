@@ -2658,7 +2658,9 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                       NEWVAR(".mrklkit.val"));
                     LLVMSetInitializer(v, vv);
                     LLVMSetLinkage(v, LLVMPrivateLinkage);
+#if LLVM_VERSION_NUM >= 3005
                     LLVMSetUnnamedAddr(v, 1);
+#endif
                     v = LLVMBuildPointerCast(builder,
                                              v,
                                              mrklkit_ctx_get_type_backend(
