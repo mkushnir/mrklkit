@@ -114,7 +114,7 @@ lkit_array_parsers_init(lkit_parser_t *parser)
 }
 
 
-lkit_type_t *
+static lkit_type_t *
 lkit_type_new(lkit_tag_t tag)
 {
     lkit_type_t *ty = NULL;

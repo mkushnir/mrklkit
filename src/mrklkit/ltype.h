@@ -198,7 +198,6 @@ int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
 int lkit_traverse_types(dict_traverser_t, void *);
 void lkit_type_dump(lkit_type_t *);
 void lkit_type_str(lkit_type_t *, bytestream_t *);
-lkit_type_t * lkit_type_new(lkit_tag_t);
 int lkit_type_destroy(lkit_type_t **);
 int lkit_parse_typedef(mrklkit_ctx_t *,
                        array_t *,
