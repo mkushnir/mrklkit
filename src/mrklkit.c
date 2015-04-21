@@ -426,6 +426,11 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     PROFILE_STOP(compile_p);
 
     if ((flags & MRKLKIT_COMPILE_DUMP0) == MRKLKIT_COMPILE_DUMP0) {
+        for (modaux = array_first(&ctx->modaux, &it);
+             modaux != NULL;
+             modaux = array_next(&ctx->modaux, &it)) {
+            LLVMDumpModule(modaux->module);
+        }
         LLVMDumpModule(ctx->module);
     }
 
@@ -440,6 +445,12 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     PROFILE_STOP(analyze_p);
 
     if ((flags & MRKLKIT_COMPILE_DUMP1) == MRKLKIT_COMPILE_DUMP1) {
+        for (modaux = array_first(&ctx->modaux, &it);
+             modaux != NULL;
+             modaux = array_next(&ctx->modaux, &it)) {
+            TRACEC("-----------------------------------------------\n");
+            LLVMDumpModule(modaux->module);
+        }
         TRACEC("-----------------------------------------------\n");
         LLVMDumpModule(ctx->module);
     }
