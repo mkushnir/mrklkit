@@ -143,6 +143,8 @@ compile_value(struct tokenizer_ctx *ctx,
 #define _NUMKIND_INT 1
 #define _NUMKIND_FLOAT 2
 #define _NUMKIND_BOOL 3
+#define _NUMKIND_VOID 4
+#define _NUMKIND_NULL 5
         int numkind = 0;
 
         /*
@@ -186,11 +188,13 @@ compile_value(struct tokenizer_ctx *ctx,
                     value = (char *)(dat->body);
                     *value = 0;
                 } else if (ch == 'v') {
+                    numkind = _NUMKIND_VOID;
                     if ((dat = malloc(sizeof(fparser_datum_t))) == NULL) {
                         FAIL("malloc");
                     }
                     fparser_datum_init(dat, FPARSER_VOID);
                 } else if (ch == 'n') {
+                    numkind = _NUMKIND_NULL;
                     if ((dat = malloc(sizeof(fparser_datum_t))) == NULL) {
                         FAIL("malloc");
                     }
@@ -227,7 +231,9 @@ compile_value(struct tokenizer_ctx *ctx,
             value = (double *)(dat->body);
             *value = strtod((const char *)SDATA(bs, ctx->tokstart), NULL);
 
-        } else if (numkind == _NUMKIND_BOOL) {
+        } else if (numkind == _NUMKIND_BOOL ||
+                   numkind == _NUMKIND_VOID ||
+                   numkind == _NUMKIND_NULL) {
             /* already done */
             ;
 

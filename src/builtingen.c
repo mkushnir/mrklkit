@@ -61,9 +61,10 @@ compile_if(mrklkit_ctx_t *mctx,
     /**/
     LLVMPositionBuilderAtEnd(builder, tblock);
 
+    lkit_type_dump(restype);
     if (texpr != NULL) {
         texp = lkit_compile_expr(mctx, ectx, module, builder, texpr, udata);
-        assert(texp != NULL);
+        //assert(texp != NULL);
         res = LLVMBuildBr(builder, endblock);
         assert(res != NULL);
     } else {
@@ -75,7 +76,7 @@ compile_if(mrklkit_ctx_t *mctx,
 
     if (fexpr != NULL) {
         fexp = lkit_compile_expr(mctx, ectx, module, builder, fexpr, udata);
-        assert(fexp != NULL);
+        //assert(fexp != NULL);
         res = LLVMBuildBr(builder, endblock);
         assert(res != NULL);
     } else {
@@ -84,16 +85,33 @@ compile_if(mrklkit_ctx_t *mctx,
 
     LLVMPositionBuilderAtEnd(builder, endblock);
     if (restype != NULL) {
-        v = LLVMBuildPhi(builder,
-                         mrklkit_ctx_get_type_backend(mctx, restype),
-                         NEWVAR("result"));
-        iexp[0] = texp;
-        iblock[0] = LLVMIsConstant(texp) ? tblock :
-                    LLVMGetInstructionParent(texp);
-        iexp[1] = fexp;
-        iblock[1] = LLVMIsConstant(fexp) ? fblock :
-                    LLVMGetInstructionParent(fexp);
-        LLVMAddIncoming(v, iexp, iblock, 2);
+        if (restype->tag != LKIT_VOID) {
+            v = LLVMBuildPhi(builder,
+                             mrklkit_ctx_get_type_backend(mctx, restype),
+                             NEWVAR("result"));
+            iexp[0] = texp;
+            iblock[0] = LLVMIsConstant(texp) ? tblock :
+                        LLVMGetInstructionParent(texp);
+            iexp[1] = fexp;
+            iblock[1] = LLVMIsConstant(fexp) ? fblock :
+                        LLVMGetInstructionParent(fexp);
+            LLVMAddIncoming(v, iexp, iblock, 2);
+        } else {
+            nextblock = LLVMGetNextBasicBlock(endblock);
+            if (nextblock == NULL) {
+                LLVMValueRef fn;
+                fn = LLVMGetBasicBlockParent(endblock);
+                endblock = LLVMAppendBasicBlockInContext(lctx,
+                                                         fn,
+                                                         NEWVAR("C.end.void"));
+            } else {
+                endblock = LLVMInsertBasicBlockInContext(lctx,
+                                                         nextblock,
+                                                         NEWVAR("C.end.void"));
+            }
+            v = LLVMBuildBr(builder, endblock);
+            LLVMPositionBuilderAtEnd(builder, endblock);
+        }
     }
 
     return v;
@@ -149,8 +167,16 @@ _compile_cmp(mrklkit_ctx_t *mctx,
 
         v = LLVMBuildICmp(builder,
                           ip,
-                          LLVMBuildCast(builder, LLVMZExt, va, ty, NEWVAR("cast")),
-                          LLVMBuildCast(builder, LLVMZExt, vb, ty, NEWVAR("cast")),
+                          LLVMBuildCast(builder,
+                                        LLVMZExt,
+                                        va,
+                                        ty,
+                                        NEWVAR("cast")),
+                          LLVMBuildCast(builder,
+                                        LLVMZExt,
+                                        vb,
+                                        ty,
+                                        NEWVAR("cast")),
                           NEWVAR("cmp"));
 
     } else if (a->type->tag == LKIT_FLOAT ||
@@ -1648,7 +1674,8 @@ compile_function(mrklkit_ctx_t *mctx,
         // (builtin atoi (func int str))
 
 
-        if ((fn = LLVMGetNamedFunction(module, "mrklkit_strtoi64_loose")) == NULL) {
+        if ((fn = LLVMGetNamedFunction(module,
+                                       "mrklkit_strtoi64_loose")) == NULL) {
             FAIL("LLVMGetNamedFunction");
         }
 
@@ -1937,7 +1964,9 @@ tostr_done:
             if (nextblock == NULL) {
                 LLVMValueRef fn;
                 fn = LLVMGetBasicBlockParent(currblock);
-                endblock = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("IN.end"));
+                endblock = LLVMAppendBasicBlockInContext(lctx,
+                                                         fn,
+                                                         NEWVAR("IN.end"));
             } else {
                 endblock = LLVMInsertBasicBlockInContext(lctx,
                                                          nextblock,
@@ -1945,7 +1974,9 @@ tostr_done:
             }
 
             LLVMPositionBuilderAtEnd(builder, endblock);
-            v = LLVMBuildPhi(builder, LLVMInt1TypeInContext(lctx), NEWVAR("phi"));
+            v = LLVMBuildPhi(builder,
+                             LLVMInt1TypeInContext(lctx),
+                             NEWVAR("phi"));
 
             for (obj = array_next(&expr->subs, &it);
                  obj != NULL;
@@ -2167,8 +2198,7 @@ tostr_done:
             args[0] = LLVMBuildPointerCast(builder,
                                            args[0],
                                            LLVMPointerType(
-                                               //LLVMInt8TypeInContext(lctx), 0),
-                                               LLVMVoidTypeInContext(lctx), 0),
+                                               LLVMInt8TypeInContext(lctx), 0),
                                            NEWVAR("cast"));
 
             v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
@@ -2227,8 +2257,7 @@ tostr_done:
             args[0] = LLVMBuildPointerCast(builder,
                                            args[0],
                                            LLVMPointerType(
-                                               //LLVMInt8TypeInContext(lctx), 0),
-                                               LLVMVoidTypeInContext(lctx), 0),
+                                               LLVMInt8TypeInContext(lctx), 0),
                                            NEWVAR("cast"));
             if ((args[1] = lkit_compile_expr(mctx,
                                              ectx,
@@ -2271,8 +2300,7 @@ tostr_done:
         args[0] = LLVMBuildPointerCast(builder,
                                        args[0],
                                        LLVMPointerType(
-                                           //LLVMInt8TypeInContext(lctx), 0),
-                                           LLVMVoidTypeInContext(lctx), 0),
+                                           LLVMInt8TypeInContext(lctx), 0),
                                        NEWVAR("cast"));
 
 
@@ -2435,6 +2463,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                               "mrklkit_rt_* or a standard C library, found %s)",
                               (char *)expr->name->data);
                         TR(LKIT_COMPILE_EXPR + 1);
+                        LLVMDumpModule(module);
 
                     } else {
                         lkit_expr_t **rand;
@@ -2478,15 +2507,21 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                 NEWVAR("cast"));
                         }
 
-                        v = LLVMBuildCall(builder,
-                                          fn,
-                                          args,
-                                          expr->subs.elnum,
-                                          NEWVAR((char *)expr->name->data));
+                        if (expr->type->tag == LKIT_VOID) {
+                            v = LLVMBuildCall(builder,
+                                              fn,
+                                              args,
+                                              expr->subs.elnum, "");
+                        } else {
+                            v = LLVMBuildCall(builder,
+                                              fn,
+                                              args,
+                                              expr->subs.elnum,
+                                              NEWVAR((char *)expr->name->data));
+                        }
                         //LLVMSetTailCall(v, 1);
                         free(args);
                     }
-
                 }
                 break;
 
