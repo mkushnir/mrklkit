@@ -22,6 +22,7 @@ typedef enum _lkit_tag {
     LKIT_IR,
     LKIT_TY,
     LKIT_VOID,
+    LKIT_NULL,
     LKIT_INT,
     LKIT_INT_MIN,
     LKIT_INT_MAX,
@@ -49,7 +50,7 @@ typedef enum _lkit_tag {
     (tag) == LKIT_UNDEF ? "UNDEF" :            \
     (tag) == LKIT_IR ? "IR" :                  \
     (tag) == LKIT_TY ? "TY" :                  \
-    (tag) == LKIT_VOID ? "VOID" :              \
+    (tag) == LKIT_NULL ? "NULL" :              \
     (tag) == LKIT_INT ? "INT" :                \
     (tag) == LKIT_INT_MIN ? "INTMIN" :         \
     (tag) == LKIT_INT_MAX ? "INTMAX" :         \
@@ -125,6 +126,10 @@ typedef struct _lkit_ty {
 typedef struct _lkit_void {
     struct _lkit_type base;
 } lkit_void_t;
+
+typedef struct _lkit_null {
+    struct _lkit_type base;
+} lkit_null_t;
 
 typedef struct _lkit_int {
     struct _lkit_type base;

@@ -55,6 +55,8 @@ extern "C" {
 )
 
 typedef enum {
+    FPARSER_VOID,
+    FPARSER_NULL,
     FPARSER_STR,
     FPARSER_WORD,
     FPARSER_INT,
@@ -64,6 +66,8 @@ typedef enum {
 } fparser_tag_t;
 
 #define FPARSER_TAG_STR(tag) (         \
+    (tag) == FPARSER_VOID ? "VOID" :   \
+    (tag) == FPARSER_NULL ? "NULL" :   \
     (tag) == FPARSER_STR ? "STR" :     \
     (tag) == FPARSER_WORD ? "WORD" :   \
     (tag) == FPARSER_INT ? "INT" :     \
@@ -99,6 +103,8 @@ fparser_datum_t *fparser_parse(int fd,
                                          void *),
                                void *udata);
 
+fparser_datum_t *fparser_datum_build_void(void);
+fparser_datum_t *fparser_datum_build_null(void);
 fparser_datum_t *fparser_datum_build_int(int64_t);
 fparser_datum_t *fparser_datum_build_float(double);
 fparser_datum_t *fparser_datum_build_bool(char);

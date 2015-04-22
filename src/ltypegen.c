@@ -100,6 +100,11 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
             backend = LLVMVoidTypeInContext(lctx);
             break;
 
+        case LKIT_NULL:
+            /* XXX */
+            backend = LLVMVoidTypeInContext(lctx);
+            break;
+
         case LKIT_INT:
         case LKIT_INT_MIN:
         case LKIT_INT_MAX:
@@ -138,11 +143,13 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
             break;
 
         case LKIT_ANY:
-            backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+            //backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+            backend = LLVMPointerType(LLVMVoidTypeInContext(lctx), 0);
             break;
 
         case LKIT_UNDEF:
-            backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+            //backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+            backend = LLVMPointerType(LLVMVoidTypeInContext(lctx), 0);
             break;
 
         case LKIT_ARRAY:
@@ -290,7 +297,8 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
             if (ty->compile != NULL) {
                 return ty->compile(ty, lctx);
             } else {
-                backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+                //backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+                backend = LLVMPointerType(LLVMVoidTypeInContext(lctx), 0);
             }
         }
         dict_set_item(&mctx->backends, ty, backend);
@@ -348,7 +356,8 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                 TRRET(LTYPE_COMPILE_METHODS + 2);
             }
 
-            argty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+            //argty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+            argty = LLVMPointerType(LLVMVoidTypeInContext(lctx), 0);
 
             fn1 = LLVMAddFunction(module,
                                   buf1,
@@ -484,6 +493,11 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                         }
                         LLVMBuildStore(b1, zero, gep1);
                         LLVMBuildStore(b2, zero, gep2);
+                    }
+                    break;
+
+                case LKIT_VOID:
+                    {
                     }
                     break;
 

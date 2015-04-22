@@ -185,6 +185,16 @@ compile_value(struct tokenizer_ctx *ctx,
                     fparser_datum_init(dat, FPARSER_BOOL);
                     value = (char *)(dat->body);
                     *value = 0;
+                } else if (ch == 'v') {
+                    if ((dat = malloc(sizeof(fparser_datum_t))) == NULL) {
+                        FAIL("malloc");
+                    }
+                    fparser_datum_init(dat, FPARSER_VOID);
+                } else if (ch == 'n') {
+                    if ((dat = malloc(sizeof(fparser_datum_t))) == NULL) {
+                        FAIL("malloc");
+                    }
+                    fparser_datum_init(dat, FPARSER_NULL);
                 }
             }
         } else {
@@ -543,6 +553,12 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
 
         array_traverse(form, (array_traverser_t)fparser_datum_dump, udata);
 
+    } else if (rdat->tag == FPARSER_VOID) {
+        TRACE("VOID");
+
+    } else if (rdat->tag == FPARSER_NULL) {
+        TRACE("NULL");
+
     } else if (rdat->tag == FPARSER_STR) {
         bytes_t *v;
         v = (bytes_t *)(rdat->body);
@@ -653,6 +669,20 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
             } else {
                 bytestream_cat(di->bs, 1, ")");
             }
+        }
+
+    } else if (rdat->tag == FPARSER_VOID) {
+        if (rdat->error) {
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 8, "-->#v<--");
+        } else {
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 2, "#v");
+        }
+
+    } else if (rdat->tag == FPARSER_NULL) {
+        if (rdat->error) {
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 8, "-->#n<--");
+        } else {
+            bytestream_nprintf(di->bs, 13 * 2 + 10 + 2, "#n");
         }
 
     } else if (rdat->tag == FPARSER_STR) {
@@ -795,37 +825,61 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
 }
 
 
-#define FPARSER_DATUM_BUILD_TY_BODY(ty, tag, malloc_fn)\
-    fparser_datum_t *dat;                              \
-    ty *value;                                         \
-    if ((dat = malloc_fn(sizeof(fparser_datum_t) +     \
-                         sizeof(ty))) == NULL) {       \
-        FAIL("malloc");                                \
-    }                                                  \
-    fparser_datum_init(dat, tag);                      \
-    value = (ty *)(dat->body);                         \
-    *value = val;                                      \
-    return dat;
+#define FPARSER_DATUM_BUILD_TY_BODY0(ty, tag, malloc_fn)       \
+    fparser_datum_t *dat;                                      \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) +             \
+                         sizeof(ty))) == NULL) {               \
+        FAIL("malloc");                                        \
+    }                                                          \
+    fparser_datum_init(dat, tag);                              \
+    return dat;                                                \
+
+
+#define FPARSER_DATUM_BUILD_TY_BODY1(ty, tag, malloc_fn)       \
+    fparser_datum_t *dat;                                      \
+    ty *value;                                                 \
+    if ((dat = malloc_fn(sizeof(fparser_datum_t) +             \
+                         sizeof(ty))) == NULL) {               \
+        FAIL("malloc");                                        \
+    }                                                          \
+    fparser_datum_init(dat, tag);                              \
+    value = (ty *)(dat->body);                                 \
+    *value = val;                                              \
+    return dat;                                                \
+
+
+fparser_datum_t *
+fparser_datum_build_void(void)
+{
+    FPARSER_DATUM_BUILD_TY_BODY0(int64_t, FPARSER_VOID, malloc);
+}
+
+
+fparser_datum_t *
+fparser_datum_build_null(void)
+{
+    FPARSER_DATUM_BUILD_TY_BODY0(int64_t, FPARSER_NULL, malloc);
+}
 
 
 fparser_datum_t *
 fparser_datum_build_int(int64_t val)
 {
-    FPARSER_DATUM_BUILD_TY_BODY(int64_t, FPARSER_INT, malloc);
+    FPARSER_DATUM_BUILD_TY_BODY1(int64_t, FPARSER_INT, malloc);
 }
 
 
 fparser_datum_t *
 fparser_datum_build_float(double val)
 {
-    FPARSER_DATUM_BUILD_TY_BODY(double, FPARSER_FLOAT, malloc);
+    FPARSER_DATUM_BUILD_TY_BODY1(double, FPARSER_FLOAT, malloc);
 }
 
 
 fparser_datum_t *
 fparser_datum_build_bool(char val)
 {
-    FPARSER_DATUM_BUILD_TY_BODY(char, FPARSER_BOOL, malloc);
+    FPARSER_DATUM_BUILD_TY_BODY1(char, FPARSER_BOOL, malloc);
 }
 
 

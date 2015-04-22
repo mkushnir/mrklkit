@@ -325,6 +325,14 @@ lkit_expr_build_literal(mrklkit_ctx_t *mctx,
         expr->type = lkit_type_get(mctx, LKIT_BOOL);
         break;
 
+    case FPARSER_VOID:
+        expr->type = lkit_type_get(mctx, LKIT_VOID);
+        break;
+
+    case FPARSER_NULL:
+        expr->type = lkit_type_get(mctx, LKIT_NULL);
+        break;
+
     default:
         FAIL("lkit_expr_build_literal");
     }
@@ -506,6 +514,16 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
         case FPARSER_BOOL:
             expr->value.literal = dat;
             expr->type = lkit_type_get(mctx, LKIT_BOOL);
+            break;
+
+        case FPARSER_VOID:
+            expr->value.literal = dat;
+            expr->type = lkit_type_get(mctx, LKIT_VOID);
+            break;
+
+        case FPARSER_NULL:
+            expr->value.literal = dat;
+            expr->type = lkit_type_get(mctx, LKIT_NULL);
             break;
 
         case FPARSER_WORD:
@@ -743,6 +761,26 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                 } else if (tag == FPARSER_BOOL) {
                     expr->value.literal = *node;
                     expr->type = lkit_type_get(mctx, LKIT_BOOL);
+
+                    /* quals */
+                    lparse_quals(form,
+                                 &it,
+                                 (quals_parser_t)parse_expr_quals,
+                                 expr);
+
+                } else if (tag == FPARSER_VOID) {
+                    expr->value.literal = *node;
+                    expr->type = lkit_type_get(mctx, LKIT_VOID);
+
+                    /* quals */
+                    lparse_quals(form,
+                                 &it,
+                                 (quals_parser_t)parse_expr_quals,
+                                 expr);
+
+                } else if (tag == FPARSER_NULL) {
+                    expr->value.literal = *node;
+                    expr->type = lkit_type_get(mctx, LKIT_NULL);
 
                     /* quals */
                     lparse_quals(form,

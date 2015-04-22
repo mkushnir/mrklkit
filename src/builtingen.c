@@ -2167,7 +2167,8 @@ tostr_done:
             args[0] = LLVMBuildPointerCast(builder,
                                            args[0],
                                            LLVMPointerType(
-                                               LLVMInt8TypeInContext(lctx), 0),
+                                               //LLVMInt8TypeInContext(lctx), 0),
+                                               LLVMVoidTypeInContext(lctx), 0),
                                            NEWVAR("cast"));
 
             v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR("call"));
@@ -2226,7 +2227,8 @@ tostr_done:
             args[0] = LLVMBuildPointerCast(builder,
                                            args[0],
                                            LLVMPointerType(
-                                               LLVMInt8TypeInContext(lctx), 0),
+                                               //LLVMInt8TypeInContext(lctx), 0),
+                                               LLVMVoidTypeInContext(lctx), 0),
                                            NEWVAR("cast"));
             if ((args[1] = lkit_compile_expr(mctx,
                                              ectx,
@@ -2269,7 +2271,8 @@ tostr_done:
         args[0] = LLVMBuildPointerCast(builder,
                                        args[0],
                                        LLVMPointerType(
-                                           LLVMInt8TypeInContext(lctx), 0),
+                                           //LLVMInt8TypeInContext(lctx), 0),
+                                           LLVMVoidTypeInContext(lctx), 0),
                                        NEWVAR("cast"));
 
 

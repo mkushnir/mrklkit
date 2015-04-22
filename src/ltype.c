@@ -164,6 +164,18 @@ lkit_type_new(lkit_tag_t tag)
         }
         break;
 
+    case LKIT_NULL:
+        {
+            lkit_null_t *tn;
+            if ((tn = malloc(sizeof(lkit_null_t))) == NULL) {
+                FAIL("malloc");
+            }
+            tn->base.tag = tag;
+            tn->base.name = "null";
+            ty = (lkit_type_t *)tn;
+        }
+        break;
+
     case LKIT_INT:
     case LKIT_INT_MIN:
     case LKIT_INT_MAX:
@@ -1284,6 +1296,8 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
             ty = lkit_type_get(mctx, LKIT_TY);
         } else if (strcmp(typename, "void") == 0) {
             ty = lkit_type_get(mctx, LKIT_VOID);
+        } else if (strcmp(typename, "null") == 0) {
+            ty = lkit_type_get(mctx, LKIT_NULL);
         } else if (strcmp(typename, "int") == 0) {
             ty = lkit_type_get(mctx, LKIT_INT);
         } else if (strcmp(typename, "str") == 0) {
@@ -1709,6 +1723,12 @@ mrklkit_init_types(dict_t *types,
 
     ty = lkit_type_new(LKIT_VOID);
     if ((pty = array_get(builtin_types, LKIT_VOID)) == NULL) {
+        FAIL("array_get");
+    }
+    *pty = lkit_type_finalize(ty);
+
+    ty = lkit_type_new(LKIT_NULL);
+    if ((pty = array_get(builtin_types, LKIT_NULL)) == NULL) {
         FAIL("array_get");
     }
     *pty = lkit_type_finalize(ty);
