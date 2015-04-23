@@ -335,9 +335,6 @@ lkit_type_new(lkit_tag_t tag)
     }
 
     ty->hash = 0;
-    ty->compile = NULL;
-    ty->compile_setup = NULL;
-    ty->compile_cleanup = NULL;
 
     return ty;
 }

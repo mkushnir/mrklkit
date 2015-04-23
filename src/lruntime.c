@@ -976,7 +976,8 @@ mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 
     assert(idx < (ssize_t)value->type->fields.elnum);
     p = (bytes_t **)(value->fields + idx);
-    *p = val;
+    *p = bytes_new_from_bytes(val);
+    BYTES_INCREF(*p);
 }
 
 

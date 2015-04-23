@@ -20,68 +20,6 @@
 
 #include "diag.h"
 
-/*
- * XXX unify compile/link methods with compile setup/cleanup for
- * XXX structures.
- */
-
-UNUSED static int
-bytes_compile_setup(UNUSED lkit_expr_t *ectx,
-                    LLVMModuleRef module,
-                    LLVMBuilderRef builder,
-                    UNUSED lkit_expr_t * expr,
-                    bytes_t *name)
-{
-    LLVMValueRef fn, arg;
-
-    if (LKIT_EXPR_CONSTANT(expr)) {
-        return 0;
-    }
-
-    if ((fn = LLVMGetNamedFunction(module, "bytes_incref")) == NULL) {
-        FAIL("bytes_compile_setup");
-    }
-
-    if ((arg = LLVMGetNamedGlobal(module, (char *)name->data)) == NULL) {
-        FAIL("bytes_compile_setup");
-    }
-
-    arg = LLVMBuildLoad(builder, arg, NEWVAR("load"));
-    (void)LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
-
-    return 0;
-}
-
-
-UNUSED static int
-bytes_compile_cleanup(UNUSED lkit_expr_t *ectx,
-                      LLVMModuleRef module,
-                      LLVMBuilderRef builder,
-                      UNUSED lkit_expr_t * expr,
-                      bytes_t *name)
-{
-    LLVMValueRef fn, arg;
-
-    if (LKIT_EXPR_CONSTANT(expr)) {
-        return 0;
-    }
-
-    if ((fn = LLVMGetNamedFunction(module,
-                                   "bytes_decref_fast")) == NULL) {
-        FAIL("bytes_compile_cleanup");
-    }
-
-    if ((arg = LLVMGetNamedGlobal(module, (char *)name->data)) == NULL) {
-        FAIL("bytes_compile_cleanup");
-    }
-
-    arg = LLVMBuildLoad(builder, arg, NEWVAR("load"));
-    (void)LLVMBuildCall(builder, fn, &arg, 1, NEWVAR("call"));
-
-    return 0;
-}
-
-
 LLVMTypeRef
 ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 {
@@ -292,11 +230,7 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
             /*
              * tell llvm that all user-defined types are just opaque void *
              */
-            if (ty->compile != NULL) {
-                return ty->compile(ty, lctx);
-            } else {
-                backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
-            }
+            backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
         }
         dict_set_item(&mctx->backends, ty, backend);
     } else {

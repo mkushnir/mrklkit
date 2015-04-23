@@ -238,7 +238,9 @@ lkit_expr_set_referenced(lkit_expr_t *expr)
     }
     if (expr->isref || expr->ismacro) {
         ++expr->referenced;
-        lkit_expr_set_referenced(expr->value.ref);
+        if (expr->isref) {
+            lkit_expr_set_referenced(expr->value.ref);
+        }
     }
 }
 

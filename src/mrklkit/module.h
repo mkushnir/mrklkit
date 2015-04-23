@@ -33,6 +33,9 @@ typedef int (*mrklkit_parser_t)(mrklkit_ctx_t *,
                                 void *);
 
 typedef int (*mrklkit_post_parser_t)(void *);
+typedef int (*mrklkit_remove_undef_t)(mrklkit_ctx_t *,
+                                      lkit_expr_t *,
+                                      lkit_expr_t *);
 
 typedef LLVMValueRef (*mrklkit_expr_compiler_t)(mrklkit_ctx_t *,
                                                 lkit_expr_t *,
@@ -55,6 +58,7 @@ typedef struct _mrklkit_module {
     mrklkit_expr_parser_t parse_expr;
     mrklkit_parser_t parse;
     mrklkit_post_parser_t post_parse;
+    mrklkit_remove_undef_t remove_undef;
     mrklkit_type_compiler_t compile_type;
     mrklkit_expr_compiler_t compile_expr;
     mrklkit_module_compiler_t compile;

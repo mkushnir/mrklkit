@@ -11,6 +11,7 @@
 #include <mrkcommon/util.h>
 
 #include <mrklkit/mrklkit.h>
+#include <mrklkit/module.h>
 #include <mrklkit/fparser.h>
 #include <mrklkit/lparse.h>
 #include <mrklkit/ltype.h>
@@ -409,9 +410,9 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
     } else if (strcmp(name, "set") == 0) {
         /*
-         * (sym set (func undef struct conststr undef))
-         * (sym set (func undef dict conststr undef))
-         * (sym set (func undef array constint undef))
+         * (sym set (func void struct conststr undef))
+         * (sym set (func void dict conststr undef))
+         * (sym set (func void array constint undef))
          */
         lkit_expr_t **cont, **setv;
         lkit_type_t *ty;
@@ -508,8 +509,6 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
         }
 
-        expr->type = ty;
-
         setv = array_get(&expr->subs, 2);
         assert(setv != NULL);
 
@@ -524,9 +523,9 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
     } else if (strcmp(name, "del") == 0) {
         /*
-         * (sym del (func undef struct conststr))
-         * (sym del (func undef dict conststr))
-         * (sym del (func undef array constint))
+         * (sym del (func void struct conststr))
+         * (sym del (func void dict conststr))
+         * (sym del (func void array constint))
          */
         lkit_expr_t **cont;
         lkit_type_t *ty;
@@ -597,8 +596,6 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             TRRET(REMOVE_UNDEF + 38);
 
         }
-
-        expr->type = ty;
 
     } else if (strcmp(name, "dp-info") == 0) {
         /*
@@ -840,15 +837,17 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                         if (paramty->tag == LKIT_VARARG) {
                             isvararg = 1;
                         } else {
-                            lkit_type_t *argty;
+                            if (paramty->tag != LKIT_TY) {
+                                lkit_type_t *argty;
 
-                            argty = lkit_expr_type_of(*arg);
-                            if (lkit_type_cmp_loose(argty, paramty) != 0) {
-                                (*arg)->error = 1;
-                                TRACE("type of the argument does not match "
-                                      "function definition:");
-                                lkit_expr_dump(expr);
-                                TRRET(REMOVE_UNDEF + 58);
+                                argty = lkit_expr_type_of(*arg);
+                                if (lkit_type_cmp_loose(argty, paramty) != 0) {
+                                    (*arg)->error = 1;
+                                    TRACE("type of the argument does not "
+                                          "match function definition:");
+                                    lkit_expr_dump(expr);
+                                    TRRET(REMOVE_UNDEF + 58);
+                                }
                             }
                         }
                     }
@@ -865,6 +864,22 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                 exprty = lkit_expr_type_of(expr);
                 if (exprty->tag != refty->tag) {
                     TRRET(REMOVE_UNDEF + 59);
+                }
+            }
+        }
+    }
+
+    if (expr->type->tag == LKIT_UNDEF) {
+        mrklkit_module_t **mod;
+        array_iter_t it;
+
+        for (mod = array_first(&mctx->modules, &it);
+             mod != NULL;
+             mod = array_next(&mctx->modules, &it)) {
+            if ((*mod)->remove_undef != NULL) {
+                if ((*mod)->remove_undef(mctx, ectx, expr) != 0) {
+                    TR(REMOVE_UNDEF + 60);
+                    break;
                 }
             }
         }
