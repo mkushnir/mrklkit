@@ -740,41 +740,45 @@ mrklkit_rt_struct_dump(rt_struct_t *value)
         case LKIT_INT:
         case LKIT_INT_MIN:
         case LKIT_INT_MAX:
-            TRACEC("%ld ", mrklkit_rt_get_struct_item_int(value, it.iter));
+            TRACEC("%ld ",
+                   mrklkit_rt_get_struct_item_int(value, it.iter, 0));
             break;
 
         case LKIT_FLOAT:
         case LKIT_FLOAT_MIN:
         case LKIT_FLOAT_MAX:
-            TRACEC("%lf ", mrklkit_rt_get_struct_item_float(value, it.iter));
+            TRACEC("%lf ",
+                   mrklkit_rt_get_struct_item_float(value, it.iter, 0.0));
             break;
 
         case LKIT_STR:
             {
                 bytes_t *v;
 
-                v = mrklkit_rt_get_struct_item_str(value, it.iter);
+                v = mrklkit_rt_get_struct_item_str(value, it.iter, NULL);
                 TRACEC("'%s' ", v != NULL ? v->data : NULL);
             }
             break;
 
         case LKIT_BOOL:
-            TRACEC("%s ", (int8_t)mrklkit_rt_get_struct_item_int(value, it.iter) ? "#t" : "#f");
+            TRACEC("%s ",
+                   (int8_t)mrklkit_rt_get_struct_item_bool(
+                       value, it.iter, 0) ? "#t" : "#f");
             break;
 
         case LKIT_ARRAY:
             mrklkit_rt_array_dump(
-                mrklkit_rt_get_struct_item_array(value, it.iter));
+                mrklkit_rt_get_struct_item_array(value, it.iter, NULL));
             break;
 
         case LKIT_DICT:
             mrklkit_rt_dict_dump(
-                mrklkit_rt_get_struct_item_dict(value, it.iter));
+                mrklkit_rt_get_struct_item_dict(value, it.iter, NULL));
             break;
 
         case LKIT_STRUCT:
             mrklkit_rt_struct_dump(
-                mrklkit_rt_get_struct_item_struct(value, it.iter));
+                mrklkit_rt_get_struct_item_struct(value, it.iter, NULL));
             break;
 
         default:
@@ -801,41 +805,43 @@ mrklkit_rt_struct_print(rt_struct_t *value)
         case LKIT_INT:
         case LKIT_INT_MIN:
         case LKIT_INT_MAX:
-            TRACEC("%ld", mrklkit_rt_get_struct_item_int(value, it.iter));
+            TRACEC("%ld",
+                   mrklkit_rt_get_struct_item_int(value, it.iter, 0));
             break;
 
         case LKIT_FLOAT:
         case LKIT_FLOAT_MIN:
         case LKIT_FLOAT_MAX:
-            TRACEC("%lf", mrklkit_rt_get_struct_item_float(value, it.iter));
+            TRACEC("%lf",
+                   mrklkit_rt_get_struct_item_float(value, it.iter, 0.0));
             break;
 
         case LKIT_STR:
             {
                 bytes_t *v;
 
-                v = mrklkit_rt_get_struct_item_str(value, it.iter);
+                v = mrklkit_rt_get_struct_item_str(value, it.iter, NULL);
                 TRACEC("%s", v != NULL ? v->data : (unsigned char *)"");
             }
             break;
 
         case LKIT_BOOL:
-            TRACEC("%hhd", mrklkit_rt_get_struct_item_bool(value, it.iter));
+            TRACEC("%hhd", mrklkit_rt_get_struct_item_bool(value, it.iter, 0));
             break;
 
         case LKIT_ARRAY:
             mrklkit_rt_array_print(
-                mrklkit_rt_get_struct_item_array(value, it.iter));
+                mrklkit_rt_get_struct_item_array(value, it.iter, NULL));
             break;
 
         case LKIT_DICT:
             mrklkit_rt_dict_print(
-                mrklkit_rt_get_struct_item_dict(value, it.iter));
+                mrklkit_rt_get_struct_item_dict(value, it.iter, NULL));
             break;
 
         case LKIT_STRUCT:
             mrklkit_rt_struct_print(
-                mrklkit_rt_get_struct_item_struct(value, it.iter));
+                mrklkit_rt_get_struct_item_struct(value, it.iter, NULL));
             break;
 
         default:
@@ -854,7 +860,9 @@ mrklkit_rt_get_struct_item_addr(rt_struct_t *value, int64_t idx)
 
 
 int64_t
-mrklkit_rt_get_struct_item_int(rt_struct_t *value, int64_t idx)
+mrklkit_rt_get_struct_item_int(rt_struct_t *value,
+                               int64_t idx,
+                               UNUSED int64_t dflt)
 {
     int64_t *v;
 
@@ -865,7 +873,9 @@ mrklkit_rt_get_struct_item_int(rt_struct_t *value, int64_t idx)
 
 
 double
-mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)
+mrklkit_rt_get_struct_item_float(rt_struct_t *value,
+                                 int64_t idx,
+                                 UNUSED double dflt)
 {
     union {
         void **v;
@@ -879,7 +889,9 @@ mrklkit_rt_get_struct_item_float(rt_struct_t *value, int64_t idx)
 
 
 int8_t
-mrklkit_rt_get_struct_item_bool(rt_struct_t *value, int64_t idx)
+mrklkit_rt_get_struct_item_bool(rt_struct_t *value,
+                                int64_t idx,
+                                UNUSED int8_t dflt)
 {
     int8_t *v;
 
@@ -890,45 +902,65 @@ mrklkit_rt_get_struct_item_bool(rt_struct_t *value, int64_t idx)
 
 
 bytes_t *
-mrklkit_rt_get_struct_item_str(rt_struct_t *value, int64_t idx)
+mrklkit_rt_get_struct_item_str(rt_struct_t *value,
+                               int64_t idx,
+                               bytes_t *dflt)
 {
     bytes_t **res;
 
     assert(idx < (ssize_t)value->type->fields.elnum);
     res = (bytes_t **)(value->fields + idx);
+    if (*res == NULL) {
+        *res = dflt;
+    }
     return *res;
 }
 
 
 rt_array_t *
-mrklkit_rt_get_struct_item_array(rt_struct_t *value, int64_t idx)
+mrklkit_rt_get_struct_item_array(rt_struct_t *value,
+                                 int64_t idx,
+                                 rt_array_t *dflt)
 {
     rt_array_t **res;
 
     assert(idx < (ssize_t)value->type->fields.elnum);
     res = (rt_array_t **)(value->fields + idx);
+    if (*res == NULL) {
+        *res = dflt;
+    }
     return *res;
 }
 
 
 rt_dict_t *
-mrklkit_rt_get_struct_item_dict(rt_struct_t *value, int64_t idx)
+mrklkit_rt_get_struct_item_dict(rt_struct_t *value,
+                                int64_t idx,
+                                rt_dict_t *dflt)
 {
     rt_dict_t **res;
 
     assert(idx < (ssize_t)value->type->fields.elnum);
     res = (rt_dict_t **)(value->fields + idx);
+    if (*res == NULL) {
+        *res = dflt;
+    }
     return *res;
 }
 
 
 rt_struct_t *
-mrklkit_rt_get_struct_item_struct(rt_struct_t *value, int64_t idx)
+mrklkit_rt_get_struct_item_struct(rt_struct_t *value,
+                                  int64_t idx,
+                                  rt_struct_t *dflt)
 {
     rt_struct_t **res;
 
     assert(idx < (ssize_t)value->type->fields.elnum);
     res = (rt_struct_t **)(value->fields + idx);
+    if (*res == NULL) {
+        *res = dflt;
+    }
     return *res;
 }
 
@@ -970,12 +1002,27 @@ mrklkit_rt_set_struct_item_bool(rt_struct_t *value, int64_t idx, int64_t val)
 
 
 void
+mrklkit_rt_set_struct_item_str_unsafe(rt_struct_t *value,
+                                      int64_t idx,
+                                      bytes_t *val)
+{
+    bytes_t **p;
+
+    assert(idx < (ssize_t)value->type->fields.elnum);
+    p = (bytes_t **)(value->fields + idx);
+    *p = bytes_new_from_bytes(val);
+    BYTES_INCREF(*p);
+}
+
+
+void
 mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 {
     bytes_t **p;
 
     assert(idx < (ssize_t)value->type->fields.elnum);
     p = (bytes_t **)(value->fields + idx);
+    BYTES_DECREF(p);
     *p = bytes_new_from_bytes(val);
     BYTES_INCREF(*p);
 }

@@ -269,8 +269,8 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
         goto err;
     }
 
-    if ((*cont)->type->tag != LKIT_STRUCT) {
-        /* default */
+    /* default, except (parse struct ...) */
+    if (!((*cont)->type->tag == LKIT_STRUCT && !(flag & COMPILE_GET_GET))) {
         if ((arg = array_get(&expr->subs, 2)) == NULL) {
             FAIL("array_get");
         }
@@ -329,7 +329,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                                            NEWVAR("cast"));
 
 
-            v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
+            v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR(name));
         }
         break;
 
@@ -377,7 +377,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                                            args[0],
                                            LLVMTypeOf(LLVMGetParam(fn, 0)),
                                            NEWVAR("cast"));
-            v = LLVMBuildCall(builder, fn, args, 3, NEWVAR(name));
+            v = LLVMBuildCall(builder, fn, args, countof(args), NEWVAR(name));
         }
         break;
 
@@ -387,6 +387,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             int idx;
             lkit_type_t *fty;
             char buf[64];
+            size_t nargs;
 
             if ((arg = array_get(&expr->subs, 1)) == NULL) {
                 FAIL("array_get");
@@ -412,6 +413,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                          sizeof(buf),
                          "mrklkit_rt_get_struct_item_%s",
                          fty->name);
+                nargs = countof(args);
             } else {
                 lkit_struct_t *ts;
 
@@ -432,6 +434,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                     TR(COMPILE_GET + 302);
                     goto err;
                 }
+                nargs = countof(args) - 1;
             }
 
             args[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx), idx, 1);
@@ -443,7 +446,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                                            args[0],
                                            LLVMTypeOf(LLVMGetParam(fn, 0)),
                                            NEWVAR("cast"));
-            v = LLVMBuildCall(builder, fn, args, 2, NEWVAR(name));
+            v = LLVMBuildCall(builder, fn, args, nargs, NEWVAR(name));
         }
 
         break;
