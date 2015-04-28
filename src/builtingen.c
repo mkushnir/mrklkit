@@ -272,7 +272,10 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
     /* default, except (parse struct ...) */
     if (!((*cont)->type->tag == LKIT_STRUCT && !(flag & COMPILE_GET_GET))) {
         if ((arg = array_get(&expr->subs, 2)) == NULL) {
-            FAIL("array_get");
+            TRACE("need default argument:");
+            lkit_expr_dump(expr);
+            TR(COMPILE_GET + 2);
+            goto err;
         }
         if ((args[2] = lkit_compile_expr(mctx,
                                          ectx,
@@ -280,7 +283,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                                          builder,
                                          *arg,
                                          udata)) == NULL) {
-            TR(COMPILE_GET + 2);
+            TR(COMPILE_GET + 3);
             goto err;
         }
     }
