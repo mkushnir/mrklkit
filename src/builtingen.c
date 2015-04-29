@@ -2452,7 +2452,7 @@ tostr_done:
 
     } else if (strcmp(name, "new") == 0) {
         lkit_expr_t **arg;
-        UNUSED LLVMValueRef fn, args[2];
+        LLVMValueRef fn, args[2];
 
         arg = array_get(&expr->subs, 1);
         assert(arg != NULL);
@@ -2495,6 +2495,7 @@ tostr_done:
                           args,
                           countof(args),
                           NEWVAR("call"));
+
     } else if (strcmp(name, "set") == 0) {
         //(sym set (func void undef undef under)) done
         v = lkit_compile_set(mctx,
@@ -2503,6 +2504,21 @@ tostr_done:
                              builder,
                              expr,
                              udata);
+
+    } else if (strcmp(name, "time") == 0) {
+        LLVMValueRef fn, args[1];
+
+        if ((fn = LLVMGetNamedFunction(module, "time")) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        args[0] = LLVMConstPointerNull(LLVMInt8TypeInContext(lctx));
+
+        v = LLVMBuildCall(builder,
+                          fn,
+                          args,
+                          countof(args),
+                          NEWVAR("call"));
 
     } else {
         mrklkit_module_t **mod;
