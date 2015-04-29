@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdint.h>
+
 #include <llvm-c/Core.h>
 #include <llvm-c/IRReader.h>
 
@@ -2505,7 +2506,7 @@ tostr_done:
                              expr,
                              udata);
 
-    } else if (strcmp(name, "now") == 0) {
+    } else if (strcmp(name, "nowi") == 0) {
         LLVMValueRef fn, args[1];
 
         if ((fn = LLVMGetNamedFunction(module, "time")) == NULL) {
@@ -2518,6 +2519,19 @@ tostr_done:
                           fn,
                           args,
                           countof(args),
+                          NEWVAR("call"));
+
+    } else if (strcmp(name, "nowf") == 0) {
+        LLVMValueRef fn;
+
+        if ((fn = LLVMGetNamedFunction(module, "mrklkit_timef")) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        v = LLVMBuildCall(builder,
+                          fn,
+                          NULL,
+                          0,
                           NEWVAR("call"));
 
     } else {

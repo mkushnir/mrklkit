@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
@@ -208,6 +209,21 @@ mrklkit_strptime(const bytes_t *str, const bytes_t *fmt)
     }
     return (int64_t)mktime(&t);
 }
+
+
+double
+mrklkit_timef(void)
+{
+    struct timeval tv;
+
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+
+    (void)gettimeofday(&tv, NULL);
+    return (double)tv.tv_sec + (double) tv.tv_usec / 1000000.;
+}
+
+
 /**
  * array
  */
