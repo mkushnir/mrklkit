@@ -2505,14 +2505,14 @@ tostr_done:
                              expr,
                              udata);
 
-    } else if (strcmp(name, "time") == 0) {
+    } else if (strcmp(name, "now") == 0) {
         LLVMValueRef fn, args[1];
 
         if ((fn = LLVMGetNamedFunction(module, "time")) == NULL) {
             FAIL("LLVMGetNamedFunction");
         }
 
-        args[0] = LLVMConstPointerNull(LLVMInt8TypeInContext(lctx));
+        args[0] = LLVMConstPointerNull(LLVMTypeOf(LLVMGetFirstParam(fn)));
 
         v = LLVMBuildCall(builder,
                           fn,
