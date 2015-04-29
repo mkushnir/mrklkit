@@ -40,7 +40,7 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 
         case LKIT_NULL:
             /* XXX */
-            backend = LLVMVoidTypeInContext(lctx);
+            backend = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
             break;
 
         case LKIT_INT:
@@ -477,6 +477,11 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
 
             LLVMDisposeBuilder(b1);
             LLVMDisposeBuilder(b2);
+        }
+        break;
+
+    case LKIT_DICT:
+        {
         }
         break;
 

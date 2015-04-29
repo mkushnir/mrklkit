@@ -680,6 +680,21 @@ mrklkit_rt_get_dict_item_str(rt_dict_t *value, bytes_t *key, bytes_t *dflt)
 }
 
 
+rt_struct_t *
+mrklkit_rt_get_dict_item_struct(rt_dict_t *value, bytes_t *key, rt_struct_t *dflt)
+{
+    dict_item_t *it;
+    rt_struct_t *res;
+
+    if ((it = dict_get_item(&value->fields, key)) == NULL) {
+        res = dflt;
+    } else {
+        res = it->value == NULL ? dflt : it->value;
+    }
+    return res;
+}
+
+
 int64_t
 mrklkit_rt_dict_has_item(rt_dict_t *value, bytes_t *key)
 {

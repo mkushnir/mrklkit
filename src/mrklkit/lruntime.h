@@ -155,6 +155,7 @@ void mrklkit_rt_dict_print(rt_dict_t *);
 int64_t mrklkit_rt_get_dict_item_int(rt_dict_t *, bytes_t *, int64_t);
 double mrklkit_rt_get_dict_item_float(rt_dict_t *, bytes_t *, double);
 bytes_t *mrklkit_rt_get_dict_item_str(rt_dict_t *, bytes_t *, bytes_t *);
+rt_struct_t *mrklkit_rt_get_dict_item_struct(rt_dict_t *, bytes_t *, rt_struct_t *);
 
 rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
 rt_struct_t *mrklkit_rt_struct_new_gc(lkit_struct_t *);
