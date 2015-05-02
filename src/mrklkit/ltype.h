@@ -69,6 +69,16 @@ typedef enum _lkit_tag {
     "<unknown>"                                \
 )
 
+#define LKIT_TAG_POINTER(tag) (\
+    (tag) == LKIT_NULL ||      \
+    (tag) == LKIT_ANY ||       \
+    (tag) == LKIT_ARRAY ||     \
+    (tag) == LKIT_DICT ||      \
+    (tag) == LKIT_STRUCT ||    \
+    (tag) == LKIT_FUNC         \
+)                              \
+
+
 typedef enum _lkit_parser {
     LKIT_PARSER_NONE,
     LKIT_PARSER_DELIM, /* normal single */
@@ -158,7 +168,10 @@ typedef struct _lkit_array {
 
 typedef struct _lkit_dict {
     struct _lkit_type base;
-    //dict_item_finalizer_t fini;
+    /*
+     * see mrklkit_rt_dict_new, mrklkit_rt_dict_destroy
+     */
+    dict_item_finalizer_t fini;
     lkit_parser_t parser;
     /* weak ref, will use kvdelim[0] */
     char kvdelim;
@@ -170,6 +183,9 @@ typedef struct _lkit_dict {
 
 typedef struct _lkit_struct {
     struct _lkit_type base;
+    /*
+     * see mrklkit_rt_struct_new, mrklkit_rt_struct_destroy
+     */
     void (*init)(void **);
     void (*fini)(void **);
     lkit_parser_t parser;

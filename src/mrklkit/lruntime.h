@@ -161,6 +161,8 @@ rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
 rt_struct_t *mrklkit_rt_struct_new_gc(lkit_struct_t *);
 void mrklkit_rt_struct_destroy(rt_struct_t **);
 void mrklkit_rt_struct_destroy_no_destruct(rt_struct_t **);
+int mrklkit_rt_struct_init(rt_struct_t *);
+int mrklkit_rt_struct_fini(rt_struct_t *);
 void mrklkit_rt_struct_dump(rt_struct_t *);
 void mrklkit_rt_struct_print(rt_struct_t *);
 

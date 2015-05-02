@@ -413,7 +413,11 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     TRRET(REMOVE_UNDEF + 23);
                 }
             }
-
+        } else {
+            expr->nodecref = 1;
+        }
+        if ((*cont)->nodecref) {
+            expr->nodecref = 1;
         }
 
 

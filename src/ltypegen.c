@@ -247,10 +247,38 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                       bytes_t *name,
                       int setnull)
 {
+    int res;
     char *buf1 = NULL, *buf2 = NULL;
     LLVMContextRef lctx;
 
+    res = 0;
     lctx = LLVMGetModuleContext(module);
+
+#define BUILDCODE                                              \
+     {                                                         \
+         UNUSED LLVMValueRef pnull, dtor, dparam;              \
+         /* ctor, just set NULL */                             \
+         pnull = LLVMConstPointerNull(                         \
+                 ltype_compile(mctx, *fty, module));           \
+         LLVMBuildStore(b1, pnull, gep1);                      \
+         /* dtor, call mrklkit_rt_NNN_destroy() */             \
+         if (setnull) {                                        \
+         } else {                                              \
+             if ((dtor = LLVMGetNamedFunction(module,          \
+                     dtor_name)) == NULL) {                    \
+                 TRACE("no name: %s", dtor_name);              \
+                 res = LTYPE_COMPILE_METHODS + 3;              \
+                 goto err;                                     \
+             }                                                 \
+             dparam = LLVMGetFirstParam(dtor);                 \
+             gep2 = LLVMBuildPointerCast(b2,                   \
+                                         gep2,                 \
+                                         LLVMTypeOf(dparam),   \
+                                         NEWVAR("cast"));      \
+             LLVMBuildCall(b2, dtor, &gep2, 1, "");            \
+         }                                                     \
+     }                                                         \
+
 
     switch (ty->tag) {
     case LKIT_STRUCT:
@@ -280,11 +308,13 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
 
             if (LLVMGetNamedFunction(module, buf1) != NULL) {
                 TRACE("non unique name: %s", buf1);
-                TRRET(LTYPE_COMPILE_METHODS + 1);
+                res = LTYPE_COMPILE_METHODS + 1;
+                goto err;
             }
             if (LLVMGetNamedFunction(module, buf2) != NULL) {
                 TRACE("non unique name: %s", buf2);
-                TRRET(LTYPE_COMPILE_METHODS + 2);
+                res = LTYPE_COMPILE_METHODS + 2;
+                goto err;
             }
 
             argty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
@@ -326,33 +356,9 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                 gep1 = LLVMBuildStructGEP(b1, cast1, it.iter, NEWVAR("gep"));
                 gep2 = LLVMBuildStructGEP(b2, cast2, it.iter, NEWVAR("gep"));
 
-#               define BUILDCODE                                               \
-                    {                                                          \
-                        UNUSED LLVMValueRef pnull, dtor, dparam;               \
-                        /* ctor, just set NULL */                              \
-                        pnull = LLVMConstPointerNull(                          \
-                                ltype_compile(mctx, *fty, module));            \
-                        LLVMBuildStore(b1, pnull, gep1);                       \
-                        /* dtor, call mrklkit_rt_NNN_destroy() */              \
-                        if (setnull) {                                         \
-                        } else {                                               \
-                            if ((dtor = LLVMGetNamedFunction(module,           \
-                                    dtor_name)) == NULL) {                     \
-                                TRACE("no name: %s", dtor_name);               \
-                                TRRET(LTYPE_COMPILE_METHODS + 3);              \
-                            }                                                  \
-                            dparam = LLVMGetFirstParam(dtor);                  \
-                            gep2 = LLVMBuildPointerCast(b2,                    \
-                                                        gep2,                  \
-                                                        LLVMTypeOf(dparam),    \
-                                                        NEWVAR("cast"));       \
-                            LLVMBuildCall(b2, dtor, &gep2, 1, NEWVAR("call")); \
-                        }                                                      \
-                    }
-
                 switch ((*fty)->tag) {
                 case LKIT_STR:
-                    dtor_name = "bytes_decref";
+                    dtor_name = "mrklkit_rt_bytes_destory";
                     BUILDCODE;
                     break;
 
@@ -386,7 +392,9 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                                                   module,
                                                   nnm,
                                                   setnull) != 0) {
-                            TRRET(LTYPE_COMPILE_METHODS + 4);
+                            bytes_decref(&nnm);
+                            res = LTYPE_COMPILE_METHODS + 4;
+                            goto err;
                         }
                         bytes_decref(&nnm);
                     }
@@ -480,14 +488,152 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
         }
         break;
 
+#undef BUILDCODE
+#define BUILDCODE                                              \
+     {                                                         \
+     }                                                         \
+
+
     case LKIT_DICT:
         {
+            // XXX copy-paste LKIT_STRUCT
+            lkit_dict_t *td;
+            LLVMBuilderRef b1, b2;
+            LLVMValueRef fn1, fn2, cast1, cast2;
+            LLVMTypeRef argty;
+            lkit_type_t *_fty, **fty;
+            LLVMBasicBlockRef bb;
+            const char *dtor_name = NULL;
+
+            if ((buf1 = malloc(name->sz + 64)) == NULL) {
+                FAIL("malloc");
+            }
+            if ((buf2 = malloc(name->sz + 64)) == NULL) {
+                FAIL("malloc");
+            }
+
+            td = (lkit_dict_t *)ty;
+
+            b1 = LLVMCreateBuilderInContext(lctx);
+            b2 = LLVMCreateBuilderInContext(lctx);
+
+            snprintf(buf1, name->sz + 64, "_mrklkit.%s.init", name->data);
+            snprintf(buf2, name->sz + 64, "_mrklkit.%s.fini", name->data);
+
+            if (LLVMGetNamedFunction(module, buf1) != NULL) {
+                TRACE("non unique name: %s", buf1);
+                res = LTYPE_COMPILE_METHODS + 1;
+                goto err;
+            }
+            if (LLVMGetNamedFunction(module, buf2) != NULL) {
+                TRACE("non unique name: %s", buf2);
+                res = LTYPE_COMPILE_METHODS + 2;
+                goto err;
+            }
+
+            argty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+
+            fn1 = LLVMAddFunction(module,
+                                  buf1,
+                                  LLVMFunctionType(LLVMInt64TypeInContext(lctx),
+                                                   &argty,
+                                                   1,
+                                                   0));
+            fn2 = LLVMAddFunction(module,
+                                  buf2,
+                                  LLVMFunctionType(LLVMInt64TypeInContext(lctx),
+                                                   &argty,
+                                                   1,
+                                                   0));
+
+            bb = LLVMAppendBasicBlockInContext(lctx, fn1, NEWVAR("L"));
+            LLVMPositionBuilderAtEnd(b1, bb);
+            bb = LLVMAppendBasicBlockInContext(lctx, fn2, NEWVAR("L"));
+            LLVMPositionBuilderAtEnd(b2, bb);
+
+            cast1 = LLVMBuildPointerCast(b1,
+                                         LLVMGetParam(fn1, 0),
+                                         ltype_compile(mctx, ty, module),
+                                         NEWVAR("cast"));
+            cast2 = LLVMBuildPointerCast(b2,
+                                         LLVMGetParam(fn2, 0),
+                                         ltype_compile(mctx, ty, module),
+                                         NEWVAR("cast"));
+
+            _fty = lkit_dict_get_element_type(td);
+            fty = &_fty;
+
+            // XXX copy-paste
+            switch ((*fty)->tag) {
+            case LKIT_STR:
+                dtor_name = "bytes_decref";
+                BUILDCODE;
+                break;
+
+            case LKIT_ARRAY:
+                dtor_name = "mrklkit_rt_array_destroy";
+                BUILDCODE;
+                break;
+
+            case LKIT_DICT:
+                dtor_name = "mrklkit_rt_dict_destroy";
+                BUILDCODE;
+                break;
+
+            case LKIT_STRUCT:
+                // XXX
+                {
+                }
+
+                dtor_name = "mrklkit_rt_struct_destroy";
+                BUILDCODE;
+                break;
+
+            case LKIT_INT:
+            case LKIT_INT_MIN:
+            case LKIT_INT_MAX:
+            case LKIT_BOOL:
+                {
+                }
+                break;
+
+            case LKIT_VOID:
+                {
+                }
+                break;
+
+            case LKIT_FLOAT:
+            case LKIT_FLOAT_MIN:
+            case LKIT_FLOAT_MAX:
+                {
+                }
+                break;
+
+            default:
+                {
+                    char dtor_name[1024];
+
+                    snprintf(dtor_name,
+                             sizeof(dtor_name),
+                             "%s_destroy", (*fty)->name);
+                    BUILDCODE;
+                }
+                break;
+            }
+
+            LLVMBuildRet(b1, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
+            LLVMBuildRet(b2, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
+
+            LLVMDisposeBuilder(b1);
+            LLVMDisposeBuilder(b2);
         }
         break;
 
     default:
         break;
     }
+
+end:
     if (buf1 != NULL) {
         free(buf1);
     }
@@ -495,6 +641,33 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
         free(buf2);
     }
 
+    return res;
+
+err:
+    goto end;
+}
+
+
+UNUSED static int
+rt_array_bytes_fini(bytes_t **value, UNUSED void *udata)
+{
+    BYTES_DECREF(value);
+    return 0;
+}
+
+
+static int
+rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
+{
+    BYTES_DECREF(&key);
+    return 0;
+}
+
+static int
+rt_dict_fini_keyval_str(bytes_t *key, bytes_t *val)
+{
+    BYTES_DECREF(&key);
+    BYTES_DECREF(&val);
     return 0;
 }
 
@@ -574,6 +747,43 @@ ltype_link_methods(lkit_type_t *ty,
                 }
                 bytes_decref(&nnm);
             }
+        }
+        break;
+
+    case LKIT_DICT:
+        {
+            lkit_dict_t *td;
+            lkit_type_t *elty;
+
+            td = (lkit_dict_t *)ty;
+            if ((elty = lkit_dict_get_element_type(td)) == NULL) {
+                FAIL("lkit_dict_get_element_type");
+            }
+
+            switch (elty->tag) {
+            case LKIT_INT:
+            case LKIT_INT_MAX:
+            case LKIT_INT_MIN:
+            case LKIT_FLOAT:
+            case LKIT_FLOAT_MAX:
+            case LKIT_FLOAT_MIN:
+            case LKIT_BOOL:
+                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyonly;
+                break;
+
+            case LKIT_STR:
+                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_str;
+                break;
+
+            case LKIT_STRUCT:
+                {
+                }
+                break;
+
+            default:
+                break;
+            }
+
         }
         break;
 

@@ -281,7 +281,7 @@ lkit_type_new(lkit_tag_t tag)
             }
             td->base.tag = tag;
             td->base.name = "dict";
-            //td->fini = NULL;
+            td->fini = NULL;
             td->kvdelim = '\0';
             td->fdelim = '\0';
             array_init(&td->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
@@ -723,39 +723,6 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
  * Parser.
  *
  */
-
-UNUSED static int
-rt_array_bytes_fini(bytes_t **value, UNUSED void *udata)
-{
-    BYTES_DECREF(value);
-    return 0;
-}
-
-
-UNUSED static int
-rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
-{
-    //TRACE("%ld %s", key != NULL ? key->nref : -2, key != NULL ? key->data : NULL);
-    if (key != NULL) {
-        BYTES_DECREF(&key);
-    }
-    return 0;
-}
-
-UNUSED static int
-rt_dict_fini_keyval(bytes_t *key, void *val)
-{
-    if (key != NULL) {
-        BYTES_DECREF(&key);
-    }
-    if (val != NULL) {
-        void **v;
-        v = &val;
-        BYTES_DECREF((bytes_t **)v);
-    }
-    return 0;
-}
-
 
 static int
 struct_field_name_cmp(bytes_t **a, bytes_t **b)
@@ -1368,20 +1335,6 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                     goto err;
                 }
 
-                switch ((*elemtype)->tag) {
-                case LKIT_STR:
-                    //ta->fini = (array_finalizer_t)rt_array_bytes_fini;
-                    break;
-
-                case LKIT_INT:
-                case LKIT_FLOAT:
-                    //ta->fini = NULL;
-                    break;
-
-                default:
-                    TR(LKIT_TYPE_PARSE + 4);
-                }
-
             } else if (strcmp((char *)first->data, "dict") == 0) {
                 lkit_dict_t *td;
                 fparser_datum_t **node;
@@ -1416,12 +1369,10 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
 
                 switch ((*elemtype)->tag) {
                 case LKIT_STR:
-                    //td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval;
                     break;
 
                 case LKIT_INT:
                 case LKIT_FLOAT:
-                    //td->fini = (dict_item_finalizer_t)rt_dict_fini_keyonly;
                     break;
 
                 default:
