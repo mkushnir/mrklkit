@@ -22,13 +22,19 @@ typedef struct _mrklkit_modaux {
     LLVMExecutionEngineRef ee;
 } mrklkit_modaux_t;
 
+typedef struct _mrklkit_backend {
+    /* weakrefs */
+    LLVMTypeRef ty;
+    LLVMTypeRef deref;
+} mrklkit_backend_t;
+
 typedef struct _mrklkit_ctx {
     array_t modules;
 
     /*
      * program
      */
-    /* weakref lkit_type_t*, weakref LLVMTypeRef */
+    /* weakref lkit_type_t*, strongref mrklkit_backend_t* */
     dict_t backends;
     LLVMContextRef lctx;
     LLVMModuleRef module;

@@ -80,6 +80,7 @@ const char *mrklkit_meta = "; libc\n"
 "(sym mrklkit_rt_get_array_item_float   (func float (array float) int float))\n"
 "(sym mrklkit_rt_get_array_item_str     (func str (array str) int str))\n"
 "(sym mrklkit_rt_array_len              (func int any))\n"
+"(sym mrklkit_rt_array_traverse         (func void any any))\n"
 "(sym mrklkit_rt_get_dict_item_int      (func int (dict int) str int))\n"
 "(sym mrklkit_rt_get_dict_item_float    (func float (dict float) str float))\n"
 "(sym mrklkit_rt_get_dict_item_str      (func str (dict str) str str))\n"
@@ -92,6 +93,7 @@ const char *mrklkit_meta = "; libc\n"
 "(sym mrklkit_rt_set_dict_item_dict     (func void undef str any))\n"
 "(sym mrklkit_rt_set_dict_item_struct   (func void undef str any))\n"
 "(sym mrklkit_rt_dict_has_item          (func bool undef str))\n"
+"(sym mrklkit_rt_dict_traverse          (func void any any))\n"
 "\n"
 "(sym bytes_new (func str int))\n"
 "(sym bytes_copy (func int str str int))\n"
@@ -176,6 +178,7 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin has (func bool undef undef))\n"
 "(builtin has-key (func bool undef undef))\n" /* compat */
 "(builtin len (func int undef))\n"
+"(builtin traverse (func void undef undef))\n"
 "\n"
 "(builtin itof (func float int))\n"
 "(builtin float (func float int))\n" /* compat */
@@ -201,6 +204,7 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin nowi (func int))\n"
 "(builtin nowf (func float))\n"
 "(builtin isnull (func bool undef))\n"
+"(builtin addrof (func any undef))\n"
 "\n"
 "(pragma user)\n"
 "\n"
@@ -577,6 +581,17 @@ modaux_fini(mrklkit_modaux_t *modaux)
     return 0;
 }
 
+
+static int
+dict_item_backend_fini(UNUSED lkit_type_t *key, UNUSED mrklkit_backend_t *value)
+{
+    if (value != NULL) {
+        free(value);
+    }
+    return 0;
+}
+
+
 void
 mrklkit_ctx_init(mrklkit_ctx_t *ctx,
                  const char *name,
@@ -599,7 +614,7 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
               101,
               (dict_hashfn_t)lkit_type_hash,
               (dict_item_comparator_t)lkit_type_cmp,
-              NULL);
+              (dict_item_finalizer_t)dict_item_backend_fini);
     ctx->lctx = LLVMContextCreate();
     if ((ctx->module = LLVMModuleCreateWithNameInContext(name,
             ctx->lctx)) == NULL) {
@@ -710,11 +725,13 @@ LLVMTypeRef
 mrklkit_ctx_get_type_backend(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
     dict_item_t *dit;
+    mrklkit_backend_t *backend;
 
     if ((dit = dict_get_item(&mctx->backends, ty)) == NULL) {
         FAIL("mrklkit_ctx_get_type_backend");
     }
-    return dit->value;
+    backend = dit->value;
+    return backend->ty;
 }
 
 

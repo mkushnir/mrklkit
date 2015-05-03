@@ -164,42 +164,17 @@ dsource_get(const char *name)
 
 
 static int
-dsource_compile(testrt_ctx_t *tctx, LLVMModuleRef module)
+dsource_compile(UNUSED testrt_ctx_t *tctx,
+                UNUSED LLVMModuleRef module)
 {
-    array_iter_t it;
-    dsource_t **ds;
-
-    for (ds = array_first(&dsources, &it);
-         ds != NULL;
-         ds = array_next(&dsources, &it)) {
-        if (ltype_compile_methods(&tctx->mctx,
-                                  (lkit_type_t *)(*ds)->_struct,
-                                  module,
-                                  (*ds)->kind, 1)) {
-            TRRET(DSOURCE + 100);
-        }
-    }
     return 0;
 }
 
 
 static int
-dsource_link(LLVMExecutionEngineRef ee, LLVMModuleRef module)
+dsource_link(UNUSED LLVMExecutionEngineRef ee,
+             UNUSED LLVMModuleRef module)
 {
-    array_iter_t it;
-    dsource_t **ds;
-
-
-    for (ds = array_first(&dsources, &it);
-         ds != NULL;
-         ds = array_next(&dsources, &it)) {
-        if (ltype_link_methods((lkit_type_t *)(*ds)->_struct,
-                               ee,
-                               module,
-                               (*ds)->kind)) {
-            TRRET(DSOURCE + 200);
-        }
-    }
     return 0;
 }
 
@@ -764,27 +739,27 @@ _compile_trt(testrt_t *trt, void *udata)
     /* methods */
     snprintf(buf, sizeof(buf), "%s.take", trt->name->data);
     name = bytes_new_from_str(buf);
-    if (ltype_compile_methods(&tctx->mctx,
-                              (lkit_type_t *)trt->takeexpr->type,
-                              module,
-                              name,
-                              0) != 0) {
-        res = TESTRT_COMPILE + 200;
-        goto end;
-    }
+    //if (ltype_compile_methods(&tctx->mctx,
+    //                          (lkit_type_t *)trt->takeexpr->type,
+    //                          module,
+    //                          name,
+    //                          0) != 0) {
+    //    res = TESTRT_COMPILE + 200;
+    //    goto end;
+    //}
     bytes_decref(&name);
 
     if (trt->doexpr != NULL) {
         snprintf(buf, sizeof(buf), "%s.do", trt->name->data);
         name = bytes_new_from_str(buf);
-        if (ltype_compile_methods(&tctx->mctx,
-                                  (lkit_type_t *)trt->doexpr->type,
-                                  module,
-                                  name,
-                                  0) != 0) {
-            res = TESTRT_COMPILE + 201;
-            goto end;
-        }
+        //if (ltype_compile_methods(&tctx->mctx,
+        //                          (lkit_type_t *)trt->doexpr->type,
+        //                          module,
+        //                          name,
+        //                          0) != 0) {
+        //    res = TESTRT_COMPILE + 201;
+        //    goto end;
+        //}
         bytes_decref(&name);
     }
 
@@ -1071,23 +1046,23 @@ _link(testrt_ctx_t *tctx, LLVMExecutionEngineRef ee, LLVMModuleRef module)
 
         snprintf(buf, sizeof(buf), "%s.take", trt->name->data);
         name = bytes_new_from_str(buf);
-        if (ltype_link_methods((lkit_type_t *)trt->takeexpr->type,
-                               ee,
-                               module,
-                               name)) {
-            TRRET(TESTRT_LINK + 2);
-        }
+        //if (ltype_link_methods((lkit_type_t *)trt->takeexpr->type,
+        //                       ee,
+        //                       module,
+        //                       name)) {
+        //    TRRET(TESTRT_LINK + 2);
+        //}
         bytes_decref(&name);
 
         if (trt->doexpr != NULL) {
             snprintf(buf, sizeof(buf), "%s.do", trt->name->data);
             name = bytes_new_from_str(buf);
-            if (ltype_link_methods((lkit_type_t *)trt->doexpr->type,
-                                   ee,
-                                   module,
-                                   name)) {
-                TRRET(TESTRT_LINK + 3);
-            }
+            //if (ltype_link_methods((lkit_type_t *)trt->doexpr->type,
+            //                       ee,
+            //                       module,
+            //                       name)) {
+            //    TRRET(TESTRT_LINK + 3);
+            //}
             bytes_decref(&name);
         }
     }

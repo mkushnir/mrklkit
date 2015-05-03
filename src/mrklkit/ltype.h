@@ -108,10 +108,10 @@ struct _lkit_expr;
 
 typedef struct _lkit_type {
     int tag;
+    int setnull:1;
     /* weak ref */
     char *name;
     uint64_t hash;
-    LLVMTypeRef (*compile)(struct _lkit_type *, LLVMContextRef);
 } lkit_type_t;
 
 #define LTYPE_ERROR(pty) (((lkit_type_t *)(pty))->error)

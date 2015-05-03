@@ -347,6 +347,7 @@ lkit_type_new(lkit_tag_t tag)
 
     }
 
+    ty->setnull = 0;
     ty->hash = 0;
 
     return ty;

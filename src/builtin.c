@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <llvm-c/Core.h>
-
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
 #define TRRET_DEBUG_VERBOSE
@@ -416,12 +414,12 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     !LKIT_EXPR_CONSTANT(*name)) {
 
                     (*name)->error = 1;
-                    TRRET(REMOVE_UNDEF + 18);
+                    TRRET(REMOVE_UNDEF + 19);
                 }
 
                 if ((elty = lkit_array_get_element_type(ta)) == NULL) {
                     (*cont)->error = 1;
-                    TRRET(REMOVE_UNDEF + 19);
+                    TRRET(REMOVE_UNDEF + 20);
                 }
 
                 expr->type = elty;
@@ -431,7 +429,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         default:
             lkit_expr_dump(expr);
             (*cont)->error = 1;
-            TRRET(REMOVE_UNDEF + 20);
+            TRRET(REMOVE_UNDEF + 21);
         }
 
         if (strcmp(name, "parse") != 0) {
@@ -442,11 +440,11 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                 expr->error = 1;
                 TRACE("expected expected default value:");
                 lkit_expr_dump(expr);
-                TRRET(REMOVE_UNDEF + 21);
+                TRRET(REMOVE_UNDEF + 22);
             }
 
             if (builtin_remove_undef(mctx, ectx, *dflt) != 0) {
-                TRRET(REMOVE_UNDEF + 22);
+                TRRET(REMOVE_UNDEF + 23);
             }
 
             if ((*dflt)->type->tag != LKIT_NULL) {
@@ -454,7 +452,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     (*dflt)->error = 1;
                     TRACE("type of default value doesn't match item type:");
                     lkit_expr_dump(expr);
-                    TRRET(REMOVE_UNDEF + 23);
+                    TRRET(REMOVE_UNDEF + 24);
                 }
             }
         } else {
@@ -479,7 +477,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         assert(cont != NULL);
 
         if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
-            TRRET(REMOVE_UNDEF + 24);
+            TRRET(REMOVE_UNDEF + 25);
         }
 
         ty = (*cont)->type;
@@ -499,7 +497,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     !LKIT_EXPR_CONSTANT(*name)) {
 
                     (*name)->error = 1;
-                    TRRET(REMOVE_UNDEF + 25);
+                    TRRET(REMOVE_UNDEF + 26);
                 }
 
                 bname = (bytes_t *)(*name)->value.literal->body;
@@ -507,7 +505,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                         lkit_struct_get_field_type(ts, bname)) == NULL) {
                     (*cont)->error = 1;
                     TRACE("problem name: %s", bname->data);
-                    TRRET(REMOVE_UNDEF + 26);
+                    TRRET(REMOVE_UNDEF + 27);
                 }
 
             }
@@ -526,12 +524,12 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     !LKIT_EXPR_CONSTANT(*name)) {
 
                     (*name)->error = 1;
-                    TRRET(REMOVE_UNDEF + 27);
+                    TRRET(REMOVE_UNDEF + 28);
                 }
 
                 if ((elty = lkit_dict_get_element_type(td)) == NULL) {
                     (*cont)->error = 1;
-                    TRRET(REMOVE_UNDEF + 28);
+                    TRRET(REMOVE_UNDEF + 29);
                 }
 
             }
@@ -550,12 +548,12 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     !LKIT_EXPR_CONSTANT(*name)) {
 
                     (*name)->error = 1;
-                    TRRET(REMOVE_UNDEF + 29);
+                    TRRET(REMOVE_UNDEF + 30);
                 }
 
                 if ((elty = lkit_array_get_element_type(ta)) == NULL) {
                     (*cont)->error = 1;
-                    TRRET(REMOVE_UNDEF + 30);
+                    TRRET(REMOVE_UNDEF + 31);
                 }
 
             }
@@ -563,7 +561,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
         default:
             (*cont)->error = 1;
-            TRRET(REMOVE_UNDEF + 31);
+            TRRET(REMOVE_UNDEF + 32);
 
         }
 
@@ -571,12 +569,12 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         assert(setv != NULL);
 
         if (builtin_remove_undef(mctx, ectx, *setv) != 0) {
-            TRRET(REMOVE_UNDEF + 32);
+            TRRET(REMOVE_UNDEF + 33);
         }
 
         if (lkit_type_cmp((*setv)->type, elty) != 0) {
             (*setv)->error = 1;
-            TRRET(REMOVE_UNDEF + 33);
+            TRRET(REMOVE_UNDEF + 34);
         }
 
     } else if (strcmp(name, "del") == 0) {
@@ -592,7 +590,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         assert(cont != NULL);
 
         if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
-            TRRET(REMOVE_UNDEF + 34);
+            TRRET(REMOVE_UNDEF + 35);
         }
 
         ty = (*cont)->type;
@@ -610,7 +608,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     !LKIT_EXPR_CONSTANT(*name)) {
 
                     (*name)->error = 1;
-                    TRRET(REMOVE_UNDEF + 35);
+                    TRRET(REMOVE_UNDEF + 36);
                 }
             }
             break;
@@ -627,7 +625,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     !LKIT_EXPR_CONSTANT(*name)) {
 
                     (*name)->error = 1;
-                    TRRET(REMOVE_UNDEF + 36);
+                    TRRET(REMOVE_UNDEF + 37);
                 }
             }
             break;
@@ -644,14 +642,14 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     !LKIT_EXPR_CONSTANT(*name)) {
 
                     (*name)->error = 1;
-                    TRRET(REMOVE_UNDEF + 37);
+                    TRRET(REMOVE_UNDEF + 38);
                 }
             }
             break;
 
         default:
             (*cont)->error = 1;
-            TRRET(REMOVE_UNDEF + 38);
+            TRRET(REMOVE_UNDEF + 39);
 
         }
 
@@ -665,18 +663,18 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         assert(cont != NULL);
 
         if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
-            TRRET(REMOVE_UNDEF + 39);
+            TRRET(REMOVE_UNDEF + 40);
         }
 
         if ((*cont)->type->tag != LKIT_STRUCT) {
-            TRRET(REMOVE_UNDEF + 40);
+            TRRET(REMOVE_UNDEF + 41);
         } else {
             lkit_expr_t **opt;
             bytes_t *optname;
 
             if ((opt = array_get(&expr->subs, 1)) == NULL) {
                 expr->error = 1;
-                TRRET(REMOVE_UNDEF + 41);
+                TRRET(REMOVE_UNDEF + 42);
             }
 
             /* constant str */
@@ -684,7 +682,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                 !LKIT_EXPR_CONSTANT(*opt)) {
 
                 (*opt)->error = 1;
-                TRRET(REMOVE_UNDEF + 42);
+                TRRET(REMOVE_UNDEF + 43);
             }
 
             optname = (bytes_t *)(*opt)->value.literal->body;
@@ -697,7 +695,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             } else {
                 //lkit_expr_dump(expr);
                 (*opt)->error = 1;
-                TRRET(REMOVE_UNDEF + 43);
+                TRRET(REMOVE_UNDEF + 44);
             }
         }
 
@@ -717,7 +715,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
              arg = array_next(&expr->subs, &it)) {
 
             if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-                TRRET(REMOVE_UNDEF + 44);
+                TRRET(REMOVE_UNDEF + 45);
             }
         }
 
@@ -731,7 +729,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         assert(arg != NULL);
 
         if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-            TRRET(REMOVE_UNDEF + 45);
+            TRRET(REMOVE_UNDEF + 46);
         }
 
     } else if (strcmp(name, "has") == 0 ||
@@ -744,7 +742,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         assert(cont != NULL);
 
         if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
-            TRRET(REMOVE_UNDEF + 46);
+            TRRET(REMOVE_UNDEF + 47);
         }
 
         ty = (*cont)->type;
@@ -764,14 +762,14 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     (*name)->error = 1;
                     TRACE("expected string literal as a dict key:");
                     lkit_expr_dump(expr);
-                    TRRET(REMOVE_UNDEF + 47);
+                    TRRET(REMOVE_UNDEF + 48);
                 }
             }
             break;
 
         default:
             (*cont)->error = 1;
-            TRRET(REMOVE_UNDEF + 48);
+            TRRET(REMOVE_UNDEF + 49);
 
         }
 
@@ -786,7 +784,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
              arg = array_next(&expr->subs, &it)) {
 
             if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-                TRRET(REMOVE_UNDEF + 49);
+                TRRET(REMOVE_UNDEF + 50);
             }
 
             if (ty != NULL) {
@@ -794,7 +792,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     (*arg)->error = 1;
                     TRACE("type of the argument does not match those previous:");
                     lkit_expr_dump(expr);
-                    TRRET(REMOVE_UNDEF + 50);
+                    TRRET(REMOVE_UNDEF + 51);
                 }
             } else {
                 ty = (*arg)->type;
@@ -808,7 +806,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         assert(subj != NULL);
 
         if (builtin_remove_undef(mctx, ectx, *subj) != 0) {
-            TRRET(REMOVE_UNDEF + 51);
+            TRRET(REMOVE_UNDEF + 52);
         }
 
         if (expr->type->tag != LKIT_INT) {
@@ -832,7 +830,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             (*ty)->error = 1;
             TRACE("type is not  supported in dp-new:");
             lkit_expr_dump(expr);
-            TRRET(REMOVE_UNDEF + 52);
+            TRRET(REMOVE_UNDEF + 53);
         }
 
         expr->type = (*ty)->type;
@@ -840,14 +838,14 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         arg = array_get(&expr->subs, 1);
         assert(arg != NULL);
         if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-            TRRET(REMOVE_UNDEF + 53);
+            TRRET(REMOVE_UNDEF + 54);
         }
 
         if ((*arg)->type->tag != LKIT_STR) {
             (*arg)->error = 1;
             TRACE("argument must be a string in new:");
             lkit_expr_dump(expr);
-            TRRET(REMOVE_UNDEF + 54);
+            TRRET(REMOVE_UNDEF + 55);
         }
 
     } else if (strcmp(name, "new") == 0) {
@@ -867,7 +865,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             (*ty)->error = 1;
             TRACE("type is not supported in new:");
             lkit_expr_dump(expr);
-            TRRET(REMOVE_UNDEF + 52);
+            TRRET(REMOVE_UNDEF + 56);
         }
 
         expr->type = (*ty)->type;
@@ -879,7 +877,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         assert(arg != NULL);
 
         if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-            TRRET(REMOVE_UNDEF + 53);
+            TRRET(REMOVE_UNDEF + 57);
         }
 
         if (!((*arg)->type->tag == LKIT_NULL ||
@@ -894,7 +892,87 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             (*arg)->error = 1;
             TRACE("arg is not supported in isnull:");
             lkit_expr_dump(expr);
-            TRRET(REMOVE_UNDEF + 54);
+            TRRET(REMOVE_UNDEF + 58);
+        }
+
+    } else if (strcmp(name, "traverse") == 0) {
+        lkit_expr_t **cont, **cbwrap, **cb;
+        lkit_func_t *cbty;
+
+        /*
+         * (traverse cont (addrof fn))
+         */
+
+        cont = array_get(&expr->subs, 0);
+        assert(cont != NULL);
+
+        if (builtin_remove_undef(mctx, ectx, *cont) != 0) {
+            TRRET(REMOVE_UNDEF + 59);
+        }
+
+        cbwrap = array_get(&expr->subs, 1);
+        assert(cbwrap != NULL);
+
+        if (builtin_remove_undef(mctx, ectx, *cbwrap) != 0) {
+            TRRET(REMOVE_UNDEF + 60);
+        }
+
+        cb = array_get(&(*cbwrap)->subs, 0);
+        assert(cb != NULL);
+
+        if ((*cb)->type->tag != LKIT_FUNC) {
+            TRACE("Callback can only a function, found:");
+            lkit_expr_dump(*cb);
+            TRRET(REMOVE_UNDEF + 61);
+        }
+
+        cbty = (lkit_func_t *)(*cb)->type;
+
+        if ((*cont)->type->tag == LKIT_ARRAY) {
+            lkit_array_t *ta;
+            lkit_type_t *elty;
+            lkit_type_t *cbparamty;
+
+            ta = (lkit_array_t *)(*cont)->type;
+            elty = lkit_array_get_element_type(ta);
+            cbparamty = lkit_func_get_arg_type(cbty, 0);
+
+            if (cbparamty == NULL || lkit_type_cmp(elty, cbparamty) != 0) {
+                TRRET(REMOVE_UNDEF + 62);
+            }
+
+        } else if ((*cont)->type->tag == LKIT_DICT) {
+            lkit_dict_t *td;
+            lkit_type_t *elty;
+            lkit_type_t *cbparamty;
+
+            td = (lkit_dict_t *)(*cont)->type;
+            elty = lkit_dict_get_element_type(td);
+            cbparamty = lkit_func_get_arg_type(cbty, 0);
+            if (cbparamty == NULL || cbparamty->tag != LKIT_STR) {
+                TRRET(REMOVE_UNDEF + 63);
+            }
+
+            cbparamty = lkit_func_get_arg_type(cbty, 1);
+            if (cbparamty == NULL || lkit_type_cmp(elty, cbparamty) != 0) {
+                TRRET(REMOVE_UNDEF + 64);
+            }
+
+        } else {
+            TRACE("Container can only be dict or array, found:");
+            lkit_expr_dump(*cont);
+            TRRET(REMOVE_UNDEF + 65);
+        }
+
+    } else if (strcmp(name, "addrof") == 0) {
+        lkit_expr_t **arg;
+
+        if ((arg = array_get(&expr->subs, 0)) == NULL) {
+            TRRET(REMOVE_UNDEF + 66);
+        }
+
+        if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
+            TRRET(REMOVE_UNDEF + 67);
         }
 
     } else {
@@ -910,11 +988,11 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             if ((ref = lkit_expr_find(ectx, expr->name)) == NULL) {
                 lkit_expr_dump(expr);
                 TRACE("name=%p", expr->name);
-                TRRET(REMOVE_UNDEF + 55);
+                TRRET(REMOVE_UNDEF + 100);
             }
 
             if (builtin_remove_undef(mctx, ectx, ref) != 0) {
-                TRRET(REMOVE_UNDEF + 56);
+                TRRET(REMOVE_UNDEF + 101);
             }
 
             /*
@@ -932,7 +1010,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
 
                     if (builtin_remove_undef(mctx, ectx, *arg) != 0) {
-                        TRRET(REMOVE_UNDEF + 57);
+                        TRRET(REMOVE_UNDEF + 102);
                     }
 
                     if (!isvararg) {
@@ -951,7 +1029,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                                     TRACE("type of the argument does not "
                                           "match function definition:");
                                     lkit_expr_dump(expr);
-                                    TRRET(REMOVE_UNDEF + 58);
+                                    TRRET(REMOVE_UNDEF + 103);
                                 }
                             }
                         }
@@ -968,7 +1046,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
 
                 exprty = lkit_expr_type_of(expr);
                 if (exprty->tag != refty->tag) {
-                    TRRET(REMOVE_UNDEF + 59);
+                    TRRET(REMOVE_UNDEF + 104);
                 }
             }
         }
@@ -983,7 +1061,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
              mod = array_next(&mctx->modules, &it)) {
             if ((*mod)->remove_undef != NULL) {
                 if ((*mod)->remove_undef(mctx, ectx, expr) != 0) {
-                    TR(REMOVE_UNDEF + 60);
+                    TR(REMOVE_UNDEF + 200);
                     break;
                 }
             }

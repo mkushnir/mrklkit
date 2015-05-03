@@ -524,6 +524,27 @@ mrklkit_rt_array_incref(rt_array_t *a)
 }
 
 
+static int
+array_traverse_cb(void *i, void *udata)
+{
+    struct {
+        void (*cb)(void *);
+    } *params = udata;
+    params->cb(i);
+    return 0;
+}
+
+void
+mrklkit_rt_array_traverse(rt_array_t *a, void (*cb)(void *))
+{
+    struct {
+        void (*cb)(void *);
+    } params;
+
+    params.cb = cb;
+    (void)array_traverse(&a->fields, array_traverse_cb, &params);
+}
+
 /**
  * dict
  */
@@ -649,7 +670,6 @@ mrklkit_rt_dict_print(rt_dict_t *value)
 rt_dict_t *
 mrklkit_rt_dict_new(lkit_dict_t *ty)
 {
-    //TRACE(">>>");
     MRKLKIT_RT_DICT_NEW_BODY(malloc, dict_init);
 }
 
@@ -852,6 +872,29 @@ mrklkit_rt_set_dict_item_struct(rt_dict_t *value, bytes_t *key, rt_struct_t *val
     dict_set_item(&value->fields, key, v.v);
 }
 
+
+static int
+dict_traverse_cb(bytes_t *key, void *value, void *udata)
+{
+    struct {
+        void (*cb)(bytes_t *, void *);
+    } *params = udata;
+    params->cb(key, value);
+    return 0;
+}
+
+void
+mrklkit_rt_dict_traverse(rt_dict_t *value, void (*cb)(bytes_t *, void *))
+{
+    struct {
+        void (*cb)(bytes_t *, void *);
+    } params;
+
+    params.cb = cb;
+    (void)dict_traverse(&value->fields,
+                        (dict_traverser_t)dict_traverse_cb,
+                        &params);
+}
 
 /**
  * struct

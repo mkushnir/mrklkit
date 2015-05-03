@@ -596,7 +596,8 @@ lkit_compile_set(mrklkit_ctx_t *mctx,
             lkit_type_t *fty;
             char buf[64];
 
-            if ((fty = lkit_dict_get_element_type((lkit_dict_t *)(*cont)->type)) == NULL) {
+            if ((fty = lkit_dict_get_element_type(
+                            (lkit_dict_t *)(*cont)->type)) == NULL) {
                 TR(COMPILE_SET + 200);
                 goto err;
             }
@@ -2681,6 +2682,87 @@ tostr_done:
 
         v = LLVMBuildIsNull(builder, a, NEWVAR("isnull"));
 
+    } else if (strcmp(name, "traverse") == 0) {
+        lkit_expr_t **cont, **cb;
+        LLVMValueRef fn, args[2];
+        char *fname;
+
+        cont = array_get(&expr->subs, 0);
+        assert(cont != NULL);
+
+        cb = array_get(&expr->subs, 1);
+        assert(cb != NULL);
+
+        if ((args[0] = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         *cont,
+                                         udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 5601);
+            goto err;
+        }
+
+        if ((*cont)->type->tag == LKIT_ARRAY) {
+            fname = "mrklkit_rt_array_traverse";
+        } else {
+            assert((*cont)->type->tag == LKIT_DICT);
+            fname = "mrklkit_rt_dict_traverse";
+        }
+
+        if ((fn = LLVMGetNamedFunction(module, fname)) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        args[0] = LLVMBuildPointerCast(builder,
+                                       args[0],
+                                       LLVMTypeOf(LLVMGetParam(fn, 0)),
+                                       NEWVAR("cast"));
+
+        if ((args[1] = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         *cb,
+                                         udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 5602);
+            goto err;
+        }
+
+        args[1] = LLVMBuildPointerCast(builder,
+                                       args[1],
+                                       LLVMTypeOf(LLVMGetParam(fn, 1)),
+                                       NEWVAR("cast"));
+
+        v = LLVMBuildCall(builder,
+                          fn,
+                          args,
+                          countof(args),
+                          "");
+
+    } else if (strcmp(name, "addrof") == 0) {
+        lkit_expr_t **arg;
+        LLVMValueRef ref;
+
+        arg = array_get(&expr->subs, 0);
+        assert(arg != NULL);
+
+        if ((*arg)->type->tag == LKIT_FUNC) {
+            ref = LLVMGetNamedFunction(module,
+                                       (char *)(*arg)->name->data);
+        } else {
+            ref = LLVMGetNamedGlobal(module,
+                                     (char *)(*arg)->name->data);
+        }
+
+        v = LLVMBuildPointerCast(builder,
+                                 ref,
+                                 mrklkit_ctx_get_type_backend(mctx,
+                                     expr->type),
+                                 NEWVAR("cast"));
+
+
+
     } else {
         mrklkit_module_t **mod;
         array_iter_t it;
@@ -2768,6 +2850,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                         /* XXX check args */
 
                         if (tf->fields.elnum != (expr->subs.elnum + 1)) {
+                            lkit_type_dump(expr->value.ref->type);
+                            lkit_expr_dump(expr);
                             TR(LKIT_COMPILE_EXPR + 2);
                             break;
                         }
@@ -3432,7 +3516,8 @@ _compile(lkit_gitem_t **gitem, void *udata)
                                 TRRET(SYM_COMPILE + 1);
                             }
                         }
-                        if (expr->type->tag == LKIT_VOID) {
+
+                        if (lkit_expr_type_of(expr)->tag == LKIT_VOID) {
                             LLVMBuildRetVoid(builder);
                         } else {
                             LLVMBuildRet(builder, v);
