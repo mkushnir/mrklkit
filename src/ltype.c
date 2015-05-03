@@ -30,6 +30,13 @@ static array_t builtin_types;
  */
 static dict_t typedefs;
 
+static int
+null_init(void **v)
+{
+    *v = NULL;
+    return 0;
+}
+
 /*
  * array of weak refs to lkit_type_t *
  */
@@ -81,6 +88,7 @@ lkit_type_destroy(lkit_type_t **ty)
 
                 tf = (lkit_func_t *)*ty;
                 array_fini(&tf->fields);
+                array_fini(&tf->names);
             }
             break;
 
@@ -305,7 +313,7 @@ lkit_type_new(lkit_tag_t tag)
             array_init(&ts->names,
                        sizeof(bytes_t *),
                        0,
-                       NULL,
+                       (array_initializer_t)null_init,
                        (array_finalizer_t)lkit_array_names_fini);
             array_init(&ts->parsers,
                        sizeof(lkit_parser_t),
@@ -325,6 +333,11 @@ lkit_type_new(lkit_tag_t tag)
             tf->base.tag = tag;
             tf->base.name = "func";
             array_init(&tf->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
+            array_init(&tf->names,
+                       sizeof(bytes_t *),
+                       0,
+                       (array_initializer_t)null_init,
+                       (array_finalizer_t)lkit_array_names_fini);
             ty = (lkit_type_t *)tf;
         }
         break;
@@ -603,7 +616,8 @@ _lkit_type_dump(lkit_type_t *ty, int level)
 
                 bytes_t **name;
 
-                if ((name = array_get(&ts->names, it.iter)) != NULL) {
+                if ((name = array_get(&ts->names, it.iter)) != NULL &&
+                    *name != NULL) {
                     TRACEC(" (%s ", (*name)->data);
                     _lkit_type_dump(*elty, level + 1);
                     TRACEC(") ");
@@ -626,6 +640,18 @@ _lkit_type_dump(lkit_type_t *ty, int level)
             for (elty = array_first(&tf->fields, &it);
                  elty != NULL;
                  elty = array_next(&tf->fields, &it)) {
+
+                bytes_t **name;
+
+                if ((name = array_get(&tf->names, it.iter)) != NULL &&
+                    *name != NULL) {
+                    TRACEC(" (%s ", (*name)->data);
+                    _lkit_type_dump(*elty, level + 1);
+                    TRACEC(") ");
+                } else {
+                    _lkit_type_dump(*elty, level + 1);
+                }
+
                 _lkit_type_dump(*elty, level + 1);
             }
         }
@@ -725,9 +751,22 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
  */
 
 static int
-struct_field_name_cmp(bytes_t **a, bytes_t **b)
+field_name_cmp(bytes_t **a, bytes_t **b)
 {
-    return bytes_cmp(*a, *b);
+    if (*a == NULL) {
+        if (*b == NULL) {
+            return 0;
+        } else {
+            return -1;
+        }
+    } else {
+        if (*b == NULL) {
+            return 1;
+        } else {
+            return bytes_cmp(*a, *b);
+        }
+    }
+    return 0;
 }
 
 static int
@@ -805,7 +844,7 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                     if (diff == 0) {
                         diff = array_cmp(&sa->names,
                                          &sb->names,
-                                         (array_compar_t)struct_field_name_cmp,
+                                         (array_compar_t)field_name_cmp,
                                          0);
                     }
                 }
@@ -822,6 +861,12 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                                  &fb->fields,
                                  (array_compar_t)type_cmp,
                                  0);
+                if (diff == 0) {
+                    diff = array_cmp(&fa->names,
+                                     &fb->names,
+                                     (array_compar_t)field_name_cmp,
+                                     0);
+                }
             }
             break;
 
@@ -1234,6 +1279,45 @@ parse_fielddef(mrklkit_ctx_t *mctx,
     return 0;
 }
 
+
+
+static int
+parse_argdef(mrklkit_ctx_t *mctx,
+             fparser_datum_t *dat,
+             bytes_t **pname,
+             lkit_type_t **pty,
+             int seterror)
+{
+    array_t *form;
+    array_iter_t it;
+    fparser_datum_t **d;
+
+    if (dat->tag != FPARSER_SEQ) {
+        dat->error = seterror;
+        TRRET(PARSE_ARGDEF + 1);
+    }
+
+    form = (array_t *)dat->body;
+    if (lparse_first_word_bytes(form, &it, pname, seterror) != 0) {
+        dat->error = seterror;
+        TRRET(PARSE_ARGDEF + 2);
+    }
+    *pname = bytes_new_from_bytes(*pname);
+
+    if ((d = array_next(form, &it)) == NULL) {
+        dat->error = seterror;
+        TRRET(PARSE_ARGDEF + 3);
+    }
+
+    if ((*pty = lkit_type_parse(mctx, *d, seterror)) == NULL) {
+        dat->error = seterror;
+        TRRET(PARSE_ARGDEF + 4);
+    }
+
+    return 0;
+}
+
+
 lkit_type_t *
 lkit_type_parse(mrklkit_ctx_t *mctx,
                 fparser_datum_t *dat,
@@ -1418,6 +1502,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                 lkit_func_t *tf;
                 fparser_datum_t **node;
                 lkit_type_t **paramtype;
+                bytes_t **paramname;
 
 
                 ty = lkit_type_get(mctx, LKIT_FUNC);
@@ -1432,23 +1517,33 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                         FAIL("array_incr");
                     }
 
+                    if ((paramname = array_incr(&tf->names)) == NULL) {
+                        FAIL("array_incr");
+                    }
+
+                    /*
+                     * (func ty ty ty)
+                     *
+                     * (func ty (arg ty) (arg ty) (arg ty))
+                     */
                     if ((*paramtype = lkit_type_parse(mctx,
                                                       *node,
                                                       1)) == NULL) {
-                        TR(LKIT_TYPE_PARSE + 12);
-                        //fparser_datum_dump(node, NULL);
-                        goto err;
-                    }
-                    /* no function params or return values */
-                    if ((*paramtype)->tag == LKIT_FUNC) {
-                        (*node)->error = 1;
-                        TR(LKIT_TYPE_PARSE + 13);
-                        goto err;
+
+                        if (parse_argdef(mctx,
+                                         *node,
+                                         paramname,
+                                         paramtype,
+                                         1) != 0) {
+                            TR(LKIT_TYPE_PARSE + 12);
+                            //fparser_datum_dump(node, NULL);
+                            goto err;
+                        }
                     }
                 }
 
-                /* no void functions */
                 if (tf->fields.elnum < 1) {
+                    /* invalid (func) */
                     TR(LKIT_TYPE_PARSE + 14);
                     goto err;
                 }

@@ -399,6 +399,8 @@ lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
     expr->referenced = 0;
     expr->undef_removed = 0;
     expr->nodecref = 0;
+    expr->fparam = 0;
+    expr->fparam_idx = -1;
     expr->type = NULL;
 }
 
@@ -535,7 +537,6 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
              */
             expr->name = (bytes_t *)(dat->body);
             if ((expr->value.ref = lkit_expr_find(ectx, expr->name)) == NULL) {
-                //lkit_expr_dump(expr);
                 TRACEN("cannot find reference target: ");
                 TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
                 TR(LKIT_EXPR_PARSE + 1);
@@ -586,11 +587,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                     /*
                      * XXX (xxx) (xxx :q q :w w :e e)
                      */
-                    ///* functions only ATM */
-                    //if (expr->value.ref->type->tag != LKIT_FUNC) {
-                    //    TR(LKIT_EXPR_PARSE + 5);
-                    //    goto err;
-                    //}
+
                     /*
                      * Please note difference expr->value.ref->type vs
                      * expr->type.

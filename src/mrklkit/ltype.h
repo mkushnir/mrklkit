@@ -72,6 +72,7 @@ typedef enum _lkit_tag {
 #define LKIT_TAG_POINTER(tag) (\
     (tag) == LKIT_NULL ||      \
     (tag) == LKIT_ANY ||       \
+    (tag) == LKIT_STR ||       \
     (tag) == LKIT_ARRAY ||     \
     (tag) == LKIT_DICT ||      \
     (tag) == LKIT_STRUCT ||    \
@@ -202,6 +203,7 @@ typedef struct _lkit_func {
     struct _lkit_type base;
     /* lkit_type_t * */
     array_t fields;
+    array_t names;
 } lkit_func_t;
 
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);

@@ -343,7 +343,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             if (fty->tag > _LKIT_END_OF_BUILTIN_TYPES) {
                 v = LLVMBuildPointerCast(builder,
                                          v,
-                                         ltype_compile(mctx, fty, module),
+                                         mrklkit_ctx_get_type_backend(mctx, fty),
                                          NEWVAR("cast"));
             }
         }
@@ -398,7 +398,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             if (fty->tag > _LKIT_END_OF_BUILTIN_TYPES) {
                 v = LLVMBuildPointerCast(builder,
                                          v,
-                                         ltype_compile(mctx, fty, module),
+                                         mrklkit_ctx_get_type_backend(mctx, fty),
                                          NEWVAR("cast"));
             }
         }
@@ -474,7 +474,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             if (fty->tag > _LKIT_END_OF_BUILTIN_TYPES) {
                 v = LLVMBuildPointerCast(builder,
                                          v,
-                                         ltype_compile(mctx, fty, module),
+                                         mrklkit_ctx_get_type_backend(mctx, fty),
                                          NEWVAR("cast"));
             }
         }
@@ -2581,7 +2581,7 @@ tostr_done:
 
         v = LLVMBuildPointerCast(builder,
                                  v,
-                                 ltype_compile(mctx, expr->type, module),
+                                 mrklkit_ctx_get_type_backend(mctx, expr->type),
                                  NEWVAR("cast"));
 
     } else if (strcmp(name, "new") == 0) {
@@ -2621,7 +2621,7 @@ tostr_done:
 
         v = LLVMBuildPointerCast(builder,
                                  v,
-                                 ltype_compile(mctx, expr->type, module),
+                                 mrklkit_ctx_get_type_backend(mctx, expr->type),
                                  NEWVAR("cast"));
 
     } else if (strcmp(name, "set") == 0) {
@@ -2827,129 +2827,128 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
                     assert(builder != NULL);
 
-                    if ((ref = LLVMGetNamedGlobal(module,
-                            (char *)expr->name->data)) == NULL) {
+                    if (expr->value.ref->fparam) {
+                        LLVMBasicBlockRef bb;
 
-                        bytes_t *qual_name = NULL;
+                        bb = LLVMGetInsertBlock(builder);
+                        fn = LLVMGetBasicBlockParent(bb);
+                        v = LLVMGetParam(fn, expr->value.ref->fparam_idx);
 
-                        qual_name = lkit_expr_qual_name(ectx, expr->name);
-                        if ((ref = LLVMGetNamedGlobal(module,
-                                (char *)qual_name->data)) == NULL) {
-                            LLVMDumpModule(module);
-                            TRACE("name %s qual_name %s",
-                                  expr->name->data,
-                                  qual_name->data);
-                            lkit_expr_dump(expr);
-                            FAIL("LLVMGetNamedGlobal");
-                        }
-                        snprintf(buf,
-                                 sizeof(buf),
-                                 "_mrklkit.%s.init",
-                                 (char *)qual_name->data);
-                        bytes_decref(&qual_name);
                     } else {
-                        snprintf(buf,
-                                 sizeof(buf),
-                                 "_mrklkit.%s.init",
-                                 (char *)expr->name->data);
-                    }
+                        if ((ref = LLVMGetNamedGlobal(module,
+                                (char *)expr->name->data)) == NULL) {
+                            bytes_t *qual_name = NULL;
 
-                    if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
-                        if (expr->value.ref->lazy_init) {
-                            LLVMValueRef testv, test;
-                            LLVMBasicBlockRef currblock,
-                                              nextblock,
-                                              tblock,
-                                              fblock;
+                            qual_name = lkit_expr_qual_name(ectx, expr->name);
+                            if ((ref = LLVMGetNamedGlobal(module,
+                                    (char *)qual_name->data)) == NULL) {
 
-                            currblock = LLVMGetInsertBlock(builder);
-                            nextblock = LLVMGetNextBasicBlock(currblock);
-
-                            if (nextblock == NULL) {
-                                LLVMValueRef parent;
-                                parent = LLVMGetBasicBlockParent(currblock);
-                                fblock = LLVMAppendBasicBlockInContext(
-                                    lctx, parent, NEWVAR("D.if.false"));
-                            } else {
-                                fblock = LLVMInsertBasicBlockInContext(
-                                    lctx, nextblock, NEWVAR("D.if.false"));
+                                LLVMDumpModule(module);
+                                TRACE("name %s qual_name %s",
+                                      expr->name->data,
+                                      qual_name->data);
+                                lkit_expr_dump(expr);
+                                FAIL("LLVMGetNamedGlobal");
                             }
-
-                            tblock = LLVMInsertBasicBlockInContext(
-                                lctx, fblock, NEWVAR("D.if.true"));
-
                             snprintf(buf,
                                      sizeof(buf),
-                                     "_mrklkit.%s.init.done",
+                                     "_mrklkit.%s.init",
+                                     (char *)qual_name->data);
+                            bytes_decref(&qual_name);
+                        } else {
+                            snprintf(buf,
+                                     sizeof(buf),
+                                     "_mrklkit.%s.init",
                                      (char *)expr->name->data);
-                            if ((testv = LLVMGetNamedGlobal(module,
-                                                            buf)) == NULL) {
-                                bytes_t *qual_name = NULL;
+                        }
 
-                                qual_name = lkit_expr_qual_name(ectx,
-                                                                expr->name);
+                        if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
+                            if (expr->value.ref->lazy_init) {
+                                LLVMValueRef testv, test;
+                                LLVMBasicBlockRef currblock,
+                                                  nextblock,
+                                                  tblock,
+                                                  fblock;
+
+                                currblock = LLVMGetInsertBlock(builder);
+                                nextblock = LLVMGetNextBasicBlock(currblock);
+
+                                if (nextblock == NULL) {
+                                    LLVMValueRef parent;
+                                    parent = LLVMGetBasicBlockParent(currblock);
+                                    fblock = LLVMAppendBasicBlockInContext(
+                                        lctx, parent, NEWVAR("D.if.false"));
+                                } else {
+                                    fblock = LLVMInsertBasicBlockInContext(
+                                        lctx, nextblock, NEWVAR("D.if.false"));
+                                }
+
+                                tblock = LLVMInsertBasicBlockInContext(
+                                    lctx, fblock, NEWVAR("D.if.true"));
+
                                 snprintf(buf,
                                          sizeof(buf),
                                          "_mrklkit.%s.init.done",
-                                         (char *)qual_name->data);
-                                bytes_decref(&qual_name);
-
+                                         (char *)expr->name->data);
                                 if ((testv = LLVMGetNamedGlobal(module,
                                                                 buf)) == NULL) {
-                                    TRACE("not found: %s", buf);
-                                    LLVMDumpModule(module);
-                                    FAIL("LLVMGetNamedGlobal");
+                                    bytes_t *qual_name = NULL;
+
+                                    qual_name = lkit_expr_qual_name(ectx,
+                                                                    expr->name);
+                                    snprintf(buf,
+                                             sizeof(buf),
+                                             "_mrklkit.%s.init.done",
+                                             (char *)qual_name->data);
+                                    bytes_decref(&qual_name);
+
+                                    if ((testv = LLVMGetNamedGlobal(module,
+                                                                    buf)) == NULL) {
+                                        TRACE("not found: %s", buf);
+                                        LLVMDumpModule(module);
+                                        FAIL("LLVMGetNamedGlobal");
+                                    }
                                 }
+
+                                test = LLVMBuildICmp(builder,
+                                                     LLVMIntEQ,
+                                                     LLVMBuildLoad(builder,
+                                                                   testv,
+                                                                   NEWVAR("test")),
+                                                     LLVMConstInt(
+                                                         LLVMInt1TypeInContext(
+                                                             lctx), 0, 0),
+                                                     NEWVAR("test"));
+                                LLVMBuildCondBr(builder, test, tblock, fblock);
+
+                                LLVMPositionBuilderAtEnd(builder, tblock);
+
+                                if (LLVMBuildCall(builder,
+                                                  fn,
+                                                  NULL,
+                                                  0,
+                                                  "") == NULL) {
+                                    TR(LKIT_COMPILE_EXPR + 4);
+                                }
+
+                                (void)LLVMBuildBr(builder, fblock);
+
+                                LLVMPositionBuilderAtEnd(builder, fblock);
                             }
-
-                            test = LLVMBuildICmp(builder,
-                                                 LLVMIntEQ,
-                                                 LLVMBuildLoad(builder,
-                                                               testv,
-                                                               NEWVAR("test")),
-                                                 LLVMConstInt(
-                                                     LLVMInt1TypeInContext(
-                                                         lctx), 0, 0),
-                                                 NEWVAR("test"));
-                            LLVMBuildCondBr(builder, test, tblock, fblock);
-
-                            LLVMPositionBuilderAtEnd(builder, tblock);
-
-//#ifdef MRKLKIT_LLVM_C_PATCH_VOID
-                            if (LLVMBuildCall(builder,
-                                              fn,
-                                              NULL,
-                                              0,
-                                              "") == NULL) {
-                                TR(LKIT_COMPILE_EXPR + 4);
-                            }
-//#else
-//                            if (LLVMBuildCall(builder,
-//                                              fn,
-//                                              NULL,
-//                                              0,
-//                                              NEWVAR("tmp")) == NULL) {
-//                                TR(LKIT_COMPILE_EXPR + 4);
-//                            }
-//#endif
-
-                            (void)LLVMBuildBr(builder, fblock);
-
-                            LLVMPositionBuilderAtEnd(builder, fblock);
                         }
-                    }
 
-                    if (v == NULL) {
-                        v = LLVMBuildLoad(builder, ref, NEWVAR("load"));
-                    }
+                        if (v == NULL) {
+                            v = LLVMBuildLoad(builder, ref, NEWVAR("load"));
+                        }
 
-                    if (expr->type->tag == LKIT_STR &&
-                            LKIT_EXPR_CONSTANT(expr)) {
-                        v = LLVMBuildPointerCast(builder,
-                                                 v,
-                                                 mrklkit_ctx_get_type_backend(
-                                                     mctx, expr->type),
-                                                 NEWVAR("cast"));
+                        if (expr->type->tag == LKIT_STR &&
+                                LKIT_EXPR_CONSTANT(expr)) {
+                            v = LLVMBuildPointerCast(builder,
+                                                     v,
+                                                     mrklkit_ctx_get_type_backend(
+                                                         mctx, expr->type),
+                                                     NEWVAR("cast"));
+                        }
                     }
                 }
                 break;
@@ -3118,7 +3117,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
         /*
          * decref old value
          */
-        if (torprefix != NULL && !expr->nodecref) {
+        if (torprefix != NULL && !expr->nodecref && expr->type->tag != LKIT_VOID) {
             LLVMValueRef tmp;
 
             (void)snprintf(buf, sizeof(buf), "%sdestroy", torprefix);
@@ -3155,7 +3154,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
     /*
      * incref
      */
-    if (torprefix != NULL && !expr->nodecref) {
+    if (torprefix != NULL && !expr->nodecref && expr->type->tag != LKIT_VOID) {
         (void)snprintf(buf, sizeof(buf), "%sincref", torprefix);
         if ((torfn = LLVMGetNamedFunction(module, buf)) == NULL) {
             TRACE("no such function: %s", buf);
@@ -3168,11 +3167,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
         LLVMBuildCall(builder, torfn, &storedv, 1, "");
     }
 
-//#ifdef MRKLKIT_LLVM_C_PATCH_VOID
     LLVMBuildRetVoid(builder);
-//#else
-//    LLVMBuildRet(builder, LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0));
-//#endif
     LLVMDisposeBuilder(builder);
     if (expr->type->tag != LKIT_VOID) {
         LLVMSetLinkage(v, LLVMPrivateLinkage);
@@ -3207,7 +3202,6 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
     if ((fn = LLVMGetNamedFunction(params->module, buf)) != NULL) {
         if (!expr->lazy_init) {
             if (expr->referenced) {
-//#ifdef MRKLKIT_LLVM_C_PATCH_VOID
                 if (LLVMBuildCall(params->builder,
                                   fn,
                                   NULL,
@@ -3215,15 +3209,6 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
                                   "") == NULL) {
                     TR(CALL_EAGER_INITIALIZER + 1);
                 }
-//#else
-//                if (LLVMBuildCall(params->builder,
-//                                  fn,
-//                                  NULL,
-//                                  0,
-//                                  NEWVAR("tmp")) == NULL) {
-//                    TR(CALL_EAGER_INITIALIZER + 1);
-//                }
-//#endif
             }
         } else {
             //TRACE("not calling");
@@ -3281,8 +3266,9 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
                            v);
         }
 
-        if (!expr->nodecref) {
+        if (!expr->nodecref && expr->type->tag != LKIT_VOID) {
             if ((v = LLVMGetNamedGlobal(params->module, (char *)name->data)) == NULL) {
+                TRACE("cannot find %s", name->data);
                 FAIL("call_finalizer");
             }
             switch (expr->type->tag) {
@@ -3379,6 +3365,8 @@ _compile(lkit_gitem_t **gitem, void *udata)
                                      mrklkit_ctx_get_type_backend(
                                          params->mctx, expr->type));
                 LLVMAddFunctionAttr(fn, LLVMNoUnwindAttribute);
+
+                /* and definition */
                 if (expr->subs.elnum) {
                     lkit_expr_t **body;
                     bytes_t *s;
@@ -3390,34 +3378,66 @@ _compile(lkit_gitem_t **gitem, void *udata)
                         FAIL("array_get");
                     }
                     assert(*body != NULL);
-                    if ((*body)->type->tag != LKIT_IR) {
-                        TRRET(SYM_COMPILE + 2);
-                    }
-                    //lkit_expr_dump(expr);
 
-                    if ((modaux = array_incr(&params->mctx->modaux)) == NULL) {
-                        FAIL("array_incr");
-                    }
-
-                    s = (bytes_t *)((*body)->value.literal->body);
-                    //D8(s->data, s->sz);
-
-                    if ((modaux->buf =
-                            LLVMCreateMemoryBufferWithMemoryRange(
-                                (char *)s->data,
-                                s->sz - 1,
-                                NEWVAR("aux"), 0)) == NULL) {
-                        FAIL("LLVMCreateMemoryBufferWithMemoryRange");
-                    }
                     lctx = LLVMGetModuleContext(params->module);
-                    if (LLVMParseIRInContext(lctx,
-                                             modaux->buf,
-                                             &modaux->module,
-                                             &error_msg) != 0) {
-                        TRACE("%s", error_msg);
-                        LLVMDisposeMessage(error_msg);
-                        error_msg = NULL;
-                        TRRET(SYM_COMPILE + 3);
+
+                    /* crazy ir case */
+                    if ((*body)->type->tag == LKIT_IR) {
+                        if ((modaux = array_incr(&params->mctx->modaux)) == NULL) {
+                            FAIL("array_incr");
+                        }
+
+                        s = (bytes_t *)((*body)->value.literal->body);
+                        //D8(s->data, s->sz);
+
+                        if ((modaux->buf =
+                                LLVMCreateMemoryBufferWithMemoryRange(
+                                    (char *)s->data,
+                                    s->sz - 1,
+                                    NEWVAR("aux"), 0)) == NULL) {
+                            FAIL("LLVMCreateMemoryBufferWithMemoryRange");
+                        }
+                        if (LLVMParseIRInContext(lctx,
+                                                 modaux->buf,
+                                                 &modaux->module,
+                                                 &error_msg) != 0) {
+                            TRACE("%s", error_msg);
+                            LLVMDisposeMessage(error_msg);
+                            error_msg = NULL;
+                            TRRET(SYM_COMPILE + 3);
+                        }
+                    } else {
+                        lkit_expr_t **pbody;
+                        LLVMBuilderRef builder;
+                        LLVMBasicBlockRef bb;
+                        LLVMValueRef v = NULL;
+                        array_iter_t it;
+
+                        builder = LLVMCreateBuilderInContext(lctx);
+                        bb = LLVMAppendBasicBlockInContext(lctx, fn, NEWVAR("F.start"));
+                        LLVMPositionBuilderAtEnd(builder, bb);
+
+                        for (pbody = array_first(&expr->subs, &it);
+                             pbody != NULL;
+                             pbody = array_next(&expr->subs, &it)) {
+                            if (!(*pbody)->isref && (*pbody)->value.literal == NULL) {
+                                continue;
+                            }
+                            if ((v = lkit_compile_expr(params->mctx,
+                                                       params->ectx,
+                                                       params->module,
+                                                       builder,
+                                                       *pbody,
+                                                       params->udata)) == NULL) {
+                                TRRET(SYM_COMPILE + 1);
+                            }
+                        }
+                        if (expr->type->tag == LKIT_VOID) {
+                            LLVMBuildRetVoid(builder);
+                        } else {
+                            LLVMBuildRet(builder, v);
+                        }
+                        LLVMDisposeBuilder(builder);
                     }
                 }
                 break;

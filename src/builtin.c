@@ -69,6 +69,9 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
     }
 
     if ((node = array_next(form, it)) != NULL) {
+        lkit_type_t **pargty;
+        array_iter_t it;
+        lkit_func_t *ft;
         lkit_expr_t **body;
 
         /*
@@ -87,10 +90,51 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
             TR(LKIT_PARSE_EXPRDEF + 5);
             goto err;
         }
+
+        ft = (lkit_func_t *)(*pexpr)->type;
+
+        /*
+         * create expressions for function arguments
+         */
+        /* skip through rettype */
+        if ((pargty = array_first(&ft->fields, &it)) == NULL) {
+            FAIL("array_first");
+        }
+
+        for (pargty = array_next(&ft->fields, &it);
+             pargty != NULL;
+             pargty = array_next(&ft->fields, &it)) {
+            bytes_t **pargname;
+            lkit_expr_t **parg;
+
+            if ((pargname = array_get(&ft->names, it.iter)) == NULL) {
+                FAIL("array_get");
+            }
+            if (*pargname == NULL) {
+                TRACE("named argument expected for %d in: %s", it.iter - 1, name->data);
+                TR(LKIT_PARSE_EXPRDEF + 5);
+                goto err;
+            }
+            if ((parg = array_incr(&(*pexpr)->subs)) == NULL) {
+                FAIL("array_incr");
+            }
+            if ((*parg = lkit_expr_new(*pexpr)) == NULL) {
+                TR(LKIT_PARSE_EXPRDEF + 5);
+                goto err;
+            }
+            (*parg)->type = *pargty;
+            (*parg)->fparam = 1;
+            (*parg)->fparam_idx = it.iter - 1;
+            lexpr_add_to_ctx(*pexpr, *pargname, *parg);
+        }
+
+
+
         if ((body = array_incr(&(*pexpr)->subs)) == NULL) {
             FAIL("array_incr");
         }
-        if ((*body = lkit_expr_parse(mctx, ectx, *node, 1)) == NULL) {
+
+        if ((*body = lkit_expr_parse(mctx, *pexpr, *node, 1)) == NULL) {
             (*node)->error = 1;
             TRACE("failed to parse function %s body", name->data);
             TR(LKIT_PARSE_EXPRDEF + 6);

@@ -46,6 +46,8 @@ typedef struct _lkit_expr {
     /* weekref */
     struct _lkit_expr *parent;
 
+    char fparam_idx;
+
     int referenced;
     int isref:1;
     int isbuiltin:1;
@@ -54,6 +56,7 @@ typedef struct _lkit_expr {
     int lazy_init:1;
     int undef_removed:1;
     int nodecref:1;
+    int fparam:1;
 
 } lkit_expr_t;
 

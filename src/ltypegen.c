@@ -358,7 +358,7 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
 
                 switch ((*fty)->tag) {
                 case LKIT_STR:
-                    dtor_name = "mrklkit_rt_bytes_destory";
+                    dtor_name = "mrklkit_rt_bytes_destroy";
                     BUILDCODE;
                     break;
 
