@@ -244,6 +244,17 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 }
 
 
+void
+ltype_maybe_compile_type(mrklkit_ctx_t *mctx,
+                         lkit_type_t *ty,
+                         LLVMModuleRef module)
+{
+    if (dict_get_item(&mctx->backends, ty) == NULL) {
+        (void)ltype_compile(mctx, ty, module);
+    }
+}
+
+
 static mrklkit_backend_t *
 ltype_get_backend(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
@@ -319,19 +330,18 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
 
             ts = (lkit_struct_t *)ty;
 
-            b1 = LLVMCreateBuilderInContext(lctx);
-            b2 = LLVMCreateBuilderInContext(lctx);
-
             if (LLVMGetNamedFunction(module, buf1) != NULL) {
                 TRACE("non unique name: %s", buf1);
-                res = LTYPE_COMPILE_METHODS + 1;
-                goto err;
+                goto end;
             }
             if (LLVMGetNamedFunction(module, buf2) != NULL) {
                 TRACE("non unique name: %s", buf2);
                 res = LTYPE_COMPILE_METHODS + 2;
                 goto err;
             }
+
+            b1 = LLVMCreateBuilderInContext(lctx);
+            b2 = LLVMCreateBuilderInContext(lctx);
 
             argty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
 
@@ -507,19 +517,18 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
 
             td = (lkit_dict_t *)ty;
 
-            b1 = LLVMCreateBuilderInContext(lctx);
-            b2 = LLVMCreateBuilderInContext(lctx);
-
             if (LLVMGetNamedFunction(module, buf1) != NULL) {
                 TRACE("non unique name: %s", buf1);
-                res = LTYPE_COMPILE_METHODS + 1;
-                goto err;
+                goto end;
             }
             if (LLVMGetNamedFunction(module, buf2) != NULL) {
                 TRACE("non unique name: %s", buf2);
                 res = LTYPE_COMPILE_METHODS + 2;
                 goto err;
             }
+
+            b1 = LLVMCreateBuilderInContext(lctx);
+            b2 = LLVMCreateBuilderInContext(lctx);
 
             argty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
 

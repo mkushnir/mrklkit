@@ -49,9 +49,9 @@ typedef struct _lkit_expr {
     char fparam_idx;
 
     int referenced;
+    int error:1;
     int isref:1;
     int isbuiltin:1;
-    int error:1;
     int ismacro:1;
     int lazy_init:1;
     int undef_removed:1;

@@ -15,6 +15,9 @@ extern "C" {
 #endif
 
 int lkit_compile_types(mrklkit_ctx_t *, LLVMModuleRef);
+void ltype_maybe_compile_type(mrklkit_ctx_t *,
+                              lkit_type_t *,
+                              LLVMModuleRef);
 int lkit_compile_type_methods(mrklkit_ctx_t *, LLVMModuleRef);
 int lkit_link_types(mrklkit_ctx_t *, LLVMExecutionEngineRef, LLVMModuleRef);
 int lkit_unlink_types(mrklkit_ctx_t *);

@@ -49,6 +49,33 @@ lkit_expr_is_constant(lkit_expr_t *expr)
 
 
 static void
+lexpr_dump_flags(bytestream_t *bs, lkit_expr_t *expr)
+{
+    if (expr->isref) {
+        bytestream_cat(bs, 1, "r");
+    }
+    if (expr->isbuiltin) {
+        bytestream_cat(bs, 1, "b");
+    }
+    if (expr->ismacro) {
+        bytestream_cat(bs, 1, "m");
+    }
+    if (expr->lazy_init) {
+        bytestream_cat(bs, 1, "l");
+    }
+    if (expr->undef_removed) {
+        bytestream_cat(bs, 1, "U");
+    }
+    if (expr->nodecref) {
+        bytestream_cat(bs, 1, "U");
+    }
+    if (expr->fparam) {
+        bytestream_cat(bs, 1, "f");
+    }
+}
+
+
+static void
 lexpr_dump(bytestream_t *bs, lkit_expr_t *expr, int level)
 {
     char fmt[32];
@@ -58,49 +85,46 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr, int level)
 
     lkit_type_str(lkit_expr_type_of(expr), bs);
     bytestream_cat(bs, 1, " ");
-    //lkit_type_str(expr->type, bs);
-    //bytestream_cat(bs, 2, "] ");
     if (expr->isref) {
         if (expr->name != NULL) {
             if (expr->error) {
                 bytestream_nprintf(bs,
-                    strlen((char *)expr->name->data) + 8 +
+                    strlen((char *)expr->name->data) + 16 +
                     SIZEOFCOLOR(ERRCOLOR),
-                    ERRCOLOR("<REF %s>\n"), expr->name->data);
+                    ERRCOLOR("<REF %s :"), expr->name->data);
             } else {
                 bytestream_nprintf(bs,
-                    strlen((char *)expr->name->data) + 8,
-                    "<REF %s>\n", expr->name->data);
+                    strlen((char *)expr->name->data) + 16,
+                    "<REF %s :", expr->name->data);
             }
         } else {
             if (expr->error) {
                 bytestream_cat(bs, 13 + SIZEOFCOLOR(ERRCOLOR),
-                               ERRCOLOR("<REF <NULL>>\n"));
+                               ERRCOLOR("<REF <NULL> :"));
             } else {
-                bytestream_cat(bs, 13, "<REF <NULL>>\n");
+                bytestream_cat(bs, 13, "<REF <NULL> :");
             }
         }
-        //lexpr_dump(bs, expr->value.ref, level);
     } else {
         if (expr->name != NULL) {
             if (expr->value.literal == NULL) {
                 bytestream_nprintf(bs,
-                    strlen((char *)expr->name->data) + 10,
-                    "%s: <NULL>\n", expr->name->data);
+                    strlen((char *)expr->name->data) + 16,
+                    "%s: <NULL> :", expr->name->data);
             } else {
                 bytestream_nprintf(bs,
-                    strlen((char *)expr->name->data) + 3,
+                    strlen((char *)expr->name->data) + 4,
                     "%s: ", expr->name->data);
                 fparser_datum_dump_bytestream(expr->value.literal, bs);
-                bytestream_cat(bs, 1, "\n");
+                bytestream_cat(bs, 3, " :f");
             }
         } else {
             if (expr->value.literal == NULL) {
                 if (expr->error) {
                     bytestream_cat(bs, 17 + SIZEOFCOLOR(ERRCOLOR),
-                                   ERRCOLOR("<LITERAL <null>>\n"));
+                                   ERRCOLOR("<LITERAL <null> :"));
                 } else {
-                    bytestream_cat(bs, 17, "<LITERAL <null>>\n");
+                    bytestream_cat(bs, 17, "<LITERAL <null> :");
                 }
             } else {
                 if (expr->error) {
@@ -110,10 +134,14 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr, int level)
                     bytestream_cat(bs, 11, "<LITERAL>: ");
                 }
                 fparser_datum_dump_bytestream(expr->value.literal, bs);
-                bytestream_cat(bs, 1, "\n");
+                bytestream_cat(bs, 2, " :");
             }
         }
     }
+
+    lexpr_dump_flags(bs, expr);
+    bytestream_nprintf(bs, 4, ">\n");
+
     if (expr->subs.elnum > 0) {
         lkit_expr_t **subexpr;
         array_iter_t it;

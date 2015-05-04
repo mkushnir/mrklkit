@@ -50,6 +50,7 @@ typedef enum _lkit_tag {
     (tag) == LKIT_UNDEF ? "UNDEF" :            \
     (tag) == LKIT_IR ? "IR" :                  \
     (tag) == LKIT_TY ? "TY" :                  \
+    (tag) == LKIT_VOID ? "VOID" :              \
     (tag) == LKIT_NULL ? "NULL" :              \
     (tag) == LKIT_INT ? "INT" :                \
     (tag) == LKIT_INT_MIN ? "INTMIN" :         \
