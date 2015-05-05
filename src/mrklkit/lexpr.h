@@ -16,6 +16,19 @@ extern "C" {
 #endif
 
 struct _lkit_type;
+struct _lkit_expr;
+
+/*
+ * s named scope-visible item
+ */
+typedef struct _lkit_gitem {
+    /* strongref */
+    bytes_t *name;
+    /* weakref */
+    struct _lkit_expr *expr;
+} lkit_gitem_t;
+
+
 typedef struct _lkit_expr {
     struct _lkit_type *type;
     bytes_t *name;
@@ -39,6 +52,7 @@ typedef struct _lkit_expr {
     dict_t ctx;
 
     /*
+     * glist defines order of ctx's items
      * lkit_gitem_t
      */
     array_t glist;
@@ -46,6 +60,7 @@ typedef struct _lkit_expr {
     /* weekref */
     struct _lkit_expr *parent;
 
+    /* applies if (fparam == 1) */
     char fparam_idx;
 
     int referenced;
@@ -55,20 +70,20 @@ typedef struct _lkit_expr {
     int ismacro:1;
     int lazy_init:1;
     int undef_removed:1;
-    int nodecref:1;
     int fparam:1;
 
 } lkit_expr_t;
 
 #define LKIT_EXPR_NAME(expr) ((expr)->name != NULL ? (expr)->name->data : NULL)
-#define LKIT_EXPR_CONSTANT(expr) ((!(expr)->isref) && ((expr)->value.literal != NULL))
 
-typedef struct _lkit_gitem {
-    /* strongref */
-    bytes_t *name;
-    /* weakref */
-    lkit_expr_t *expr;
-} lkit_gitem_t;
+
+#define LKIT_EXPR_CONSTANT(expr) (                             \
+        (!(expr)->isref) && ((expr)->value.literal != NULL))   \
+
+
+#define LKIT_EXPR_FLAG_WITH_REF(e, f) (                                        \
+    (e)->f || ((e)->isref && (e)->value.ref != NULL && (e)->value.ref->f)      \
+)                                                                              \
 
 
 int lkit_expr_dump(lkit_expr_t *);

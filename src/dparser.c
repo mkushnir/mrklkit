@@ -500,6 +500,7 @@ dparse_float_pos_pvoid(bytestream_t *bs,
     *val = mrklkit_rt_bytes_new_gc(i - spos + 1);              \
     memcpy((*val)->data, __a2, (*val)->sz - 1);                \
     *((*val)->data + (*val)->sz - 1) = '\0';                   \
+    BYTES_INCREF(*val);                                        \
     return i;                                                  \
 
 
@@ -534,6 +535,7 @@ dparse_str_pos_bytes(bytes_t *str,
     memcpy((*val)->data, __a2, (*val)->sz - 1);                \
     *((*val)->data + (*val)->sz - 1) = '\0';                   \
     bytes_brushdown(*val);                                     \
+    BYTES_INCREF(*val);                                        \
     return i;                                                  \
 
 
@@ -651,6 +653,7 @@ end:                                                   \
     }                                                  \
     (*val)->data[sz] = '\0';                           \
     (*val)->sz = sz + 1;                               \
+    BYTES_INCREF(*val);                                \
     return br.end;                                     \
 
 
@@ -791,7 +794,7 @@ dparse_array_pos(bytestream_t *bs,
             dict_set_item_mpool(mpool, &(*val)->fields, key, u.v);             \
             fpos = dparser_reach_delim_pos_##kind(in, fdelim, fpos, epos);     \
         } else {                                                               \
-            /* BYTES_DECREF(&key); */                                          \
+            BYTES_DECREF(&key);                                          \
             fpos = dparser_reach_delim_pos_##kind(in, fdelim, spos, epos);     \
         }                                                                      \
         spos = dparser_reach_value_pos_##kind(in, fdelim, fpos, epos);         \
@@ -875,6 +878,7 @@ dparse_dict_from_bytes(lkit_dict_t *ty, bytes_t *str)
 
     val = mrklkit_rt_dict_new_gc(ty);
     dparse_dict_pos_bytes(str, '\0', 0, str->sz, &val);
+    DICT_INCREF(val);
     return val;
 }
 
@@ -1057,6 +1061,7 @@ dparse_struct_item_ra_array(rt_struct_t *value, int64_t idx)
         dparse_array_pos,
             fty = ARRAY_GET(lkit_type_t *, &value->type->fields, idx);
             *val = mrklkit_rt_array_new_gc((lkit_array_t *)*fty);
+            ARRAY_INCREF(*val);
     );
     return *(rt_array_t **)(value->fields + idx);
 }
@@ -1073,6 +1078,7 @@ dparse_struct_item_ra_dict(rt_struct_t *value, int64_t idx)
         dparse_dict_pos_bs,
             fty = ARRAY_GET(lkit_type_t *, &value->type->fields, idx);
             *val = mrklkit_rt_dict_new_gc((lkit_dict_t *)*fty);
+            DICT_INCREF(*val);
     );
     return *(rt_dict_t **)(value->fields + idx);
 }
@@ -1094,6 +1100,7 @@ dparse_struct_item_ra_struct(rt_struct_t *value, int64_t idx)
             fty = ARRAY_GET(lkit_type_t *, &value->type->fields, idx);
             *val = mrklkit_rt_struct_new_gc((lkit_struct_t *)*fty);
             dparse_struct_setup(bs, &br, *val);
+            STRUCT_INCREF(*val);
         });
     return *(rt_struct_t **)(value->fields + idx);
 }

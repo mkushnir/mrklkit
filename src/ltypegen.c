@@ -17,6 +17,7 @@
 #include <mrklkit/ltype.h>
 #include <mrklkit/lexpr.h>
 #include <mrklkit/ltypegen.h>
+#include <mrklkit/lruntime.h>
 
 #include "diag.h"
 
@@ -662,6 +663,15 @@ rt_dict_fini_keyval_str(bytes_t *key, bytes_t *val)
 
 
 static int
+rt_dict_fini_keyval_struct(bytes_t *key, rt_struct_t *val)
+{
+    BYTES_DECREF(&key);
+    STRUCT_DECREF(&val);
+    return 0;
+}
+
+
+static int
 ltype_link_methods(mrklkit_ctx_t *mctx,
                    lkit_type_t *ty,
                    LLVMExecutionEngineRef ee,
@@ -749,8 +759,7 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
                 break;
 
             case LKIT_STRUCT:
-                {
-                }
+                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_struct;
                 break;
 
             default:
@@ -790,6 +799,14 @@ ltype_unlink_methods(lkit_type_t *ty)
                  fty = array_next(&ts->fields, &it)) {
                 ltype_unlink_methods(*fty);
             }
+        }
+        break;
+
+    case LKIT_DICT:
+        {
+            lkit_dict_t *td;
+            td = (lkit_dict_t *)ty;
+            td->fini = NULL;
         }
 
     default:

@@ -19,11 +19,11 @@
 static mpool_ctx_t *mpool;
 
 
+#define POISON_NREF 0x11110000
+
 int
 mrklkit_rt_strcmp(const char *a, const char *b)
 {
-    TRACE("b=%s", b);
-    TRACE("a=%s", a);
     return strcmp(a, b);
 }
 
@@ -36,6 +36,7 @@ mrklkit_rt_bytes_new_gc(size_t sz)
     bytes_t *res;
 
     res = bytes_new_mpool(mpool, sz);
+    res->nref = POISON_NREF;
     //TRACE("GC>>> %p", *res);
     return res;
 }
@@ -48,6 +49,7 @@ mrklkit_rt_bytes_new_from_str_gc(const char *s)
 
     res = bytes_new_from_str_mpool(mpool, s);
     //TRACE("GC>>> %p", *res);
+    res->nref = POISON_NREF;
     return res;
 }
 
@@ -61,6 +63,7 @@ mrklkit_rt_bytes_new_from_int_gc(int64_t i)
     snprintf(buf, sizeof(buf), "%ld", i);
     res = bytes_new_from_str_mpool(mpool, buf);
     //TRACE("GC>>> %p", *res);
+    res->nref = POISON_NREF;
     return res;
 }
 
@@ -74,6 +77,7 @@ mrklkit_rt_bytes_new_from_float_gc(double f)
     snprintf(buf, sizeof(buf), "%lf", f);
     res = bytes_new_from_str_mpool(mpool, buf);
     //TRACE("GC>>> %p", *res);
+    res->nref = POISON_NREF;
     return res;
 }
 
@@ -87,6 +91,7 @@ mrklkit_rt_bytes_new_from_bool_gc(char b)
     snprintf(buf, sizeof(buf), "%s", b ? "true" : "false");
     res = bytes_new_from_str_mpool(mpool, buf);
     //TRACE("GC>>> %p", *res);
+    res->nref = POISON_NREF;
     return res;
 }
 
@@ -114,6 +119,7 @@ mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
     res->data[sz1] = '\0';
 
 end:
+    res->nref = POISON_NREF;
     return res;
 
 empty:
@@ -130,6 +136,7 @@ mrklkit_rt_bytes_brushdown_gc(bytes_t *str)
 
     res = bytes_new_from_str_mpool(mpool, (char *)str->data);
     bytes_brushdown(res);
+    res->nref = POISON_NREF;
     return res;
 }
 
@@ -141,6 +148,7 @@ mrklkit_rt_bytes_urldecode_gc(bytes_t *str)
 
     res = bytes_new_from_str_mpool(mpool, (char *)str->data);
     bytes_urldecode(res);
+    res->nref = POISON_NREF;
     return res;
 }
 
@@ -358,7 +366,6 @@ null_init(void **v)
                (array_initializer_t)null_init,                         \
                NULL);                                                  \
     array_ensure_datasz_fn(&res->fields, ty->nreserved, 0);            \
-    return res
 
 
 
@@ -366,6 +373,7 @@ rt_array_t *
 mrklkit_rt_array_new(lkit_array_t *ty)
 {
     MRKLKIT_RT_ARRAY_NEW_BODY(malloc, array_ensure_datasz);
+    return res;
 }
 
 
@@ -380,6 +388,8 @@ mrklkit_rt_array_new_gc(lkit_array_t *ty)
 
 
     MRKLKIT_RT_ARRAY_NEW_BODY(_malloc, _array_ensure_datasz);
+    res->nref = POISON_NREF;
+    return res;
 #undef _malloc
 #undef _array_ensure_datasz
 }
@@ -396,6 +406,8 @@ mrklkit_rt_array_new_mpool(mpool_ctx_t *mpool, lkit_array_t *ty)
 
 
     MRKLKIT_RT_ARRAY_NEW_BODY(_malloc, _array_ensure_datasz);
+    res->nref = POISON_NREF;
+    return res;
 #undef _malloc
 #undef _array_ensure_datasz
 }
@@ -497,13 +509,14 @@ mrklkit_rt_array_split_gc(lkit_array_t *ty, bytes_t *str, bytes_t *delim)
             }
             sz = s1 - s0;
             *item = mrklkit_rt_bytes_new_gc(sz + 1);
+            BYTES_INCREF(*item);
             memcpy((*item)->data, s0, sz);
             (*item)->data[sz] = '\0';
             s0 = s1 + 1;
         }
     }
 
-    //mrklkit_rt_array_dump(res);
+    res->nref = POISON_NREF;
     return res;
 }
 
@@ -664,13 +677,13 @@ mrklkit_rt_dict_print(rt_dict_t *value)
               (dict_hashfn_t)bytes_hash,                       \
               (dict_item_comparator_t)bytes_cmp,               \
               ty->fini);                                       \
-    return res                                                 \
 
 
 rt_dict_t *
 mrklkit_rt_dict_new(lkit_dict_t *ty)
 {
     MRKLKIT_RT_DICT_NEW_BODY(malloc, dict_init);
+    return res;
 }
 
 
@@ -687,6 +700,8 @@ mrklkit_rt_dict_new_gc(lkit_dict_t *ty)
 
 
     MRKLKIT_RT_DICT_NEW_BODY(_malloc, _dict_init);
+    res->nref = POISON_NREF;
+    return res;
 #undef _malloc
 #undef _dict_init
 }
@@ -695,8 +710,6 @@ mrklkit_rt_dict_new_gc(lkit_dict_t *ty)
 void
 mrklkit_rt_dict_destroy(rt_dict_t **value)
 {
-    //TRACE("<<< %p", *value);
-    //return;
     DICT_DECREF(value);
 }
 
@@ -793,6 +806,7 @@ mrklkit_rt_set_dict_item_int(rt_dict_t *value, bytes_t *key, int64_t val)
         void *v;
     } v;
     v.i = val;
+    BYTES_INCREF(key);
     dict_set_item(&value->fields, key, v.v);
 }
 
@@ -805,6 +819,7 @@ mrklkit_rt_set_dict_item_float(rt_dict_t *value, bytes_t *key, double val)
         void *v;
     } v;
     v.f = val;
+    BYTES_INCREF(key);
     dict_set_item(&value->fields, key, v.v);
 }
 
@@ -817,6 +832,7 @@ mrklkit_rt_set_dict_item_bool(rt_dict_t *value, bytes_t *key, char val)
         void *v;
     } v;
     v.b = val;
+    BYTES_INCREF(key);
     dict_set_item(&value->fields, key, v.v);
 }
 
@@ -829,6 +845,7 @@ mrklkit_rt_set_dict_item_str(rt_dict_t *value, bytes_t *key, bytes_t *val)
         void *v;
     } v;
     v.s = val;
+    BYTES_INCREF(key);
     BYTES_INCREF(val);
     dict_set_item(&value->fields, key, v.v);
 }
@@ -842,6 +859,7 @@ mrklkit_rt_set_dict_item_array(rt_dict_t *value, bytes_t *key, rt_array_t *val)
         void *v;
     } v;
     v.a = val;
+    BYTES_INCREF(key);
     ARRAY_INCREF(val);
     dict_set_item(&value->fields, key, v.v);
 }
@@ -855,6 +873,7 @@ mrklkit_rt_set_dict_item_dict(rt_dict_t *value, bytes_t *key, rt_dict_t *val)
         void *v;
     } v;
     v.d = val;
+    BYTES_INCREF(key);
     DICT_INCREF(val);
     dict_set_item(&value->fields, key, v.v);
 }
@@ -868,6 +887,7 @@ mrklkit_rt_set_dict_item_struct(rt_dict_t *value, bytes_t *key, rt_struct_t *val
         void *v;
     } v;
     v.s = val;
+    BYTES_INCREF(key);
     STRUCT_INCREF(val);
     dict_set_item(&value->fields, key, v.v);
 }
@@ -918,12 +938,13 @@ mrklkit_rt_dict_traverse(rt_dict_t *value, void (*cb)(bytes_t *, void *))
     if (ty->init != NULL) {                                                    \
         ty->init(v->fields);                                                   \
     }                                                                          \
-    return v
+
 
 rt_struct_t *
 mrklkit_rt_struct_new(lkit_struct_t *ty)
 {
     MRKLKIT_RT_STRUCT_NEW_BODY(malloc);
+    return v;
 }
 
 
@@ -932,6 +953,8 @@ mrklkit_rt_struct_new_gc(lkit_struct_t *ty)
 {
 #define _malloc(sz) mpool_malloc(mpool, (sz))
     MRKLKIT_RT_STRUCT_NEW_BODY(_malloc);
+    v->nref = POISON_NREF;
+    return v;
 #undef _malloc
 }
 
@@ -1186,6 +1209,8 @@ mrklkit_rt_get_struct_item_dict(rt_struct_t *value,
 {
     rt_dict_t **res;
 
+    //TRACE("idx=%ld", idx);
+    //TRACE("value=%p", value);
     assert(idx < (ssize_t)value->type->fields.elnum);
     res = (rt_dict_t **)(value->fields + idx);
     if (*res == NULL) {
@@ -1256,7 +1281,7 @@ mrklkit_rt_set_struct_item_str_unsafe(rt_struct_t *value,
 
     assert(idx < (ssize_t)value->type->fields.elnum);
     p = (bytes_t **)(value->fields + idx);
-    *p = bytes_new_from_bytes(val);
+    *p = val;
     BYTES_INCREF(*p);
 }
 
@@ -1266,10 +1291,13 @@ mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 {
     bytes_t **p;
 
+    //TRACE("idx=%ld", idx);
+    //TRACE("value=%p", value);
+    //TRACE("val=%s", val->data);
     assert(idx < (ssize_t)value->type->fields.elnum);
     p = (bytes_t **)(value->fields + idx);
     BYTES_DECREF(p);
-    *p = bytes_new_from_bytes(val);
+    *p = val;
     BYTES_INCREF(*p);
 }
 
@@ -1370,14 +1398,13 @@ mrklkit_rt_struct_shallow_copy(rt_struct_t *dst,
                 a = (bytes_t *)*(src->fields + it.iter);               \
                 if (a != NULL) {                                       \
                     b = bytes_new_fn(a->sz);                           \
-                    BYTES_INCREF(b);                                   \
                     bytes_copy(b, a, 0);                               \
                 } else {                                               \
                     b = bytes_new_fn(1);                               \
-                    BYTES_INCREF(b);                                   \
                     b->data[0] = '\0';                                 \
                 }                                                      \
                 *((bytes_t **)dst->fields + it.iter) = b;              \
+                BYTES_INCREF(b);                                       \
             }                                                          \
             break;                                                     \
         case LKIT_ARRAY:                                               \
@@ -1426,7 +1453,7 @@ mrklkit_rt_struct_pi_data_gc(rt_struct_t *value)
                  value->parser_info.br.start),
            sz);
     res->data[sz] = '\0';
-
+    res->nref = POISON_NREF;
     return res;
 }
 

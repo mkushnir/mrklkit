@@ -266,8 +266,6 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         aarg = array_first(&expr->subs, &it);
         assert(aarg != NULL);
 
-        expr->nodecref |= (*aarg)->nodecref;
-
         for (barg = array_next(&expr->subs, &it);
              barg != NULL;
              barg = array_next(&expr->subs, &it)) {
@@ -278,7 +276,6 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                 lkit_expr_dump(expr);
                 TRRET(REMOVE_UNDEF + 42);
             }
-            expr->nodecref |= (*barg)->nodecref;
         }
         expr->type = (*aarg)->type;
 
@@ -410,11 +407,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
                     TRRET(REMOVE_UNDEF + 72);
                 }
             }
-        } else {
-            expr->nodecref = 1;
         }
-        expr->nodecref |= (*cont)->nodecref;
-
 
     } else if (strcmp(name, "set") == 0) {
         /*
@@ -652,8 +645,6 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         arg = array_get(&expr->subs, 0);
         assert(arg != NULL);
 
-        expr->nodecref = 1;
-
     } else if (strcmp(name, "has") == 0 ||
                strcmp(name, "has-key") == 0) {
 
@@ -866,6 +857,15 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         if ((arg = array_get(&expr->subs, 0)) == NULL) {
             TRRET(REMOVE_UNDEF + 220);
         }
+
+    } else if (strcmp(name, "copy") == 0) {
+        lkit_expr_t **arg;
+
+        if ((arg = array_get(&expr->subs, 0)) == NULL) {
+            TRRET(REMOVE_UNDEF + 220);
+        }
+
+        expr->type = (*arg)->type;
 
     } else {
         /*

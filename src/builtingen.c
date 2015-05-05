@@ -19,6 +19,49 @@
 #include "diag.h"
 
 
+static LLVMValueRef
+find_named_global(lkit_expr_t *ectx,
+                  LLVMModuleRef module,
+                  bytes_t *name, bytes_t **qual_name)
+{
+    LLVMValueRef ref = NULL;
+
+    *qual_name = NULL;
+    for (; ectx != NULL; ectx = ectx->parent) {
+        *qual_name = lkit_expr_qual_name(ectx, name);
+        //TRACE("trying %s", (*qual_name)->data);
+        if ((ref = LLVMGetNamedGlobal(module,
+                (char *)(*qual_name)->data)) != NULL) {
+            return ref;
+        }
+        BYTES_DECREF(qual_name);
+    }
+    return NULL;
+}
+
+
+static LLVMValueRef
+find_named_function(lkit_expr_t *ectx,
+                    LLVMModuleRef module,
+                    bytes_t *name, bytes_t **qual_name)
+{
+    LLVMValueRef ref = NULL;
+
+    *qual_name = NULL;
+    for (; ectx != NULL; ectx = ectx->parent) {
+        *qual_name = lkit_expr_qual_name(ectx, name);
+        //TRACE("trying %s", (*qual_name)->data);
+        if ((ref = LLVMGetNamedFunction(module,
+                (char *)(*qual_name)->data)) != NULL) {
+            return ref;
+        }
+        BYTES_DECREF(qual_name);
+    }
+    return NULL;
+}
+
+
+
 /**
  * LLVM IR emitter.
  */
@@ -634,13 +677,14 @@ lkit_compile_set(mrklkit_ctx_t *mctx,
     if ((arg = array_get(&expr->subs, 2)) == NULL) {
         FAIL("array_get");
     }
+
     if ((args[2] = lkit_compile_expr(mctx,
                                      ectx,
                                      module,
                                      builder,
                                      *arg,
                                      udata)) == NULL) {
-        TR(COMPILE_SET + 2);
+        TR(COMPILE_SET + 3);
         goto err;
     }
 
@@ -752,7 +796,6 @@ lkit_compile_set(mrklkit_ctx_t *mctx,
         FAIL("compile_set");
     }
 
-
 end:
     return v;
 
@@ -781,8 +824,6 @@ compile_str_join(mrklkit_ctx_t *mctx,
     UNUSED LLVMValueRef bifn, bdfn;
     LLVMValueRef *av, *asz;
     LLVMValueRef const0, const1;
-
-    expr->nodecref = 1;
 
     const0 = LLVMConstInt(LLVMInt64TypeInContext(lctx), 0, 0);
     const1 = LLVMConstInt(LLVMInt64TypeInContext(lctx), 1, 0);
@@ -2193,8 +2234,6 @@ compile_function(mrklkit_ctx_t *mctx,
         array_iter_t it;
         LLVMValueRef fn, fnarg;
 
-        expr->nodecref = 1;
-
         //(sym tostr (func str undef))
         arg = array_first(&expr->subs, &it);
         if ((fnarg = lkit_compile_expr(mctx,
@@ -2319,8 +2358,6 @@ tostr_done:
         LLVMValueRef fn, args[3];
         //(sym substr (func str str int int))
 
-        expr->nodecref = 1;
-
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_slice_gc")) == NULL) {
             FAIL("LLVMGetNamedFunction");
@@ -2378,7 +2415,6 @@ tostr_done:
         lkit_array_t *ty;
         LLVMValueRef fn, args[3];
 
-        expr->nodecref = 1;
         /*
          * very slow b/c array_incr_mpool(), use parse
          */
@@ -2426,8 +2462,6 @@ tostr_done:
         lkit_expr_t **arg;
         LLVMValueRef fn, args[1];
 
-        expr->nodecref = 1;
-
         //(sym split (func (array str) str str))
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_brushdown_gc")) == NULL) {
@@ -2454,7 +2488,6 @@ tostr_done:
         lkit_expr_t **arg;
         LLVMValueRef fn, args[1];
 
-        expr->nodecref = 1;
         //(sym split (func (array str) str str))
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_bytes_urldecode_gc")) == NULL) {
@@ -2634,8 +2667,6 @@ tostr_done:
                               NEWVAR("call"));
 
         } else if (strcmp((char *)optname->data, "data") == 0) {
-            expr->nodecref = 1;
-
             if ((ref = LLVMGetNamedFunction(module,
                     "mrklkit_rt_struct_pi_data_gc")) == NULL) {
                 FAIL("LLVMGetNamedFunction");
@@ -2863,17 +2894,18 @@ tostr_done:
     } else if (strcmp(name, "addrof") == 0) {
         lkit_expr_t **arg;
         LLVMValueRef ref;
+        bytes_t *qual_name;
 
         arg = array_get(&expr->subs, 0);
         assert(arg != NULL);
 
         if ((*arg)->type->tag == LKIT_FUNC) {
-            ref = LLVMGetNamedFunction(module,
-                                       (char *)(*arg)->name->data);
+            ref = find_named_function(ectx, module, (*arg)->name, &qual_name);
         } else {
-            ref = LLVMGetNamedGlobal(module,
-                                     (char *)(*arg)->name->data);
+            ref = find_named_global(ectx, module, (*arg)->name, &qual_name);
         }
+
+        BYTES_DECREF(&qual_name);
 
         v = LLVMBuildPointerCast(builder,
                                  ref,
@@ -2881,7 +2913,48 @@ tostr_done:
                                      expr->type),
                                  NEWVAR("cast"));
 
+    } else if (strcmp(name, "copy") == 0) {
+        lkit_expr_t **arg;
+        char *fname;
+        LLVMValueRef fn, args[1];
 
+        arg = array_get(&expr->subs, 0);
+        assert(arg != NULL);
+
+        switch ((*arg)->type->tag) {
+        case LKIT_STR:
+            fname = "bytes_new_from_bytes";
+            break;
+
+        default:
+            TR(COMPILE_FUNCTION + 5801);
+            goto err;
+        }
+
+        if ((args[0] = lkit_compile_expr(mctx,
+                                         ectx,
+                                         module,
+                                         builder,
+                                         *arg,
+                                         udata)) == NULL) {
+            TR(COMPILE_FUNCTION + 5802);
+            goto err;
+        }
+
+        if ((fn = LLVMGetNamedFunction(module, fname)) == NULL) {
+            FAIL("LLVMGetNamedFunction");
+        }
+
+        args[0] = LLVMBuildPointerCast(builder,
+                                       args[0],
+                                       LLVMTypeOf(LLVMGetParam(fn, 0)),
+                                       NEWVAR("cast"));
+
+        v = LLVMBuildCall(builder,
+                          fn,
+                          args,
+                          countof(args),
+                          NEWVAR("call"));
 
     } else {
         mrklkit_module_t **mod;
@@ -3024,8 +3097,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
             default:
                 {
-                    LLVMValueRef ref;
                     char buf[1024];
+                    LLVMValueRef ref;
                     LLVMValueRef fn;
 
                     assert(builder != NULL);
@@ -3038,32 +3111,24 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                         v = LLVMGetParam(fn, expr->value.ref->fparam_idx);
 
                     } else {
-                        if ((ref = LLVMGetNamedGlobal(module,
-                                (char *)expr->name->data)) == NULL) {
-                            bytes_t *qual_name = NULL;
+                        bytes_t *qual_name = NULL;
 
-                            qual_name = lkit_expr_qual_name(ectx, expr->name);
-                            if ((ref = LLVMGetNamedGlobal(module,
-                                    (char *)qual_name->data)) == NULL) {
-
-                                LLVMDumpModule(module);
-                                TRACE("name %s qual_name %s",
-                                      expr->name->data,
-                                      qual_name->data);
-                                lkit_expr_dump(expr);
-                                FAIL("LLVMGetNamedGlobal");
-                            }
-                            snprintf(buf,
-                                     sizeof(buf),
-                                     "_mrklkit.%s.init",
-                                     (char *)qual_name->data);
-                            bytes_decref(&qual_name);
-                        } else {
-                            snprintf(buf,
-                                     sizeof(buf),
-                                     "_mrklkit.%s.init",
-                                     (char *)expr->name->data);
+                        ref = find_named_global(ectx,
+                                                module,
+                                                expr->name,
+                                                &qual_name);
+                        if (ref == NULL) {
+                            LLVMDumpModule(module);
+                            TRACE("could not find name: %s",
+                                  expr->name->data);
+                            lkit_expr_dump(expr);
+                            FAIL("find_named_global");
                         }
+
+                        snprintf(buf,
+                                 sizeof(buf),
+                                 "_mrklkit.%s.init",
+                                 (char *)qual_name->data);
 
                         if ((fn = LLVMGetNamedFunction(module, buf)) != NULL) {
                             if (expr->value.ref->lazy_init) {
@@ -3092,25 +3157,13 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                 snprintf(buf,
                                          sizeof(buf),
                                          "_mrklkit.%s.init.done",
-                                         (char *)expr->name->data);
+                                         (char *)qual_name->data);
+
                                 if ((testv = LLVMGetNamedGlobal(module,
                                                                 buf)) == NULL) {
-                                    bytes_t *qual_name = NULL;
-
-                                    qual_name = lkit_expr_qual_name(ectx,
-                                                                    expr->name);
-                                    snprintf(buf,
-                                             sizeof(buf),
-                                             "_mrklkit.%s.init.done",
-                                             (char *)qual_name->data);
-                                    bytes_decref(&qual_name);
-
-                                    if ((testv = LLVMGetNamedGlobal(module,
-                                                                    buf)) == NULL) {
-                                        TRACE("not found: %s", buf);
-                                        LLVMDumpModule(module);
-                                        FAIL("LLVMGetNamedGlobal");
-                                    }
+                                    TRACE("not found: %s", buf);
+                                    LLVMDumpModule(module);
+                                    FAIL("LLVMGetNamedGlobal");
                                 }
 
                                 test = LLVMBuildICmp(builder,
@@ -3126,14 +3179,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
                                 LLVMPositionBuilderAtEnd(builder, tblock);
 
-                                if (LLVMBuildCall(builder,
-                                                  fn,
-                                                  NULL,
-                                                  0,
-                                                  "") == NULL) {
-                                    TR(LKIT_COMPILE_EXPR + 4);
-                                }
-
+                                LLVMBuildCall(builder, fn, NULL, 0, "");
                                 (void)LLVMBuildBr(builder, fblock);
 
                                 LLVMPositionBuilderAtEnd(builder, fblock);
@@ -3152,6 +3198,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                     mrklkit_ctx_get_type_backend(
                                         mctx, expr->type), NEWVAR("cast"));
                         }
+                        BYTES_DECREF(&qual_name);
                     }
                 }
                 break;
@@ -3228,8 +3275,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                 break;
 
             case LKIT_NULL:
-                v = LLVMConstPointerNull(mrklkit_ctx_get_type_backend(mctx,
-                                                                      expr->type));
+                v = LLVMConstPointerNull(
+                        mrklkit_ctx_get_type_backend(mctx, expr->type));
 
             case LKIT_ARRAY:
             case LKIT_DICT:
@@ -3245,7 +3292,28 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
             }
         } else {
-            TR(LKIT_COMPILE_EXPR + 7);
+            lkit_expr_t **psub;
+            array_iter_t it;
+
+            for (psub = array_first(&expr->subs, &it);
+                 psub != NULL;
+                 psub = array_next(&expr->subs, &it)) {
+                if (lkit_compile_expr(mctx,
+                                      ectx,
+                                      module,
+                                      builder,
+                                      *psub,
+                                      udata) == NULL) {
+                    TR(LKIT_COMPILE_EXPR + 7);
+                    break;
+                }
+            }
+
+            //TRACE("null literal in expr (compiling retval to void pointer):");
+            //lkit_expr_dump(expr);
+
+            v = LLVMConstPointerNull(
+                    mrklkit_ctx_get_type_backend(mctx, expr->type));
         }
     }
 
@@ -3320,7 +3388,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
         /*
          * decref old value
          */
-        if (torprefix != NULL && !expr->nodecref && expr->type->tag != LKIT_VOID) {
+        if (torprefix != NULL && expr->type->tag != LKIT_VOID) {
             LLVMValueRef tmp;
 
             (void)snprintf(buf, sizeof(buf), "%sdestroy", torprefix);
@@ -3357,7 +3425,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
     /*
      * incref
      */
-    if (torprefix != NULL && !expr->nodecref && expr->type->tag != LKIT_VOID) {
+    if (torprefix != NULL && expr->type->tag != LKIT_VOID) {
         (void)snprintf(buf, sizeof(buf), "%sincref", torprefix);
 
         if ((torfn = LLVMGetNamedFunction(module, buf)) == NULL) {
@@ -3471,7 +3539,7 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
                            v);
         }
 
-        if (!expr->nodecref && expr->type->tag != LKIT_VOID) {
+        if (expr->type->tag != LKIT_VOID) {
             if ((v = LLVMGetNamedGlobal(params->module,
                                         (char *)name->data)) == NULL) {
                 TRACE("cannot find %s", name->data);

@@ -66,9 +66,6 @@ lexpr_dump_flags(bytestream_t *bs, lkit_expr_t *expr)
     if (expr->undef_removed) {
         bytestream_cat(bs, 1, "U");
     }
-    if (expr->nodecref) {
-        bytestream_cat(bs, 1, "U");
-    }
     if (expr->fparam) {
         bytestream_cat(bs, 1, "f");
     }
@@ -426,7 +423,6 @@ lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
     expr->lazy_init = 0;
     expr->referenced = 0;
     expr->undef_removed = 0;
-    expr->nodecref = 0;
     expr->fparam = 0;
     expr->fparam_idx = -1;
     expr->type = NULL;
