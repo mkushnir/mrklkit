@@ -3334,6 +3334,8 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
     LLVMValueRef v, fn, storedv, torfn;
     char *torprefix;
 
+    v = NULL;
+
     switch (expr->type->tag) {
     case LKIT_STR:
         torprefix = "mrklkit_rt_bytes_";

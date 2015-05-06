@@ -510,11 +510,11 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
             // XXX copy-paste LKIT_STRUCT
             lkit_dict_t *td;
             LLVMBuilderRef b1, b2;
-            LLVMValueRef fn1, fn2, cast1, cast2;
+            UNUSED LLVMValueRef fn1, fn2, cast1, cast2;
             LLVMTypeRef argty;
             lkit_type_t *_fty, **fty;
             LLVMBasicBlockRef bb;
-            const char *dtor_name = NULL;
+            UNUSED const char *dtor_name = NULL;
 
             td = (lkit_dict_t *)ty;
 
