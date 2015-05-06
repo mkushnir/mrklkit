@@ -3462,14 +3462,6 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
     char buf[1024];
     LLVMValueRef fn;
 
-    //lkit_expr_dump(expr);
-    //TRACE("name %s lazy %d referenced %d isref %d ismacro %d",
-    //      name ? name->data : NULL,
-    //      expr->lazy_init,
-    //      expr->referenced,
-    //      expr->isref,
-    //      expr->ismacro);
-
     snprintf(buf, sizeof(buf), "_mrklkit.%s.init", (char *)name->data);
 
     if ((fn = LLVMGetNamedFunction(params->module, buf)) != NULL) {
@@ -3504,13 +3496,10 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
         LLVMBuilderRef builder;
     } *params = udata;
 
-    //lkit_expr_dump(expr);
-    //TRACE("name %s lazy %d referenced %d isref %d ismacro %d",
-    //      name ? name->data : NULL,
-    //      expr->lazy_init,
-    //      expr->referenced,
-    //      expr->isref,
-    //      expr->ismacro);
+    if (expr->ismacro) {
+        //TRACE("macro cannot be finalized: %s", name->data);
+        return 0;
+    }
 
     if (expr->referenced && expr->isref) {
         char buf[1024];
@@ -3518,11 +3507,6 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
         LLVMValueRef v, dtor;
 
         if (expr->lazy_init) {
-            if (expr->ismacro) {
-                TRACE("macro cannot be lazy: %s", name->data);
-                TRRET(CALL_FINALIZER + 1);
-            }
-
             lctx = LLVMGetModuleContext(params->module);
 
             snprintf(buf,
@@ -3539,12 +3523,20 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
                            v);
         }
 
+
         if (expr->type->tag != LKIT_VOID) {
-            if ((v = LLVMGetNamedGlobal(params->module,
-                                        (char *)name->data)) == NULL) {
-                TRACE("cannot find %s", name->data);
-                FAIL("call_finalizer");
-            }
+            bytes_t *qual_name;
+
+            qual_name = NULL;
+            v = find_named_global(params->ectx, params->module, name, &qual_name);
+            BYTES_DECREF(&qual_name);
+
+            //if ((v = LLVMGetNamedGlobal(params->module,
+            //                            (char *)name->data)) == NULL) {
+            //    TRACE("cannot find %s", name->data);
+            //    FAIL("call_finalizer");
+            //}
+
             switch (expr->type->tag) {
             case LKIT_STR:
                 (void)snprintf(buf, sizeof(buf), "mrklkit_rt_bytes_destroy");
