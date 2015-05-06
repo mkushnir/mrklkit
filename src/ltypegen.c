@@ -332,7 +332,7 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
             ts = (lkit_struct_t *)ty;
 
             if (LLVMGetNamedFunction(module, buf1) != NULL) {
-                TRACE("non unique name: %s", buf1);
+                //TRACE("non unique name: %s", buf1);
                 goto end;
             }
             if (LLVMGetNamedFunction(module, buf2) != NULL) {
@@ -519,11 +519,11 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
             td = (lkit_dict_t *)ty;
 
             if (LLVMGetNamedFunction(module, buf1) != NULL) {
-                TRACE("non unique name: %s", buf1);
+                //TRACE("non unique name: %s", buf1);
                 goto end;
             }
             if (LLVMGetNamedFunction(module, buf2) != NULL) {
-                TRACE("non unique name: %s", buf2);
+                //TRACE("non unique name: %s", buf2);
                 res = LTYPE_COMPILE_METHODS + 2;
                 goto err;
             }

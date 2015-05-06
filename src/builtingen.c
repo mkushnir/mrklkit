@@ -603,7 +603,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
                        (*cont)->type->name,
                        (*dflt)->type->name);
         if ((setfn = LLVMGetNamedFunction(module, buf)) == NULL) {
-            TRACE("no such setter: %s", buf);
+            //TRACE("no such setter: %s", buf);
             //FAIL("LLVMGetNamedFunction");
         } else {
             args[0] = LLVMBuildPointerCast(builder,
