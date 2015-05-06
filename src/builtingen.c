@@ -568,14 +568,12 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
         /*
          * (if (isnull v) ((set cont dflt) dflt) v)
          */
-
         currblock = LLVMGetInsertBlock(builder);
         parent = LLVMGetBasicBlockParent(currblock);
-        if ((endblock = LLVMGetNextBasicBlock(currblock)) == NULL) {
-            endblock = LLVMAppendBasicBlockInContext(lctx,
-                                                     parent,
-                                                     NEWVAR("DF.end"));
-        }
+        endblock = LLVMAppendBasicBlockInContext(lctx,
+                                                 parent,
+                                                 NEWVAR("DF.end"));
+        LLVMMoveBasicBlockAfter(endblock, currblock);
         falseblock = LLVMAppendBasicBlockInContext(lctx,
                                                    parent,
                                                    NEWVAR("DF.false"));
