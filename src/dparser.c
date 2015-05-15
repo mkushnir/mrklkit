@@ -595,66 +595,66 @@ qstr_unescape(char *dst, const char *src, size_t sz)
  *  bs: SDATA(bs, br.start + 1)
  *  bytes: str->data + br.start + 1
  */
-#define DPARSE_QSTR_POS_BODY(__a1, __a2)               \
-    byterange_t br;                                    \
-    int state;                                         \
-    size_t sz;                                         \
-    state = QSTR_ST_START;                             \
-    br.start = spos;                                   \
-    br.end = spos;                                     \
-    for (br.end = spos; br.end < epos; ++br.end) {     \
-        char ch;                                       \
-        ch = (char)__a1;                               \
-        switch (state) {                               \
-        case QSTR_ST_START:                            \
-            if (ch == '"') {                           \
-                state = QSTR_ST_IN;                    \
-            } else {                                   \
-                /*                                     \
-                 * garbage before the opening "        \
-                 */                                    \
-                goto end;                              \
-            }                                          \
-            break;                                     \
-        case QSTR_ST_IN:                               \
-            if (ch == '"') {                           \
-                state = QSTR_ST_QUOTE;                 \
-            }                                          \
-            break;                                     \
-        case QSTR_ST_QUOTE:                            \
-            if (ch == '"') {                           \
-                state = QSTR_ST_IN;                    \
-            } else {                                   \
-                /* one beyond the closing " */         \
-                state = QSTR_ST_OUT;                   \
-                goto end;                              \
-            }                                          \
-                                                       \
-            break;                                     \
-        default:                                       \
-            assert(0);                                 \
-        }                                              \
-    }                                                  \
-end:                                                   \
-    if (state != QSTR_ST_OUT) {                        \
-        sz = 0;                                        \
-    } else {                                           \
-        sz = br.end - br.start;                        \
-    }                                                  \
-    *val = mrklkit_rt_bytes_new_gc(sz + 1);            \
-    /* unescape starting from next to the starting " */\
-    if (sz > 2) {                                      \
-        sz = qstr_unescape((char *)(*val)->data,       \
-                           (char *)__a2,               \
-                           /* minus "" */              \
-                           br.end - br.start - 2);     \
-    } else {                                           \
-        sz = 0;                                        \
-    }                                                  \
-    (*val)->data[sz] = '\0';                           \
-    (*val)->sz = sz + 1;                               \
-    BYTES_INCREF(*val);                                \
-    return br.end;                                     \
+#define DPARSE_QSTR_POS_BODY(__a1, __a2)                       \
+    byterange_t br;                                            \
+    int state;                                                 \
+    size_t sz;                                                 \
+    state = QSTR_ST_START;                                     \
+    br.start = spos;                                           \
+    br.end = spos;                                             \
+    for (br.end = spos; br.end < epos; ++br.end) {             \
+        char ch;                                               \
+        ch = (char)__a1;                                       \
+        switch (state) {                                       \
+        case QSTR_ST_START:                                    \
+            if (ch == '"') {                                   \
+                state = QSTR_ST_IN;                            \
+            } else {                                           \
+                /*                                             \
+                 * garbage before the opening "                \
+                 */                                            \
+                goto end;                                      \
+            }                                                  \
+            break;                                             \
+        case QSTR_ST_IN:                                       \
+            if (ch == '"') {                                   \
+                state = QSTR_ST_QUOTE;                         \
+            }                                                  \
+            break;                                             \
+        case QSTR_ST_QUOTE:                                    \
+            if (ch == '"') {                                   \
+                state = QSTR_ST_IN;                            \
+            } else {                                           \
+                /* one beyond the closing " */                 \
+                state = QSTR_ST_OUT;                           \
+                goto end;                                      \
+            }                                                  \
+                                                               \
+            break;                                             \
+        default:                                               \
+            assert(0);                                         \
+        }                                                      \
+    }                                                          \
+end:                                                           \
+    if (state != QSTR_ST_OUT && state != QSTR_ST_QUOTE) {      \
+        sz = 0;                                                \
+    } else {                                                   \
+        sz = br.end - br.start;                                \
+    }                                                          \
+    *val = mrklkit_rt_bytes_new_gc(sz + 1);                    \
+    /* unescape starting from next to the starting " */        \
+    if (sz > 2) {                                              \
+        sz = qstr_unescape((char *)(*val)->data,               \
+                           (char *)__a2,                       \
+                           /* minus "" */                      \
+                           br.end - br.start - 2);             \
+    } else {                                                   \
+        sz = 0;                                                \
+    }                                                          \
+    (*val)->data[sz] = '\0';                                   \
+    (*val)->sz = sz + 1;                                       \
+    BYTES_INCREF(*val);                                        \
+    return br.end;                                             \
 
 
 static off_t
@@ -988,15 +988,19 @@ dparse_struct_pi_pos(rt_struct_t *value)
                    value->next_delim == (ssize_t)value->type->fields.elnum);   \
             value->parser_info.pos = pos;                                      \
         }                                                                      \
-        spos = _dparser_reach_value(bs,                                        \
-                                    delim,                                     \
-                                    value->dpos[idx],                          \
-                                    value->parser_info.br.end);                \
-        epos = value->dpos[nidx] & ~0x80000000;                                \
-        value->dpos[idx] |= 0x80000000;                                        \
-        val = (__typeof(val))MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);      \
-        __a1;                                                                  \
-        cb(bs, delim, spos, epos, val);                                        \
+        if (!(value->dpos[idx] & 0x80000000)) {                                \
+            spos = _dparser_reach_value(bs,                                    \
+                                        delim,                                 \
+                                        value->dpos[idx],                      \
+                                        value->parser_info.br.end);            \
+            epos = value->dpos[nidx] & ~0x80000000;                            \
+            value->dpos[idx] |= 0x80000000;                                    \
+            val = (__typeof(val))MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);  \
+            __a1;                                                              \
+            cb(bs, delim, spos, epos, val);                                    \
+        } else {                                                               \
+            val = (__typeof(val))MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);  \
+        }                                                                      \
     } else {                                                                   \
         val = (__typeof(val))MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, idx);      \
     }                                                                          \
