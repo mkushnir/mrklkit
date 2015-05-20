@@ -6,6 +6,7 @@
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/mpool.h>
+#include <mrkcommon/jparse.h>
 
 #include <mrklkit/ltype.h>
 
@@ -201,6 +202,13 @@ void mrklkit_rt_struct_deep_copy(rt_struct_t *, rt_struct_t *);
 void mrklkit_rt_struct_deep_copy_gc(rt_struct_t *, rt_struct_t *);
 
 bytes_t *mrklkit_rt_struct_pi_data_gc(rt_struct_t *);
+
+void rt_array_dump_json(rt_array_t *, bytestream_t *);
+void rt_dict_dump_json(rt_dict_t *, bytestream_t *);
+void rt_struct_dump_json(rt_struct_t *, bytestream_t *);
+int rt_array_load_json(rt_array_t *, jparse_ctx_t *);
+int rt_dict_load_json(rt_dict_t *, jparse_ctx_t *);
+int rt_struct_load_json(rt_struct_t *, jparse_ctx_t *);
 
 void lruntime_set_mpool(mpool_ctx_t *);
 void lruntime_init(void);

@@ -8,6 +8,7 @@
 #include <mrkcommon/util.h>
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/mpool.h>
+#include <mrkcommon/jparse.h>
 
 #include <mrklkit/dparser.h>
 #include <mrklkit/ltype.h>
@@ -880,7 +881,9 @@ mrklkit_rt_set_dict_item_dict(rt_dict_t *value, bytes_t *key, rt_dict_t *val)
 
 
 void
-mrklkit_rt_set_dict_item_struct(rt_dict_t *value, bytes_t *key, rt_struct_t *val)
+mrklkit_rt_set_dict_item_struct(rt_dict_t *value,
+                                bytes_t *key,
+                                rt_struct_t *val)
 {
     union {
         rt_struct_t *s;
@@ -1209,8 +1212,6 @@ mrklkit_rt_get_struct_item_dict(rt_struct_t *value,
 {
     rt_dict_t **res;
 
-    //TRACE("idx=%ld", idx);
-    //TRACE("value=%p", value);
     assert(idx < (ssize_t)value->type->fields.elnum);
     res = (rt_dict_t **)(value->fields + idx);
     if (*res == NULL) {
@@ -1291,9 +1292,6 @@ mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 {
     bytes_t **p;
 
-    //TRACE("idx=%ld", idx);
-    //TRACE("value=%p", value);
-    //TRACE("val=%s", val->data);
     assert(idx < (ssize_t)value->type->fields.elnum);
     p = (bytes_t **)(value->fields + idx);
     BYTES_DECREF(p);
@@ -1303,7 +1301,9 @@ mrklkit_rt_set_struct_item_str(rt_struct_t *value, int64_t idx, bytes_t *val)
 
 
 void
-mrklkit_rt_set_struct_item_array(rt_struct_t *value, int64_t idx, rt_array_t *val)
+mrklkit_rt_set_struct_item_array(rt_struct_t *value,
+                                 int64_t idx,
+                                 rt_array_t *val)
 {
     rt_array_t **p;
 
@@ -1322,10 +1322,6 @@ mrklkit_rt_set_struct_item_dict(rt_struct_t *value, int64_t idx, rt_dict_t *val)
 
     assert(idx < (ssize_t)value->type->fields.elnum);
     p = (rt_dict_t **)(value->fields + idx);
-    //TRACE("___ p=%p val=%p", *p, val);
-    //if (*p != NULL) {
-    //    TRACE("p->nref=%ld", (*p)->nref);
-    //}
     DICT_DECREF(p);
     *p = val;
     DICT_INCREF(*p);
@@ -1333,7 +1329,9 @@ mrklkit_rt_set_struct_item_dict(rt_struct_t *value, int64_t idx, rt_dict_t *val)
 
 
 void
-mrklkit_rt_set_struct_item_struct(rt_struct_t *value, int64_t idx, rt_struct_t *val)
+mrklkit_rt_set_struct_item_struct(rt_struct_t *value,
+                                  int64_t idx,
+                                  rt_struct_t *val)
 {
     rt_struct_t **p;
 
@@ -1465,6 +1463,1021 @@ mrklkit_rt_struct_incref(rt_struct_t *s)
         STRUCT_INCREF(s);
     }
 }
+
+
+/*
+ * json support
+ */
+
+void
+lruntime_dump_json(lkit_type_t *ty, void *value, bytestream_t *bs)
+{
+    switch (ty->tag) {
+    case LKIT_INT:
+    case LKIT_INT_MIN:
+    case LKIT_INT_MAX:
+        {
+            union {
+                void *v;
+                int64_t i;
+            } v;
+            v.v = value;
+            bytestream_nprintf(bs, 1024, "%ld", v.i);
+        }
+        break;
+
+    case LKIT_FLOAT:
+    case LKIT_FLOAT_MIN:
+    case LKIT_FLOAT_MAX:
+        {
+            union {
+                void *v;
+                double d;
+            } v;
+            v.v = value;
+            bytestream_nprintf(bs, 1024, "%lf", v.d);
+        }
+        break;
+
+    case LKIT_BOOL:
+        {
+            union {
+                void *v;
+                char c;
+            } v;
+            v.v = value;
+            bytestream_nprintf(bs, 1024, "%s", v.c ? "true" : "false");
+        }
+        break;
+
+    case LKIT_STR:
+        {
+            union {
+                void *v;
+                bytes_t *s;
+            } v;
+            v.v = value;
+            bytestream_nprintf(bs,
+                               1024,
+                               "\"%s\"",
+                               v.s != NULL ? (char *)v.s->data : "null");
+        }
+        break;
+
+    case LKIT_ARRAY:
+        {
+            union {
+                void *v;
+                rt_array_t *a;
+            } v;
+            v.v = value;
+            rt_array_dump_json(v.a, bs);
+        }
+        break;
+
+    case LKIT_DICT:
+        {
+            union {
+                void *v;
+                rt_dict_t *d;
+            } v;
+            v.v = value;
+            rt_dict_dump_json(v.d, bs);
+        }
+        break;
+
+    case LKIT_STRUCT:
+        {
+            union {
+                void *v;
+                rt_struct_t *s;
+            } v;
+            v.v = value;
+            rt_struct_dump_json(v.s, bs);
+        }
+        break;
+
+    default:
+        FAIL("lruntime_dump_json");
+
+    }
+
+}
+
+
+static int
+rt_array_dump_json_item(void **v, void *udata)
+{
+    struct {
+        lkit_type_t *ty;
+        bytestream_t *bs;
+    } *params;
+    params = udata;
+    lruntime_dump_json(params->ty, *v, params->bs);
+    bytestream_cat(params->bs, 1, ",");
+    return 0;
+}
+
+void
+rt_array_dump_json(rt_array_t *value, bytestream_t *bs)
+{
+    if (value == NULL) {
+        bytestream_cat(bs, 4, "null");
+    } else {
+        off_t eod;
+        struct {
+            lkit_type_t *ty;
+            bytestream_t *bs;
+        } params;
+
+        params.ty = lkit_array_get_element_type(value->type);
+        params.bs = bs;
+        bytestream_cat(bs, 1, "[");
+        eod = SEOD(bs);
+        (void)array_traverse(&value->fields,
+                             (array_traverser_t)rt_array_dump_json_item,
+                             &params);
+        if (SEOD(bs) > eod) {
+            SADVANCEEOD(bs, -1);
+        }
+        bytestream_cat(bs, 1, "]");
+    }
+}
+
+
+static int
+rt_dict_dump_json_item(void *key, void *value, void *udata)
+{
+    bytes_t *k;
+    struct {
+        lkit_type_t *ty;
+        bytestream_t *bs;
+    } *params;
+
+    k = key;
+    params = udata;
+    bytestream_nprintf(params->bs, 1024, "\"%s\":", k->data);
+    lruntime_dump_json(params->ty, value, params->bs);
+    bytestream_cat(params->bs, 1, ",");
+    return 0;
+}
+
+
+void
+rt_dict_dump_json(rt_dict_t *value, bytestream_t *bs)
+{
+    if (value == NULL) {
+        bytestream_cat(bs, 4, "null");
+    } else {
+        off_t eod;
+        struct {
+            lkit_type_t *ty;
+            bytestream_t *bs;
+        } params;
+
+        params.ty = lkit_dict_get_element_type(value->type);
+        params.bs = bs;
+        bytestream_cat(bs, 1, "{");
+        eod = SEOD(bs);
+        (void)dict_traverse(&value->fields,
+                            (dict_traverser_t)rt_dict_dump_json_item,
+                            &params);
+        if (SEOD(bs) > eod) {
+            SADVANCEEOD(bs, -1);
+        }
+        bytestream_cat(bs, 1, "}");
+    }
+}
+
+
+void
+rt_struct_dump_json(rt_struct_t *value, bytestream_t *bs)
+{
+    if (value == NULL) {
+        bytestream_cat(bs, 4, "null");
+    } else {
+        bytes_t **name;
+        array_iter_t it;
+        off_t eod;
+
+        bytestream_cat(bs, 1, "{");
+        eod = SEOD(bs);
+        for (name = array_first(&value->type->names, &it);
+             name != NULL;
+             name = array_next(&value->type->names, &it)) {
+
+            lkit_type_t **fty;
+            void **v;
+
+            fty = array_get(&value->type->fields, it.iter);
+            bytestream_nprintf(bs, 1024, "\"%s\":", (*name)->data);
+            v = MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, it.iter);
+            lruntime_dump_json(*fty, *v, bs);
+            bytestream_cat(bs, 1, ",");
+        }
+        if (SEOD(bs) > eod) {
+            SADVANCEEOD(bs, -1);
+        }
+        bytestream_cat(bs, 1, "}");
+    }
+}
+
+
+
+
+
+
+
+
+
+static int _rt_array_expect_item_int_cb(jparse_ctx_t *,
+                                        jparse_value_t *,
+                                        void *);
+static int _rt_array_expect_item_float_cb(jparse_ctx_t *,
+                                          jparse_value_t *,
+                                          void *);
+static int _rt_array_expect_item_str_cb(jparse_ctx_t *,
+                                        jparse_value_t *,
+                                        void *);
+static int _rt_array_expect_item_bool_cb(jparse_ctx_t *,
+                                         jparse_value_t *,
+                                         void *);
+static int _rt_array_expect_item_array_cb(jparse_ctx_t *,
+                                          jparse_value_t *,
+                                          void *);
+static int _rt_array_expect_item_dict_cb(jparse_ctx_t *,
+                                         jparse_value_t *,
+                                         void *);
+static int _rt_array_expect_item_struct_cb(jparse_ctx_t *,
+                                           jparse_value_t *,
+                                           void *);
+
+static int _rt_dict_expect_item_int_cb(jparse_ctx_t *,
+                                       jparse_value_t *,
+                                       void *);
+static int _rt_dict_expect_item_float_cb(jparse_ctx_t *,
+                                         jparse_value_t *,
+                                         void *);
+static int _rt_dict_expect_item_str_cb(jparse_ctx_t *,
+                                       jparse_value_t *,
+                                       void *);
+static int _rt_dict_expect_item_bool_cb(jparse_ctx_t *,
+                                        jparse_value_t *,
+                                        void *);
+static int _rt_dict_expect_item_array_cb(jparse_ctx_t *,
+                                         jparse_value_t *,
+                                         void *);
+static int _rt_dict_expect_item_dict_cb(jparse_ctx_t *,
+                                        jparse_value_t *,
+                                        void *);
+static int _rt_dict_expect_item_struct_cb(jparse_ctx_t *,
+                                          jparse_value_t *,
+                                          void *);
+static int _rt_struct_expect_fields_cb(jparse_ctx_t *,
+                                       jparse_value_t *,
+                                       void *);
+
+
+
+
+
+static int
+_rt_array_expect_item_int_cb(jparse_ctx_t *jctx,
+                             UNUSED jparse_value_t *jval,
+                             void *udata)
+{
+    rt_array_t *value;
+    int64_t *v;
+
+    value = udata;
+    v = array_incr(&value->fields);
+    return jparse_expect_item_int(jctx, (long *)v, NULL);
+}
+
+
+static int
+_rt_array_expect_item_float_cb(jparse_ctx_t *jctx,
+                               UNUSED jparse_value_t *jval,
+                               void *udata)
+{
+    rt_array_t *value;
+    double *v;
+
+    value = udata;
+    v = array_incr(&value->fields);
+    return jparse_expect_item_float(jctx, v, NULL);
+}
+
+
+static int
+_rt_array_expect_item_str_cb(jparse_ctx_t *jctx,
+                             UNUSED jparse_value_t *jval,
+                             void *udata)
+{
+    rt_array_t *value;
+    bytes_t **v;
+
+    value = udata;
+    v = array_incr(&value->fields);
+    return jparse_expect_item_str(jctx, v, NULL);
+}
+
+
+static int
+_rt_array_expect_item_bool_cb(jparse_ctx_t *jctx,
+                              UNUSED jparse_value_t *jval,
+                              void *udata)
+{
+    rt_array_t *value;
+    char *v;
+
+    value = udata;
+    v = array_incr(&value->fields);
+    return jparse_expect_item_bool(jctx, v, NULL);
+}
+
+
+static int
+_rt_array_expect_item_array_cb(jparse_ctx_t *jctx,
+                               jparse_value_t *jval,
+                               void *udata)
+{
+    rt_array_t *value;
+    lkit_type_t *fty;
+    lkit_array_t *ta;
+    rt_array_t **v;
+    jparse_expect_cb_t cb;
+
+    value = udata;
+    fty = lkit_array_get_element_type(value->type);
+    assert(fty->tag == LKIT_ARRAY);
+    ta = (lkit_array_t *)fty;
+    v = array_incr(&value->fields);
+    *v = mrklkit_rt_array_new(ta);
+    ARRAY_INCREF(*v);
+    fty = lkit_array_get_element_type(ta);
+
+    switch (fty->tag) {
+    case LKIT_INT:
+        cb = _rt_array_expect_item_int_cb;
+        break;
+
+    case LKIT_FLOAT:
+        cb = _rt_array_expect_item_float_cb;
+        break;
+
+    case LKIT_STR:
+        cb = _rt_array_expect_item_str_cb;
+        break;
+
+    case LKIT_BOOL:
+        cb = _rt_array_expect_item_bool_cb;
+        break;
+
+    case LKIT_ARRAY:
+        cb = _rt_array_expect_item_array_cb;
+        break;
+
+    case LKIT_DICT:
+        cb = _rt_array_expect_item_dict_cb;
+        break;
+
+    case LKIT_STRUCT:
+        cb = _rt_array_expect_item_struct_cb;
+        break;
+
+    default:
+        FAIL("_rt_array_expect_item_array_cb");
+    }
+    return jparse_expect_item_array_iter(jctx, cb, jval, *v);
+}
+
+
+static int
+_rt_array_expect_item_dict_cb(jparse_ctx_t *jctx,
+                              jparse_value_t *jval,
+                              void *udata)
+{
+    rt_array_t *value;
+    lkit_type_t *fty;
+    lkit_dict_t *td;
+    rt_dict_t **v;
+    jparse_expect_cb_t cb;
+
+    value = udata;
+    fty = lkit_array_get_element_type(value->type);
+    assert(fty->tag == LKIT_DICT);
+    td = (lkit_dict_t *)fty;
+    v = array_incr(&value->fields);
+    *v = mrklkit_rt_dict_new(td);
+    DICT_INCREF(*v);
+    fty = lkit_dict_get_element_type(td);
+
+    switch (fty->tag) {
+    case LKIT_INT:
+        cb = _rt_dict_expect_item_int_cb;
+        break;
+
+    case LKIT_FLOAT:
+        cb = _rt_dict_expect_item_float_cb;
+        break;
+
+    case LKIT_STR:
+        cb = _rt_dict_expect_item_str_cb;
+        break;
+
+    case LKIT_BOOL:
+        cb = _rt_dict_expect_item_bool_cb;
+        break;
+
+    case LKIT_ARRAY:
+        cb = _rt_dict_expect_item_array_cb;
+        break;
+
+    case LKIT_DICT:
+        cb = _rt_dict_expect_item_dict_cb;
+        break;
+
+    case LKIT_STRUCT:
+        cb = _rt_dict_expect_item_struct_cb;
+        break;
+
+    default:
+        FAIL("_rt_array_expect_item_dict_cb");
+    }
+    return jparse_expect_item_object_iter(jctx, cb, jval, *v);
+}
+
+
+static int
+_rt_array_expect_item_struct_cb(jparse_ctx_t *jctx,
+                                jparse_value_t *jval,
+                                void *udata)
+{
+    rt_array_t *value;
+    lkit_type_t *fty;
+    lkit_struct_t *ts;
+    rt_struct_t **v;
+
+    value = udata;
+    fty = lkit_array_get_element_type(value->type);
+    assert(fty->tag == LKIT_STRUCT);
+    ts = (lkit_struct_t *)fty;
+    v = array_incr(&value->fields);
+    *v = mrklkit_rt_struct_new(ts);
+    STRUCT_INCREF(*v);
+    return jparse_expect_item_object(jctx,
+                                     _rt_struct_expect_fields_cb,
+                                     jval,
+                                     *v);
+}
+
+
+int
+rt_array_load_json(rt_array_t *value, jparse_ctx_t *jctx)
+{
+    lkit_type_t *fty;
+    jparse_expect_cb_t cb = NULL;
+    jparse_value_t jval;
+
+    fty = lkit_array_get_element_type(value->type);
+    switch (fty->tag) {
+    case LKIT_INT:
+        cb = _rt_array_expect_item_int_cb;
+        break;
+
+    case LKIT_FLOAT:
+        cb = _rt_array_expect_item_float_cb;
+        break;
+
+    case LKIT_STR:
+        cb = _rt_array_expect_item_str_cb;
+        break;
+
+    case LKIT_BOOL:
+        cb = _rt_array_expect_item_bool_cb;
+        break;
+
+    case LKIT_ARRAY:
+        cb = _rt_array_expect_item_array_cb;
+        break;
+
+    case LKIT_DICT:
+        cb = _rt_array_expect_item_dict_cb;
+        break;
+
+    case LKIT_STRUCT:
+        cb = _rt_array_expect_item_struct_cb;
+        break;
+
+    default:
+        FAIL("rt_array_load_json");
+    }
+
+    return jparse_expect_array_iter(jctx, cb, &jval, value);
+}
+
+
+
+
+
+static int
+_rt_dict_expect_item_int_cb(jparse_ctx_t *jctx,
+                            UNUSED jparse_value_t *jval,
+                            void *udata)
+{
+    int res;
+    rt_dict_t *value;
+    bytes_t *k;
+    union {
+        long i;
+        void *v;
+    } v;
+
+    value = udata;
+    if ((res = jparse_expect_anykvp_int(jctx, &k, &v.i, NULL)) != 0) {
+        return res;
+    }
+
+    k = bytes_new_from_bytes(k);
+    BYTES_INCREF(k);
+    dict_set_item(&value->fields, k, v.v);
+    return 0;
+}
+
+
+static int
+_rt_dict_expect_item_float_cb(jparse_ctx_t *jctx,
+                              UNUSED jparse_value_t *jval,
+                              void *udata)
+{
+    int res;
+    rt_dict_t *value;
+    bytes_t *k;
+    union {
+        double f;
+        void *v;
+    } v;
+
+    value = udata;
+    if ((res = jparse_expect_anykvp_float(jctx, &k, &v.f, NULL)) != 0) {
+        return res;
+    }
+
+    k = bytes_new_from_bytes(k);
+    BYTES_INCREF(k);
+    dict_set_item(&value->fields, k, v.v);
+    return 0;
+}
+
+
+static int
+_rt_dict_expect_item_str_cb(jparse_ctx_t *jctx,
+                            UNUSED jparse_value_t *jval,
+                            void *udata)
+{
+    int res;
+    rt_dict_t *value;
+    bytes_t *k;
+    union {
+        bytes_t *s;
+        void *v;
+    } v;
+
+    value = udata;
+    if ((res = jparse_expect_anykvp_str(jctx, &k, &v.s, NULL)) != 0) {
+        return res;
+    }
+
+    k = bytes_new_from_bytes(k);
+    BYTES_INCREF(k);
+    v.s = bytes_new_from_bytes(v.s);
+    BYTES_INCREF(v.s);
+    dict_set_item(&value->fields, k, v.v);
+    return 0;
+}
+
+
+static int
+_rt_dict_expect_item_bool_cb(jparse_ctx_t *jctx,
+                             UNUSED jparse_value_t *jval,
+                             void *udata)
+{
+    int res;
+    rt_dict_t *value;
+    bytes_t *k;
+    union {
+        char b;
+        void *v;
+    } v;
+
+    value = udata;
+    if ((res = jparse_expect_anykvp_bool(jctx, &k, &v.b, NULL)) != 0) {
+        return res;
+    }
+
+    k = bytes_new_from_bytes(k);
+    BYTES_INCREF(k);
+    dict_set_item(&value->fields, k, v.v);
+    return 0;
+}
+
+
+static int
+_rt_dict_expect_item_array_cb(jparse_ctx_t *jctx,
+                              jparse_value_t *jval,
+                              void *udata)
+{
+    int res;
+    rt_dict_t *value;
+    lkit_type_t *fty;
+    lkit_array_t *ta;
+    jparse_expect_cb_t cb;
+    bytes_t *k;
+    rt_array_t *v;
+
+    value = udata;
+    fty = lkit_dict_get_element_type(value->type);
+    assert(fty->tag == LKIT_ARRAY);
+    ta = (lkit_array_t *)fty;
+    fty = lkit_array_get_element_type(ta);
+
+    switch (fty->tag) {
+    case LKIT_INT:
+        cb = _rt_array_expect_item_int_cb;
+        break;
+
+    case LKIT_FLOAT:
+        cb = _rt_array_expect_item_float_cb;
+        break;
+
+    case LKIT_STR:
+        cb = _rt_array_expect_item_str_cb;
+        break;
+
+    case LKIT_BOOL:
+        cb = _rt_array_expect_item_bool_cb;
+        break;
+
+    case LKIT_ARRAY:
+        cb = _rt_array_expect_item_array_cb;
+        break;
+
+    case LKIT_DICT:
+        cb = _rt_array_expect_item_dict_cb;
+        break;
+
+    case LKIT_STRUCT:
+        cb = _rt_array_expect_item_struct_cb;
+        break;
+
+    default:
+        FAIL("_rt_dict_expect_item_array_cb");
+    }
+
+    v = mrklkit_rt_array_new(ta);
+    res = jparse_expect_anykvp_array_iter(jctx, &k, cb, jval, v);
+    k = bytes_new_from_bytes(k);
+    BYTES_INCREF(k);
+    ARRAY_INCREF(v);
+    dict_set_item(&value->fields, k, v);
+    return res;
+}
+
+
+static int
+_rt_dict_expect_item_dict_cb(jparse_ctx_t *jctx,
+                             jparse_value_t *jval,
+                             void *udata)
+{
+    int res;
+    rt_dict_t *value;
+    lkit_type_t *fty;
+    lkit_dict_t *td;
+    jparse_expect_cb_t cb;
+    bytes_t *k;
+    rt_dict_t *v;
+
+    value = udata;
+    fty = lkit_dict_get_element_type(value->type);
+    assert(fty->tag == LKIT_DICT);
+    td = (lkit_dict_t *)fty;
+    fty = lkit_dict_get_element_type(td);
+
+    switch (fty->tag) {
+    case LKIT_INT:
+        cb = _rt_dict_expect_item_int_cb;
+        break;
+
+    case LKIT_FLOAT:
+        cb = _rt_dict_expect_item_float_cb;
+        break;
+
+    case LKIT_STR:
+        cb = _rt_dict_expect_item_str_cb;
+        break;
+
+    case LKIT_BOOL:
+        cb = _rt_dict_expect_item_bool_cb;
+        break;
+
+    case LKIT_ARRAY:
+        cb = _rt_dict_expect_item_array_cb;
+        break;
+
+    case LKIT_DICT:
+        cb = _rt_dict_expect_item_dict_cb;
+        break;
+
+    case LKIT_STRUCT:
+        cb = _rt_dict_expect_item_struct_cb;
+        break;
+
+    default:
+        FAIL("_rt_dict_expect_item_dict_cb");
+    }
+
+    v = mrklkit_rt_dict_new(td);
+    res = jparse_expect_anykvp_object_iter(jctx, &k, cb, jval, v);
+    k = bytes_new_from_bytes(k);
+    BYTES_INCREF(k);
+    dict_set_item(&value->fields, k, v);
+    return res;
+}
+
+
+static int
+_rt_dict_expect_item_struct_cb(jparse_ctx_t *jctx,
+                               jparse_value_t *jval,
+                               void *udata)
+{
+    int res;
+    rt_dict_t *value;
+    lkit_type_t *fty;
+    lkit_struct_t *ts;
+    bytes_t *k;
+    rt_struct_t *v;
+
+    value = udata;
+    fty = lkit_dict_get_element_type(value->type);
+    assert(fty->tag == LKIT_STRUCT);
+    ts = (lkit_struct_t *)fty;
+    v = mrklkit_rt_struct_new(ts);
+    res = jparse_expect_anykvp_object(jctx,
+                                      &k,
+                                      _rt_struct_expect_fields_cb,
+                                      jval,
+                                      v);
+    k = bytes_new_from_bytes(k);
+    BYTES_INCREF(k);
+    STRUCT_INCREF(v);
+    dict_set_item(&value->fields, k, v);
+    return res;
+}
+
+
+int
+rt_dict_load_json(rt_dict_t *value, jparse_ctx_t *jctx)
+{
+    lkit_type_t *fty;
+    jparse_expect_cb_t cb;
+    jparse_value_t jval;
+
+    fty = lkit_dict_get_element_type(value->type);
+    switch (fty->tag) {
+    case LKIT_INT:
+        cb = _rt_dict_expect_item_int_cb;
+        break;
+
+    case LKIT_FLOAT:
+        cb = _rt_dict_expect_item_float_cb;
+        break;
+
+    case LKIT_STR:
+        cb = _rt_dict_expect_item_str_cb;
+        break;
+
+    case LKIT_BOOL:
+        cb = _rt_dict_expect_item_bool_cb;
+        break;
+
+    case LKIT_ARRAY:
+        cb = _rt_dict_expect_item_array_cb;
+        break;
+
+    case LKIT_DICT:
+        cb = _rt_dict_expect_item_dict_cb;
+        break;
+
+    case LKIT_STRUCT:
+        cb = _rt_dict_expect_item_struct_cb;
+        break;
+
+    default:
+        FAIL("rt_dict_load_json");
+    }
+    return jparse_expect_object_iter(jctx, cb, &jval, value);
+}
+
+
+static int
+_rt_struct_expect_fields_cb(jparse_ctx_t *jctx,
+                            jparse_value_t *jval,
+                            void *udata)
+{
+    int res;
+    rt_struct_t *value;
+    bytes_t **name;
+    array_iter_t it;
+
+    value = udata;
+    res = 0;
+    for (name = array_first(&value->type->names, &it);
+         name != NULL;
+         name = array_next(&value->type->names, &it)) {
+        lkit_type_t **fty;
+        void **v;
+
+        fty = array_get(&value->type->fields, it.iter);
+        v = MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(value, it.iter);
+        switch ((*fty)->tag) {
+        case LKIT_INT:
+            res = jparse_expect_kvp_int(jctx, *name, (long *)v, NULL);
+            break;
+
+        case LKIT_FLOAT:
+            res = jparse_expect_kvp_float(jctx, *name, (double *)v, NULL);
+            break;
+
+        case LKIT_BOOL:
+            res = jparse_expect_kvp_bool(jctx, *name, (char *)v, NULL);
+            break;
+
+        case LKIT_STR:
+            res = jparse_expect_kvp_str(jctx, *name, (bytes_t **)v, NULL);
+            break;
+
+
+        case LKIT_ARRAY:
+            {
+                rt_array_t *ary;
+                lkit_array_t *ta;
+                lkit_type_t *afty;
+                jparse_expect_cb_t cb;
+
+                ta = (lkit_array_t *)(*fty);
+                ary = mrklkit_rt_array_new(ta);
+                afty = lkit_array_get_element_type(ta);
+                switch (afty->tag) {
+                    case LKIT_INT:
+                        cb = _rt_array_expect_item_int_cb;
+                        break;
+
+                    case LKIT_FLOAT:
+                        cb = _rt_array_expect_item_float_cb;
+                        break;
+
+                    case LKIT_STR:
+                        cb = _rt_array_expect_item_str_cb;
+                        break;
+
+                    case LKIT_BOOL:
+                        cb = _rt_array_expect_item_bool_cb;
+                        break;
+
+                    case LKIT_ARRAY:
+                        cb = _rt_array_expect_item_array_cb;
+                        break;
+
+                    case LKIT_DICT:
+                        cb = _rt_array_expect_item_dict_cb;
+                        break;
+
+                    case LKIT_STRUCT:
+                        cb = _rt_array_expect_item_struct_cb;
+                        break;
+
+                    default:
+                        FAIL("_rt_struct_expect_fields_cb");
+
+                }
+                res = jparse_expect_kvp_array_iter(jctx, *name, cb, jval, ary);
+                ARRAY_INCREF(ary);
+                *v = ary;
+            }
+            break;
+
+        case LKIT_DICT:
+            {
+                rt_dict_t *dict;
+                lkit_dict_t *td;
+                lkit_type_t *dfty;
+                jparse_expect_cb_t cb;
+
+                td = (lkit_dict_t *)(*fty);
+                dict = mrklkit_rt_dict_new(td);
+                dfty = lkit_dict_get_element_type(td);
+                switch (dfty->tag) {
+                    case LKIT_INT:
+                        cb = _rt_dict_expect_item_int_cb;
+                        break;
+
+                    case LKIT_FLOAT:
+                        cb = _rt_dict_expect_item_float_cb;
+                        break;
+
+                    case LKIT_STR:
+                        cb = _rt_dict_expect_item_str_cb;
+                        break;
+
+                    case LKIT_BOOL:
+                        cb = _rt_dict_expect_item_bool_cb;
+                        break;
+
+                    case LKIT_ARRAY:
+                        cb = _rt_dict_expect_item_array_cb;
+                        break;
+
+                    case LKIT_DICT:
+                        cb = _rt_dict_expect_item_dict_cb;
+                        break;
+
+                    case LKIT_STRUCT:
+                        cb = _rt_dict_expect_item_struct_cb;
+                        break;
+
+                    default:
+                        FAIL("_rt_struct_expect_fields_cb");
+
+                }
+                res = jparse_expect_kvp_object_iter(jctx,
+                                                    *name,
+                                                    cb,
+                                                    jval,
+                                                    dict);
+                DICT_INCREF(dict);
+                *v = dict;
+            }
+            break;
+
+        case LKIT_STRUCT:
+            {
+                rt_struct_t *st;
+                lkit_struct_t *ts;
+
+                ts = (lkit_struct_t *)(*fty);
+                st = mrklkit_rt_struct_new(ts);
+                res = jparse_expect_kvp_object(jctx,
+                                               *name,
+                                               _rt_struct_expect_fields_cb,
+                                               NULL,
+                                               st);
+                STRUCT_INCREF(st);
+                *v = st;
+            }
+            break;
+
+
+        default:
+            lkit_type_dump(*fty);
+            FAIL("rt_struct_load_field_json");
+        }
+        if (res != 0) {
+            break;
+        }
+    }
+    return res;
+
+}
+
+
+int
+rt_struct_load_json(rt_struct_t *value, jparse_ctx_t *jctx)
+{
+    return jparse_expect_object(jctx, _rt_struct_expect_fields_cb, NULL, value);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 void
