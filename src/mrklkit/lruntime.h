@@ -209,6 +209,7 @@ void rt_struct_dump_json(rt_struct_t *, bytestream_t *);
 int rt_array_load_json(rt_array_t *, jparse_ctx_t *);
 int rt_dict_load_json(rt_dict_t *, jparse_ctx_t *);
 int rt_struct_load_json(rt_struct_t *, jparse_ctx_t *);
+int rt_struct_load_fields_json(rt_struct_t *, jparse_ctx_t *);
 
 void lruntime_set_mpool(mpool_ctx_t *);
 void lruntime_init(void);

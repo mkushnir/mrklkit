@@ -6,6 +6,7 @@
 #include <mrkcommon/bytes.h>
 #include <mrkcommon/dict.h>
 #include <mrkcommon/util.h>
+//#define TRRET_DEBUG
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/mpool.h>
 #include <mrkcommon/jparse.h>
@@ -591,41 +592,62 @@ dump_bytes_dict(bytes_t *k, bytes_t *v, UNUSED void *udata)
 }
 
 
+static int
+dump_struct_dict(bytes_t *k, rt_struct_t *v, UNUSED void *udata)
+{
+    TRACEC("%s: ", k->data);
+    mrklkit_rt_struct_dump(v);
+    return 0;
+}
+
+
 void
 mrklkit_rt_dict_dump(rt_dict_t *value)
 {
-    lkit_type_t *fty;
 
-    fty = lkit_dict_get_element_type(value->type);
+    if (value == NULL) {
+        TRACEC("{null}");
+    } else {
+        lkit_type_t *fty;
 
-    TRACEC("{ ");
-    switch (fty->tag) {
-    case LKIT_INT:
-    case LKIT_INT_MIN:
-    case LKIT_INT_MAX:
-        dict_traverse(&value->fields,
-                      (dict_traverser_t)dump_int_dict,
-                      NULL);
-        break;
+        fty = lkit_dict_get_element_type(value->type);
 
-    case LKIT_FLOAT:
-    case LKIT_FLOAT_MIN:
-    case LKIT_FLOAT_MAX:
-        dict_traverse(&value->fields,
-                      (dict_traverser_t)dump_float_dict,
-                      NULL);
-        break;
+        TRACEC("{ ");
+        switch (fty->tag) {
+        case LKIT_INT:
+        case LKIT_INT_MIN:
+        case LKIT_INT_MAX:
+            dict_traverse(&value->fields,
+                          (dict_traverser_t)dump_int_dict,
+                          NULL);
+            break;
 
-    case LKIT_STR:
-        dict_traverse(&value->fields,
-                      (dict_traverser_t)dump_bytes_dict,
-                      NULL);
-        break;
+        case LKIT_FLOAT:
+        case LKIT_FLOAT_MIN:
+        case LKIT_FLOAT_MAX:
+            dict_traverse(&value->fields,
+                          (dict_traverser_t)dump_float_dict,
+                          NULL);
+            break;
 
-    default:
-        FAIL("mrklkit_rt_dict_dump");
+        case LKIT_STR:
+            dict_traverse(&value->fields,
+                          (dict_traverser_t)dump_bytes_dict,
+                          NULL);
+            break;
+
+        case LKIT_STRUCT:
+            dict_traverse(&value->fields,
+                          (dict_traverser_t)dump_struct_dict,
+                          NULL);
+            break;
+
+
+        default:
+            FAIL("mrklkit_rt_dict_dump");
+        }
+        TRACEC("} ");
     }
-    TRACEC("} ");
 }
 
 
@@ -1517,10 +1539,14 @@ lruntime_dump_json(lkit_type_t *ty, void *value, bytestream_t *bs)
                 bytes_t *s;
             } v;
             v.v = value;
-            bytestream_nprintf(bs,
-                               1024,
-                               "\"%s\"",
-                               v.s != NULL ? (char *)v.s->data : "null");
+            if (v.s != NULL) {
+                bytestream_nprintf(bs,
+                                   1024,
+                                   "\"%s\"",
+                                   (char *)v.s->data);
+            } else {
+                bytestream_cat(bs, 4, "null");
+            }
         }
         break;
 
@@ -1774,12 +1800,19 @@ _rt_array_expect_item_str_cb(jparse_ctx_t *jctx,
                              UNUSED jparse_value_t *jval,
                              void *udata)
 {
+    int res;
     rt_array_t *value;
     bytes_t **v;
 
     value = udata;
     v = array_incr(&value->fields);
-    return jparse_expect_item_str(jctx, v, NULL);
+    *v = NULL;
+    res = jparse_expect_item_str(jctx, v, NULL);
+    if (*v != NULL) {
+        *v = bytes_new_from_bytes(*v);
+        BYTES_INCREF(*v);
+    }
+    return res;
 }
 
 
@@ -1995,13 +2028,16 @@ _rt_dict_expect_item_int_cb(jparse_ctx_t *jctx,
     } v;
 
     value = udata;
+    k = NULL;
     if ((res = jparse_expect_anykvp_int(jctx, &k, &v.i, NULL)) != 0) {
         return res;
     }
 
-    k = bytes_new_from_bytes(k);
-    BYTES_INCREF(k);
-    dict_set_item(&value->fields, k, v.v);
+    if (k != NULL) {
+        k = bytes_new_from_bytes(k);
+        BYTES_INCREF(k);
+        dict_set_item(&value->fields, k, v.v);
+    }
     return 0;
 }
 
@@ -2020,13 +2056,16 @@ _rt_dict_expect_item_float_cb(jparse_ctx_t *jctx,
     } v;
 
     value = udata;
+    k = NULL;
     if ((res = jparse_expect_anykvp_float(jctx, &k, &v.f, NULL)) != 0) {
         return res;
     }
 
-    k = bytes_new_from_bytes(k);
-    BYTES_INCREF(k);
-    dict_set_item(&value->fields, k, v.v);
+    if (k != NULL) {
+        k = bytes_new_from_bytes(k);
+        BYTES_INCREF(k);
+        dict_set_item(&value->fields, k, v.v);
+    }
     return 0;
 }
 
@@ -2045,15 +2084,24 @@ _rt_dict_expect_item_str_cb(jparse_ctx_t *jctx,
     } v;
 
     value = udata;
+    k = NULL;
+    v.s = NULL;
     if ((res = jparse_expect_anykvp_str(jctx, &k, &v.s, NULL)) != 0) {
         return res;
     }
 
-    k = bytes_new_from_bytes(k);
-    BYTES_INCREF(k);
-    v.s = bytes_new_from_bytes(v.s);
-    BYTES_INCREF(v.s);
-    dict_set_item(&value->fields, k, v.v);
+    if (v.s != NULL) {
+        v.s = bytes_new_from_bytes(v.s);
+        BYTES_INCREF(v.s);
+        assert(k != NULL);
+    }
+    if (k != NULL) {
+        k = bytes_new_from_bytes(k);
+        BYTES_INCREF(k);
+        dict_set_item(&value->fields, k, v.v);
+    } else {
+        BYTES_DECREF(&v.s);
+    }
     return 0;
 }
 
@@ -2072,13 +2120,16 @@ _rt_dict_expect_item_bool_cb(jparse_ctx_t *jctx,
     } v;
 
     value = udata;
+    k = NULL;
     if ((res = jparse_expect_anykvp_bool(jctx, &k, &v.b, NULL)) != 0) {
         return res;
     }
 
-    k = bytes_new_from_bytes(k);
-    BYTES_INCREF(k);
-    dict_set_item(&value->fields, k, v.v);
+    if (k != NULL) {
+        k = bytes_new_from_bytes(k);
+        BYTES_INCREF(k);
+        dict_set_item(&value->fields, k, v.v);
+    }
     return 0;
 }
 
@@ -2136,11 +2187,16 @@ _rt_dict_expect_item_array_cb(jparse_ctx_t *jctx,
     }
 
     v = mrklkit_rt_array_new(ta);
+    k = NULL;
     res = jparse_expect_anykvp_array_iter(jctx, &k, cb, jval, v);
-    k = bytes_new_from_bytes(k);
-    BYTES_INCREF(k);
-    ARRAY_INCREF(v);
-    dict_set_item(&value->fields, k, v);
+    if (k != NULL) {
+        k = bytes_new_from_bytes(k);
+        BYTES_INCREF(k);
+        ARRAY_INCREF(v);
+        dict_set_item(&value->fields, k, v);
+    } else {
+        ARRAY_DECREF(&v);
+    }
     return res;
 }
 
@@ -2198,10 +2254,16 @@ _rt_dict_expect_item_dict_cb(jparse_ctx_t *jctx,
     }
 
     v = mrklkit_rt_dict_new(td);
+    k = NULL;
     res = jparse_expect_anykvp_object_iter(jctx, &k, cb, jval, v);
-    k = bytes_new_from_bytes(k);
-    BYTES_INCREF(k);
-    dict_set_item(&value->fields, k, v);
+    if (k != NULL) {
+        k = bytes_new_from_bytes(k);
+        BYTES_INCREF(k);
+        DICT_INCREF(v);
+        dict_set_item(&value->fields, k, v);
+    } else {
+        DICT_DECREF(&v);
+    }
     return res;
 }
 
@@ -2223,15 +2285,20 @@ _rt_dict_expect_item_struct_cb(jparse_ctx_t *jctx,
     assert(fty->tag == LKIT_STRUCT);
     ts = (lkit_struct_t *)fty;
     v = mrklkit_rt_struct_new(ts);
+    k = NULL;
     res = jparse_expect_anykvp_object(jctx,
                                       &k,
                                       _rt_struct_expect_fields_cb,
                                       jval,
                                       v);
-    k = bytes_new_from_bytes(k);
-    BYTES_INCREF(k);
-    STRUCT_INCREF(v);
-    dict_set_item(&value->fields, k, v);
+    if (k != NULL) {
+        k = bytes_new_from_bytes(k);
+        BYTES_INCREF(k);
+        STRUCT_INCREF(v);
+        dict_set_item(&value->fields, k, v);
+    } else {
+        STRUCT_DECREF(&v);
+    }
     return res;
 }
 
@@ -2314,7 +2381,17 @@ _rt_struct_expect_fields_cb(jparse_ctx_t *jctx,
             break;
 
         case LKIT_STR:
-            res = jparse_expect_kvp_str(jctx, *name, (bytes_t **)v, NULL);
+            {
+                *v = NULL;
+                res = jparse_expect_kvp_str(jctx, *name, (bytes_t **)v, NULL);
+                if (*v != NULL) {
+                    bytes_t *vv;
+                    *v = bytes_new_from_bytes(*v);
+                    vv = *v;
+                    BYTES_INCREF(vv);
+                }
+            }
+
             break;
 
 
@@ -2446,6 +2523,9 @@ _rt_struct_expect_fields_cb(jparse_ctx_t *jctx,
             break;
         }
     }
+    if (res == JPARSE_EOS) {
+        res = 0;
+    }
     return res;
 
 }
@@ -2455,6 +2535,15 @@ int
 rt_struct_load_json(rt_struct_t *value, jparse_ctx_t *jctx)
 {
     return jparse_expect_object(jctx, _rt_struct_expect_fields_cb, NULL, value);
+}
+
+
+int
+rt_struct_load_fields_json(rt_struct_t *value, jparse_ctx_t *jctx)
+{
+    jparse_value_t jval;
+
+    return _rt_struct_expect_fields_cb(jctx, &jval, value);
 }
 
 
