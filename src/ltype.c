@@ -626,7 +626,6 @@ _lkit_type_dump(lkit_type_t *ty, int level)
                     _lkit_type_dump(*elty, level + 1);
                 }
             }
-
         }
         break;
 
@@ -652,8 +651,6 @@ _lkit_type_dump(lkit_type_t *ty, int level)
                 } else {
                     _lkit_type_dump(*elty, level + 1);
                 }
-
-                _lkit_type_dump(*elty, level + 1);
             }
         }
         break;

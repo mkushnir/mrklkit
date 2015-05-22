@@ -208,6 +208,8 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin isnull (func bool undef))\n"
 "(builtin addrof (func any undef))\n"
 "\n"
+"(builtin __ir ir)\n"
+"\n"
 "(pragma user)\n"
 "\n"
 ;

@@ -105,14 +105,6 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
             bytes_t **pargname;
             lkit_expr_t **parg;
 
-            if ((pargname = array_get(&ft->names, it.iter)) == NULL) {
-                FAIL("array_get");
-            }
-            if (*pargname == NULL) {
-                TRACE("named argument expected for %d in: %s", it.iter - 1, name->data);
-                TR(LKIT_PARSE_EXPRDEF + 5);
-                goto err;
-            }
             if ((parg = array_incr(&(*pexpr)->subs)) == NULL) {
                 FAIL("array_incr");
             }
@@ -123,6 +115,18 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
             (*parg)->type = *pargty;
             (*parg)->fparam = 1;
             (*parg)->fparam_idx = it.iter - 1;
+
+            if ((pargname = array_get(&ft->names, it.iter)) == NULL) {
+                FAIL("array_get");
+            }
+            if (*pargname == NULL) {
+                TRACE("named argument expected for %d in: %s", it.iter - 1, name->data);
+                TR(LKIT_PARSE_EXPRDEF + 5);
+                //lkit_expr_dump(*pexpr);
+                //lkit_type_dump((lkit_type_t *)ft);
+                //lkit_expr_dump(*parg);
+                goto err;
+            }
             lexpr_add_to_ctx(*pexpr, *pargname, *parg);
         }
 
