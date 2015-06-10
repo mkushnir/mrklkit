@@ -324,7 +324,8 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
     }
 
     /* default, except (parse struct key) */
-    if (!((*cont)->type->tag == LKIT_STRUCT && !(flag & COMPILE_GET_GET))) {
+    if (!((*cont)->type->tag == LKIT_STRUCT &&
+        !(flag & (COMPILE_GET_GET | COMPILE_GET_DPGET)))) {
         if (dflt == NULL) {
             TRACE("need default argument:");
             lkit_expr_dump(expr);
@@ -367,10 +368,10 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
 
             assert(lkit_type_cmp(ty, fty) == 0);
 
-            if (flag & COMPILE_GET_GET) {
+            if (flag & (COMPILE_GET_GET | COMPILE_GET_DPGET)) {
                 snprintf(buf,
                          sizeof(buf),
-                         "mrklkit_rt_get_array_item_%s",
+                         "mrklkit_rt_array_get_item_%s",
                          fty->name);
             } else {
                 TR(COMPILE_GET + 103);
@@ -430,10 +431,10 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
 
             assert(lkit_type_cmp(ty, fty) == 0);
 
-            if (flag & COMPILE_GET_GET) {
+            if (flag & (COMPILE_GET_GET | COMPILE_GET_DPGET)) {
                 snprintf(buf,
                          sizeof(buf),
-                         "mrklkit_rt_get_dict_item_%s",
+                         "mrklkit_rt_dict_get_item_%s",
                          fty->name);
             } else {
                 TR(COMPILE_GET + 202);
@@ -441,6 +442,7 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             }
 
             if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
+                TRACE("cannot find %s", buf);
                 FAIL("LLVMGetNamedFunction");
             }
 
@@ -495,10 +497,10 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
 
             assert(lkit_type_cmp(ty, fty) == 0);
 
-            if (flag & COMPILE_GET_GET) {
+            if (flag & (COMPILE_GET_GET | COMPILE_GET_DPGET)) {
                 snprintf(buf,
                          sizeof(buf),
-                         "mrklkit_rt_get_struct_item_%s",
+                         "mrklkit_rt_struct_get_item_%s",
                          fty->name);
                 nargs = countof(args);
             } else {
@@ -597,11 +599,22 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
             goto err;
         }
 
-        (void)snprintf(buf,
-                       sizeof(buf),
-                       "mrklkit_rt_set_%s_item_%s",
-                       (*cont)->type->name,
-                       (*dflt)->type->name);
+        if (flag & COMPILE_GET_GET) {
+            (void)snprintf(buf,
+                           sizeof(buf),
+                           "mrklkit_rt_%s_set_item_%s",
+                           (*cont)->type->name,
+                           (*dflt)->type->name);
+        } else if (flag & COMPILE_GET_DPGET) {
+            (void)snprintf(buf,
+                           sizeof(buf),
+                           "mrklkit_rt_%s_set_item_%s_gc",
+                           (*cont)->type->name,
+                           (*dflt)->type->name);
+        } else {
+            FAIL("lkit_compile_get");
+        }
+
         if ((setfn = LLVMGetNamedFunction(module, buf)) == NULL) {
             //TRACE("no such setter: %s", buf);
             //FAIL("LLVMGetNamedFunction");
@@ -715,7 +728,7 @@ lkit_compile_set(mrklkit_ctx_t *mctx,
 
             snprintf(buf,
                      sizeof(buf),
-                     "mrklkit_rt_set_struct_item_%s",
+                     "mrklkit_rt_struct_set_item_%s",
                      fty->name);
 
             args[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx), idx, 1);
@@ -752,7 +765,7 @@ lkit_compile_set(mrklkit_ctx_t *mctx,
 
             snprintf(buf,
                      sizeof(buf),
-                     "mrklkit_rt_set_dict_item_%s",
+                     "mrklkit_rt_dict_set_item_%s",
                      fty->name);
 
             if ((arg = array_get(&expr->subs, 1)) == NULL) {
@@ -1922,6 +1935,16 @@ compile_function(mrklkit_ctx_t *mctx,
                              COMPILE_GET_PARSE,
                              udata);
 
+    } else if (strcmp(name, "dp-get") == 0) {
+        //(sym parse (func undef undef undef under)) done
+        v = lkit_compile_get(mctx,
+                             ectx,
+                             module,
+                             builder,
+                             expr,
+                             COMPILE_GET_DPGET,
+                             udata);
+
     } else if (strcmp(name, "itof") == 0 ||
                strcmp(name, "float") == 0 /* compat */
               ) {
@@ -2712,6 +2735,13 @@ tostr_done:
             }
             break;
 
+        case LKIT_ARRAY:
+            if ((fn = LLVMGetNamedFunction(module,
+                            "dparse_array_from_bytes")) == NULL) {
+                FAIL("LLVMGetNamedFunction");
+            }
+            break;
+
         default:
             TR(COMPILE_FUNCTION + 5003);
             goto err;
@@ -2738,6 +2768,13 @@ tostr_done:
         LLVMValueRef fn, args[1];
 
         switch (expr->type->tag) {
+        case LKIT_ARRAY:
+            if ((fn = LLVMGetNamedFunction(module,
+                            "mrklkit_rt_array_new")) == NULL) {
+                FAIL("LLVMGetNamedFunction");
+            }
+            break;
+
         case LKIT_DICT:
             if ((fn = LLVMGetNamedFunction(module,
                             "mrklkit_rt_dict_new")) == NULL) {

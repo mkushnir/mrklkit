@@ -1116,7 +1116,7 @@ testrt_target_hash(testrt_target_t *tgt)
                         unsigned char c;
                     } v;
 
-                    v.i = mrklkit_rt_get_struct_item_int(tgt->value, it.iter, 0);
+                    v.i = mrklkit_rt_struct_get_item_int(tgt->value, it.iter, 0);
                     tgt->hash = fasthash(tgt->hash, &v.c, sizeof(int64_t));
                 }
                 break;
@@ -1128,7 +1128,7 @@ testrt_target_hash(testrt_target_t *tgt)
                         unsigned char c;
                     } v;
 
-                    v.d = mrklkit_rt_get_struct_item_float(tgt->value, it.iter, 0.0);
+                    v.d = mrklkit_rt_struct_get_item_float(tgt->value, it.iter, 0.0);
                     tgt->hash = fasthash(tgt->hash, &v.c, sizeof(double));
                 }
                 break;
@@ -1140,7 +1140,7 @@ testrt_target_hash(testrt_target_t *tgt)
                         unsigned char c;
                     } v;
 
-                    v.i = mrklkit_rt_get_struct_item_bool(tgt->value, it.iter, 0);
+                    v.i = mrklkit_rt_struct_get_item_bool(tgt->value, it.iter, 0);
                     tgt->hash = fasthash(tgt->hash, &v.c, sizeof(int8_t));
                 }
                 break;
@@ -1149,7 +1149,7 @@ testrt_target_hash(testrt_target_t *tgt)
                 {
                     bytes_t *v;
 
-                    v = mrklkit_rt_get_struct_item_str(tgt->value, it.iter, NULL);
+                    v = mrklkit_rt_struct_get_item_str(tgt->value, it.iter, NULL);
                     if (v != NULL) {
                         //TRACE("v=%p", v);
                         //D8(v, sizeof(*v));
@@ -1197,8 +1197,8 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
                 {
                     int64_t ai, bi;
 
-                    ai = mrklkit_rt_get_struct_item_int(a->value, it.iter, 0);
-                    bi = mrklkit_rt_get_struct_item_int(b->value, it.iter, 0);
+                    ai = mrklkit_rt_struct_get_item_int(a->value, it.iter, 0);
+                    bi = mrklkit_rt_struct_get_item_int(b->value, it.iter, 0);
                     diff = ai - bi;
                 }
                 break;
@@ -1207,8 +1207,8 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
                 {
                     int8_t ab, bb;
 
-                    ab = mrklkit_rt_get_struct_item_bool(a->value, it.iter, 0);
-                    bb = mrklkit_rt_get_struct_item_bool(b->value, it.iter, 0);
+                    ab = mrklkit_rt_struct_get_item_bool(a->value, it.iter, 0);
+                    bb = mrklkit_rt_struct_get_item_bool(b->value, it.iter, 0);
                     diff = ab - bb;
                 }
                 break;
@@ -1217,8 +1217,8 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
                 {
                     double af, bf;
 
-                    af = mrklkit_rt_get_struct_item_float(a->value, it.iter, 0.0);
-                    bf = mrklkit_rt_get_struct_item_float(b->value, it.iter, 0.0);
+                    af = mrklkit_rt_struct_get_item_float(a->value, it.iter, 0.0);
+                    bf = mrklkit_rt_struct_get_item_float(b->value, it.iter, 0.0);
                     diff = af > bf ? 1 : af < bf ? -1 : 0;
                 }
                 break;
@@ -1227,8 +1227,8 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
                 {
                     bytes_t *as, *bs;
 
-                    as = mrklkit_rt_get_struct_item_str(a->value, it.iter, NULL);
-                    bs = mrklkit_rt_get_struct_item_str(b->value, it.iter, NULL);
+                    as = mrklkit_rt_struct_get_item_str(a->value, it.iter, NULL);
+                    bs = mrklkit_rt_struct_get_item_str(b->value, it.iter, NULL);
                     diff = bytes_cmp(as, bs);
                 }
                 break;

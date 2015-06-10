@@ -29,6 +29,7 @@ int builtin_remove_undef(mrklkit_ctx_t *,
 
 #define COMPILE_GET_GET 0x01
 #define COMPILE_GET_PARSE 0x02
+#define COMPILE_GET_DPGET 0x04
 LLVMValueRef
 lkit_compile_get(mrklkit_ctx_t *,
                  lkit_expr_t *,

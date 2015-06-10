@@ -683,7 +683,8 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                                     isvararg = 1;
                                 } else {
                                     if (((*paramtype)->tag != LKIT_UNDEF &&
-                                         (*paramtype)->tag != LKIT_TY) &&
+                                         (*paramtype)->tag != LKIT_TY &&
+                                         (*paramtype)->tag != LKIT_ANY) &&
                                         (argtype->tag != LKIT_UNDEF &&
                                          argtype->tag != LKIT_TY)) {
 
@@ -693,6 +694,8 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                                                 "formal parameter type:",
                                                 dat, expr->value.ref->type);
                                             TR(LKIT_EXPR_PARSE + 10);
+                                            lkit_type_dump(*paramtype);
+                                            lkit_type_dump(argtype);
                                             goto err;
                                         }
                                     }

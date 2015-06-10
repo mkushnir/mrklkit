@@ -283,7 +283,8 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
         }
         expr->type = (*aarg)->type;
 
-    } else if (strcmp(name, "get") == 0 ||
+    } else if (strcmp(name, "dp-get") == 0 ||
+               strcmp(name, "get") == 0 ||
                strcmp(name, "get-index") == 0 || /* compat*/
                strcmp(name, "get-key") == 0 || /* compat*/
                strcmp(name, "parse") == 0) {

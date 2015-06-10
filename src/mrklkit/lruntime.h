@@ -143,9 +143,9 @@ rt_array_t *mrklkit_rt_array_new_mpool(mpool_ctx_t *, lkit_array_t *);
 void mrklkit_rt_array_destroy(rt_array_t **);
 void mrklkit_rt_array_dump(rt_array_t *);
 void mrklkit_rt_array_print(rt_array_t *);
-int64_t mrklkit_rt_get_array_item_int(rt_array_t *, int64_t, int64_t);
-double mrklkit_rt_get_array_item_float(rt_array_t *, int64_t, double);
-bytes_t *mrklkit_rt_get_array_item_str(rt_array_t *, int64_t, bytes_t *);
+int64_t mrklkit_rt_array_get_item_int(rt_array_t *, int64_t, int64_t);
+double mrklkit_rt_array_get_item_float(rt_array_t *, int64_t, double);
+bytes_t *mrklkit_rt_array_get_item_str(rt_array_t *, int64_t, bytes_t *);
 int64_t mrklkit_rt_array_len(rt_array_t *);
 
 rt_dict_t *mrklkit_rt_dict_new(lkit_dict_t *);
@@ -153,10 +153,10 @@ rt_dict_t *mrklkit_rt_dict_new_gc(lkit_dict_t *);
 void mrklkit_rt_dict_destroy(rt_dict_t **);
 void mrklkit_rt_dict_dump(rt_dict_t *);
 void mrklkit_rt_dict_print(rt_dict_t *);
-int64_t mrklkit_rt_get_dict_item_int(rt_dict_t *, bytes_t *, int64_t);
-double mrklkit_rt_get_dict_item_float(rt_dict_t *, bytes_t *, double);
-bytes_t *mrklkit_rt_get_dict_item_str(rt_dict_t *, bytes_t *, bytes_t *);
-rt_struct_t *mrklkit_rt_get_dict_item_struct(rt_dict_t *, bytes_t *, rt_struct_t *);
+int64_t mrklkit_rt_dict_get_item_int(rt_dict_t *, bytes_t *, int64_t);
+double mrklkit_rt_dict_get_item_float(rt_dict_t *, bytes_t *, double);
+bytes_t *mrklkit_rt_dict_get_item_str(rt_dict_t *, bytes_t *, bytes_t *);
+rt_struct_t *mrklkit_rt_dict_get_item_struct(rt_dict_t *, bytes_t *, rt_struct_t *);
 
 rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
 rt_struct_t *mrklkit_rt_struct_new_gc(lkit_struct_t *);
@@ -167,35 +167,39 @@ int mrklkit_rt_struct_fini(rt_struct_t *);
 void mrklkit_rt_struct_dump(rt_struct_t *);
 void mrklkit_rt_struct_print(rt_struct_t *);
 
-void **mrklkit_rt_get_struct_item_addr(rt_struct_t *,
+void **mrklkit_rt_struct_get_item_addr(rt_struct_t *,
                                        int64_t);
-#define MRKLKIT_RT_GET_STRUCT_ITEM_ADDR(val, idx) ((val)->fields + (idx))
-int64_t mrklkit_rt_get_struct_item_int(rt_struct_t *,
+#define MRKLKIT_RT_STRUCT_GET_ITEM_ADDR(val, idx) ((val)->fields + (idx))
+int64_t mrklkit_rt_struct_get_item_int(rt_struct_t *,
                                        int64_t,
                                        int64_t);
-double mrklkit_rt_get_struct_item_float(rt_struct_t *,
+double mrklkit_rt_struct_get_item_float(rt_struct_t *,
                                         int64_t,
                                         double);
-int8_t mrklkit_rt_get_struct_item_bool(rt_struct_t *,
+int8_t mrklkit_rt_struct_get_item_bool(rt_struct_t *,
                                        int64_t,
                                        int8_t);
-bytes_t *mrklkit_rt_get_struct_item_str(rt_struct_t *,
+bytes_t *mrklkit_rt_struct_get_item_str(rt_struct_t *,
                                         int64_t,
                                         bytes_t *);
-rt_array_t *mrklkit_rt_get_struct_item_array(rt_struct_t *,
+rt_array_t *mrklkit_rt_struct_get_item_array(rt_struct_t *,
                                              int64_t,
                                              rt_array_t *);
-rt_dict_t *mrklkit_rt_get_struct_item_dict(rt_struct_t *,
+rt_dict_t *mrklkit_rt_struct_get_item_dict(rt_struct_t *,
                                            int64_t,
                                            rt_dict_t *);
-rt_struct_t *mrklkit_rt_get_struct_item_struct(rt_struct_t *,
+rt_struct_t *mrklkit_rt_struct_get_item_struct(rt_struct_t *,
                                                int64_t,
                                                rt_struct_t *);
-void mrklkit_rt_set_struct_item_int(rt_struct_t *, int64_t, int64_t);
-void mrklkit_rt_set_struct_item_float(rt_struct_t *, int64_t, double);
-void mrklkit_rt_set_struct_item_bool(rt_struct_t *, int64_t, int64_t);
-void mrklkit_rt_set_struct_item_str_unsafe(rt_struct_t *, int64_t, bytes_t *);
-void mrklkit_rt_set_struct_item_str(rt_struct_t *, int64_t, bytes_t *);
+void mrklkit_rt_struct_set_item_int(rt_struct_t *, int64_t, int64_t);
+void mrklkit_rt_struct_set_item_int_gc(rt_struct_t *, int64_t, int64_t);
+void mrklkit_rt_struct_set_item_float(rt_struct_t *, int64_t, double);
+void mrklkit_rt_struct_set_item_float_gc(rt_struct_t *, int64_t, double);
+void mrklkit_rt_struct_set_item_bool(rt_struct_t *, int64_t, int64_t);
+void mrklkit_rt_struct_set_item_bool_gc(rt_struct_t *, int64_t, int64_t);
+void mrklkit_rt_struct_set_item_str(rt_struct_t *, int64_t, bytes_t *);
+void mrklkit_rt_struct_set_item_str_gc(rt_struct_t *, int64_t, bytes_t *);
+void mrklkit_rt_struct_set_item_str_unsafe(rt_struct_t *, int64_t, bytes_t *);
 
 void mrklkit_rt_struct_shallow_copy(rt_struct_t *, rt_struct_t *);
 void mrklkit_rt_struct_deep_copy(rt_struct_t *, rt_struct_t *);
