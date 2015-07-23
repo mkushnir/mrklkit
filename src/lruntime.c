@@ -1729,10 +1729,14 @@ lruntime_dump_json(lkit_type_t *ty, void *value, bytestream_t *bs)
             } v;
             v.v = value;
             if (v.s != NULL) {
+                bytes_t *escval;
+
+                escval = bytes_json_escape(v.s);
                 bytestream_nprintf(bs,
-                                   1024,
+                                   1024 + escval->sz,
                                    "\"%s\"",
-                                   (char *)v.s->data);
+                                   (char *)escval->data);
+                BYTES_DECREF(&escval);
             } else {
                 bytestream_cat(bs, 4, "null");
             }
@@ -2690,13 +2694,19 @@ _rt_struct_expect_fields_cb(jparse_ctx_t *jctx,
             {
                 rt_struct_t *st;
                 lkit_struct_t *ts;
+                jparse_value_t jv;
 
                 ts = (lkit_struct_t *)(*fty);
                 st = mrklkit_rt_struct_new(ts);
+                jv.k = *name;
+                jv.cb = _rt_struct_expect_fields_cb;
+                jv.udata = st;
+                jv.ty = JSON_OBJECT;
+
                 res = jparse_expect_kvp_object(jctx,
                                                *name,
                                                _rt_struct_expect_fields_cb,
-                                               NULL,
+                                               &jv,
                                                st);
                 STRUCT_INCREF(st);
                 *v = st;
