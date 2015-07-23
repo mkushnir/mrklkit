@@ -303,6 +303,11 @@ dparser_strtoi64(char *ptr, char **endptr, char delim)
     for (ch = *ptr; ch != delim; ch = *(++ptr)) {
         //TRACE("ch='%c' delim='%c'", ch, delim);
         if (ch >= '0' && ch <= '9') {
+            // 922337203685477580
+            if (res >= 0xccccccccccccccc) {
+                res = INT64_MAX;
+                continue;
+            }
             res = res * 10 + ch - '0';
         } else {
             goto err;
