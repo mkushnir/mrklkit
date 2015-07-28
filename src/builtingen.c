@@ -818,6 +818,127 @@ err:
 
 
 static LLVMValueRef
+lkit_compile_del(mrklkit_ctx_t *mctx,
+                 lkit_expr_t *ectx,
+                 LLVMModuleRef module,
+                 LLVMBuilderRef builder,
+                 lkit_expr_t *expr,
+                 void *udata)
+{
+    LLVMContextRef lctx;
+    LLVMValueRef v = NULL;
+    lkit_expr_t **arg, **cont;
+    LLVMValueRef fn, args[2];
+
+    lctx = LLVMGetModuleContext(module);
+
+    /* container */
+    if ((cont = array_get(&expr->subs, 0)) == NULL) {
+        FAIL("array_get");
+    }
+
+    if ((args[0] = lkit_compile_expr(mctx,
+                                     ectx,
+                                     module,
+                                     builder,
+                                     *cont,
+                                     udata)) == NULL) {
+        TR(COMPILE_DEL + 1);
+        goto err;
+    }
+
+    if ((arg = array_get(&expr->subs, 1)) == NULL) {
+        FAIL("array_get");
+    }
+
+    switch ((*cont)->type->tag) {
+    case LKIT_STRUCT:
+        {
+            int idx;
+            lkit_type_t *fty;
+            char buf[64];
+
+            assert((*arg)->type->tag == LKIT_STR && LKIT_EXPR_CONSTANT(*arg));
+
+            if ((idx = lkit_struct_get_field_index(
+                        (lkit_struct_t *)(*cont)->type,
+                        (bytes_t *)(*arg)->value.literal->body)) == -1) {
+                TR(COMPILE_DEL + 100);
+                goto err;
+            }
+
+            if ((fty = lkit_struct_get_field_type(
+                        (lkit_struct_t *)(*cont)->type,
+                        (bytes_t *)(*arg)->value.literal->body)) == NULL) {
+                TR(COMPILE_DEL + 101);
+                goto err;
+            }
+
+            snprintf(buf,
+                     sizeof(buf),
+                     "mrklkit_rt_struct_del_item_%s",
+                     fty->name);
+
+            args[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx), idx, 1);
+
+            if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
+                TRACE("fn=%s", buf);
+                FAIL("LLVMGetNamedFunction");
+            }
+            args[0] = LLVMBuildPointerCast(builder,
+                                           args[0],
+                                           LLVMTypeOf(LLVMGetParam(fn, 0)),
+                                           NEWVAR("cast"));
+            v = LLVMBuildCall(builder, fn, args, countof(args), "");
+        }
+
+        break;
+
+    case LKIT_DICT:
+        {
+            assert((*arg)->type->tag == LKIT_STR);
+
+            if ((args[1] = lkit_compile_expr(mctx,
+                                             ectx,
+                                             module,
+                                             builder,
+                                             *arg,
+                                             udata)) == NULL) {
+                TR(COMPILE_DEL + 201);
+                goto err;
+            }
+
+            if ((fn = LLVMGetNamedFunction(module, "mrklkit_rt_dict_del_item")) == NULL) {
+                TRACE("fn=%s", "mrklkit_rt_dict_del_item");
+                FAIL("LLVMGetNamedFunction");
+            }
+
+            args[0] = LLVMBuildPointerCast(builder,
+                                           args[0],
+                                           LLVMTypeOf(LLVMGetParam(fn, 0)),
+                                           NEWVAR("cast"));
+
+            v = LLVMBuildCall(builder, fn, args, countof(args), "");
+        }
+        break;
+
+    default:
+        TRACE("*cont=%p", *cont);
+        lkit_expr_dump(expr);
+        FAIL("compile_del");
+    }
+
+end:
+    return v;
+
+err:
+    //lkit_expr_dump(expr);
+    v = NULL;
+    goto end;
+}
+
+
+static LLVMValueRef
 compile_str_join(mrklkit_ctx_t *mctx,
                  lkit_expr_t *ectx,
                  LLVMContextRef lctx,
@@ -2812,8 +2933,17 @@ tostr_done:
                                  NEWVAR("cast"));
 
     } else if (strcmp(name, "set") == 0) {
-        //(sym set (func void undef undef under)) done
+        //(sym set (func void undef undef undef)) done
         v = lkit_compile_set(mctx,
+                             ectx,
+                             module,
+                             builder,
+                             expr,
+                             udata);
+
+    } else if (strcmp(name, "del") == 0) {
+        //(sym del (func void undef undef)) done
+        v = lkit_compile_del(mctx,
                              ectx,
                              module,
                              builder,

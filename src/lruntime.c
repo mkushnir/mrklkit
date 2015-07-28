@@ -1055,6 +1055,19 @@ mrklkit_rt_dict_set_item_struct_gc(rt_dict_t *value,
 }
 
 
+void
+mrklkit_rt_dict_del_item(rt_dict_t *value,
+                         bytes_t *key)
+{
+    dict_item_t *dit;
+
+    if ((dit = dict_get_item(&value->fields, key)) != NULL) {
+        dict_delete_pair(&value->fields, dit);
+    }
+
+}
+
+
 static int
 dict_traverse_cb(bytes_t *key, void *value, void *udata)
 {
@@ -1064,6 +1077,7 @@ dict_traverse_cb(bytes_t *key, void *value, void *udata)
     params->cb(key, value);
     return 0;
 }
+
 
 void
 mrklkit_rt_dict_traverse(rt_dict_t *value, void (*cb)(bytes_t *, void *))
@@ -1077,6 +1091,8 @@ mrklkit_rt_dict_traverse(rt_dict_t *value, void (*cb)(bytes_t *, void *))
                         (dict_traverser_t)dict_traverse_cb,
                         &params);
 }
+
+
 
 /**
  * struct
@@ -1551,6 +1567,70 @@ mrklkit_rt_struct_set_item_struct_gc(rt_struct_t *value,
                                   rt_struct_t *val)
 {
     mrklkit_rt_struct_set_item_struct(value, idx, val);
+}
+
+
+void
+mrklkit_rt_struct_del_item_int(UNUSED rt_struct_t *value,
+                               UNUSED int64_t idx)
+{
+    return;
+}
+
+
+void
+mrklkit_rt_struct_del_item_float(UNUSED rt_struct_t *value,
+                                 UNUSED int64_t idx)
+{
+    return;
+}
+
+
+void
+mrklkit_rt_struct_del_item_str(rt_struct_t *value,
+                               int64_t idx)
+{
+    bytes_t **p;
+
+    assert(idx < (ssize_t)value->type->fields.elnum);
+    p = (bytes_t **)(value->fields + idx);
+    BYTES_DECREF(p);
+}
+
+
+void
+mrklkit_rt_struct_del_item_array(rt_struct_t *value,
+                                 int64_t idx)
+{
+    rt_array_t **p;
+
+    assert(idx < (ssize_t)value->type->fields.elnum);
+    p = (rt_array_t **)(value->fields + idx);
+    ARRAY_DECREF(p);
+}
+
+
+void
+mrklkit_rt_struct_del_item_dict(rt_struct_t *value,
+                                int64_t idx)
+{
+    rt_dict_t **p;
+
+    assert(idx < (ssize_t)value->type->fields.elnum);
+    p = (rt_dict_t **)(value->fields + idx);
+    DICT_DECREF(p);
+}
+
+
+void
+mrklkit_rt_struct_del_item_struct(rt_struct_t *value,
+                                  int64_t idx)
+{
+    rt_struct_t **p;
+
+    assert(idx < (ssize_t)value->type->fields.elnum);
+    p = (rt_struct_t **)(value->fields + idx);
+    STRUCT_DECREF(p);
 }
 
 
