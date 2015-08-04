@@ -10,11 +10,31 @@
 
 #include <mrklkit/ltype.h>
 
+#ifdef DO_MEMDEBUG
+#define MEMDEBUG_ENTER_LRT(self)                               \
+{                                                              \
+    int mdtag;                                                 \
+    mdtag = memdebug_set_runtime_scope((int)(self)->mdtag);    \
+
+
+#define MEMDEBUG_LEAVE_LRT(self)               \
+    (void)memdebug_set_runtime_scope(mdtag);   \
+}                                              \
+
+
+#else
+#define MEMDEBUG_ENTER_LRT(self)
+#define MEMDEBUG_LEAVE_LRT(self)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct _rt_array {
+#ifdef DO_MEMDEBUG
+    uint64_t mdtag;
+#endif
     ssize_t nref;
     lkit_array_t *type;
     array_t fields;
@@ -27,8 +47,10 @@ do {                                           \
     if (*(ar) != NULL) {                       \
         --(*(ar))->nref;                       \
         if ((*(ar))->nref <= 0) {              \
+            MEMDEBUG_ENTER_LRT(*(ar));         \
             array_fini(&(*(ar))->fields);      \
             free(*(ar));                       \
+            MEMDEBUG_LEAVE_LRT(*(ar));         \
         }                                      \
         *(ar) = NULL;                          \
     }                                          \
@@ -38,12 +60,17 @@ do {                                           \
 do {                                   \
     --(ar)->nref;                      \
     if ((ar)->nref <= 0) {             \
+        MEMDEBUG_ENTER_LRT(ar);        \
         array_fini(&(ar)->fields);     \
         free(ar);                      \
+        MEMDEBUG_LEAVE_LRT(ar);        \
     }                                  \
 } while (0)
 
 typedef struct _rt_dict {
+#ifdef DO_MEMDEBUG
+    uint64_t mdtag;
+#endif
     ssize_t nref;
     lkit_dict_t *type;
     dict_t fields;
@@ -56,8 +83,10 @@ do {                                           \
     if (*(dc) != NULL) {                       \
         --(*(dc))->nref;                       \
         if ((*(dc))->nref <= 0) {              \
+            MEMDEBUG_ENTER_LRT(*(dc));         \
             dict_fini(&(*(dc))->fields);       \
             free(*(dc));                       \
+            MEMDEBUG_LEAVE_LRT(*(dc));         \
         }                                      \
         *(dc) = NULL;                          \
     }                                          \
@@ -67,12 +96,17 @@ do {                                           \
 do {                                   \
     --(dc)->nref;                      \
     if ((dc)->nref <= 0) {             \
+        MEMDEBUG_ENTER_LRT(dc);        \
         dict_fini(&(dc)->fields);      \
         free(dc);                      \
+        MEMDEBUG_LEAVE_LRT(dc);        \
     }                                  \
 } while (0)
 
 typedef struct _rt_struct {
+#ifdef DO_MEMDEBUG
+    uint64_t mdtag;
+#endif
     ssize_t nref;
     lkit_struct_t *type;
     struct {
@@ -100,7 +134,9 @@ do {                                   \
     if (*(st) != NULL) {               \
         --(*(st))->nref;               \
         if ((*(st))->nref <= 0) {      \
+            MEMDEBUG_ENTER_LRT(*(st)); \
             free(*(st));               \
+            MEMDEBUG_LEAVE_LRT(*(st)); \
         }                              \
         *(st) = NULL;                  \
     }                                  \
@@ -111,10 +147,12 @@ do {                                                   \
     if (*(st) != NULL) {                               \
         --(*(st))->nref;                               \
         if ((*(st))->nref <= 0) {                      \
+            MEMDEBUG_ENTER_LRT(*(st));                 \
             if ((*(st))->type->fini != NULL) {         \
                 (*(st))->type->fini((*(st))->fields);  \
             }                                          \
             free(*(st));                               \
+            MEMDEBUG_LEAVE_LRT(*(st));                 \
         }                                              \
         *(st) = NULL;                                  \
     }                                                  \
@@ -124,10 +162,12 @@ do {                                                   \
 do {                                           \
     --(st)->nref;                              \
     if ((st)->nref <= 0) {                     \
+        MEMDEBUG_ENTER_LRT(st);                \
         if ((st)->type->fini != NULL) {        \
             (st)->type->fini((st)->fields);    \
         }                                      \
         free(st);                              \
+        MEMDEBUG_LEAVE_LRT(st);                \
     }                                          \
 } while (0)
 

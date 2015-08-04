@@ -34,6 +34,11 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(mrklkit);
+#endif
+
 #ifndef LLVM_VERSION_NUM
 #error LLVM_VERSION_NUM must be defined to %d%03d, llvm_version_mjr, llvm_version_mnr
 #endif

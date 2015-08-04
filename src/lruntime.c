@@ -18,6 +18,33 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(lruntime);
+
+#define MEMDEBUG_INIT(self)                                    \
+do {                                                           \
+    (self)->mdtag = (uint64_t)memdebug_get_runtime_scope();    \
+} while (0)                                                    \
+
+
+#define MEMDEBUG_ENTER(self)                                   \
+{                                                              \
+    int mdtag;                                                 \
+    mdtag = memdebug_set_runtime_scope((int)(self)->mdtag);    \
+
+
+#define MEMDEBUG_LEAVE(self)                   \
+    (void)memdebug_set_runtime_scope(mdtag);   \
+}                                              \
+
+
+#else
+#define MEMDEBUG_INIT(self)
+#define MEMDEBUG_ENTER(self)
+#define MEMDEBUG_LEAVE(self)
+#endif
+
 static mpool_ctx_t *mpool;
 
 
@@ -367,6 +394,8 @@ null_init(void **v)
     if ((res = malloc_fn(sizeof(rt_array_t))) == NULL) {               \
         FAIL("malloc");                                                \
     }                                                                  \
+    MEMDEBUG_INIT(res);                                                \
+    MEMDEBUG_ENTER(res);                                               \
     res->nref = 0;                                                     \
     res->type = ty;                                                    \
     array_init(&res->fields,                                           \
@@ -375,6 +404,7 @@ null_init(void **v)
                (array_initializer_t)null_init,                         \
                NULL);                                                  \
     array_ensure_datasz_fn(&res->fields, ty->nreserved, 0);            \
+    MEMDEBUG_LEAVE(res);                                               \
 
 
 
@@ -702,6 +732,8 @@ mrklkit_rt_dict_print(rt_dict_t *value)
     if ((res = malloc_fn(sizeof(rt_dict_t))) == NULL) {        \
         FAIL("malloc_fn");                                     \
     }                                                          \
+    MEMDEBUG_INIT(res);                                        \
+    MEMDEBUG_ENTER(res);                                       \
     res->nref = 0;                                             \
     res->type = ty;                                            \
     dict_init_fn(&res->fields,                                 \
@@ -709,6 +741,7 @@ mrklkit_rt_dict_print(rt_dict_t *value)
               (dict_hashfn_t)bytes_hash,                       \
               (dict_item_comparator_t)bytes_cmp,               \
               ty->fini);                                       \
+    MEMDEBUG_LEAVE(res);                                       \
 
 
 rt_dict_t *
@@ -1105,6 +1138,8 @@ mrklkit_rt_dict_traverse(rt_dict_t *value, void (*cb)(bytes_t *, void *))
     if ((v = malloc_fn(sizeof(rt_struct_t) + sz)) == NULL) {                   \
         FAIL("malloc");                                                        \
     }                                                                          \
+    MEMDEBUG_INIT(v);                                                          \
+    MEMDEBUG_ENTER(v);                                                         \
     v->nref = 0;                                                               \
     v->type = ty;                                                              \
     v->parser_info.bs = NULL;                                                  \
@@ -1116,6 +1151,7 @@ mrklkit_rt_dict_traverse(rt_dict_t *value, void (*cb)(bytes_t *, void *))
     if (ty->init != NULL) {                                                    \
         ty->init(v->fields);                                                   \
     }                                                                          \
+    MEMDEBUG_LEAVE(v);                                                         \
 
 
 rt_struct_t *

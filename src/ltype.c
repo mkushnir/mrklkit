@@ -20,6 +20,11 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(ltype);
+#endif
+
 /*
  * lkit_type_t *, lkit_type_t *
  */

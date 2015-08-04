@@ -21,6 +21,11 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(ltypegen);
+#endif
+
 static LLVMTypeRef
 ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 {
@@ -58,15 +63,27 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 
         case LKIT_STR:
             {
-                LLVMTypeRef fields[4];
-
                 /*
                  * bytes_t *
                  */
+#ifdef DO_MEMDEBUG
+                LLVMTypeRef fields[5];
+
+                assert(sizeof(bytes_t) == 4 * sizeof(uint64_t));
+                fields[0] = LLVMInt64TypeInContext(lctx);
+                fields[1] = LLVMInt64TypeInContext(lctx);
+                fields[2] = LLVMInt64TypeInContext(lctx);
+                fields[3] = LLVMInt64TypeInContext(lctx);
+                fields[4] = LLVMArrayType(LLVMInt8TypeInContext(lctx), 0);
+#else
+                LLVMTypeRef fields[4];
+
+                assert(sizeof(bytes_t) == 3 * sizeof(uint64_t));
                 fields[0] = LLVMInt64TypeInContext(lctx);
                 fields[1] = LLVMInt64TypeInContext(lctx);
                 fields[2] = LLVMInt64TypeInContext(lctx);
                 fields[3] = LLVMArrayType(LLVMInt8TypeInContext(lctx), 0);
+#endif
                 backend->deref = LLVMStructCreateNamed(lctx, "bytes_t");
                 LLVMStructSetBody(backend->deref,
                                   fields,

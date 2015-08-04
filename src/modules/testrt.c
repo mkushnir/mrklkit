@@ -27,6 +27,10 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(testrt);
+#endif
 
 /* "fake" constants */
 static bytes_t *_if, *_and, *_comma, *_call;

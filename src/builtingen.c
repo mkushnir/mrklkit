@@ -18,6 +18,11 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(builtingen);
+#endif
+
 
 static LLVMValueRef
 find_named_global(lkit_expr_t *ectx,
@@ -3406,8 +3411,27 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
             case LKIT_STR:
                 {
                     bytes_t *b;
+#ifdef DO_MEMDEBUG
+                    LLVMValueRef binit[5], vv;
+
+                    assert(sizeof(bytes_t) == 4 * sizeof(uint64_t));
+                    b = (bytes_t *)expr->value.literal->body;
+                    binit[0] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
+                                            0x0, 0);
+                    binit[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
+                                            0xdada, 0);
+                    binit[2] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
+                                            b->sz, 0);
+                    binit[3] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
+                                            bytes_hash(b), 0);
+                    binit[4] = LLVMConstStringInContext(lctx,
+                                                        (char *)b->data,
+                                                        b->sz,
+                                                        1);
+#else
                     LLVMValueRef binit[4], vv;
 
+                    assert(sizeof(bytes_t) == 3 * sizeof(uint64_t));
                     b = (bytes_t *)expr->value.literal->body;
                     binit[0] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
                                             0xdada, 0);
@@ -3419,6 +3443,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                                         (char *)b->data,
                                                         b->sz,
                                                         1);
+#endif
                     vv = LLVMConstStructInContext(lctx,
                                                   binit,
                                                   countof(binit),

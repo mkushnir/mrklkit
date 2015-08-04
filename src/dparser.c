@@ -22,6 +22,12 @@
 
 #include "diag.h"
 
+
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(dparser);
+#endif
+
 #define DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR 1
 
 static mpool_ctx_t *mpool;

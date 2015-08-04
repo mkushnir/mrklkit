@@ -14,6 +14,11 @@
 #include "diag.h"
 #include "fparser_private.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(fparser);
+#endif
+
 #define BLOCKSZ (1024 * 1024)
 
 static int fparser_datum_init(fparser_datum_t *, fparser_tag_t);

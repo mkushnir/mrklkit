@@ -10,6 +10,11 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(lparse);
+#endif
+
 int
 lparse_first_word(array_t *form,
                   array_iter_t *it,

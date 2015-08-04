@@ -19,6 +19,11 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(lexpr);
+#endif
+
 static void lexpr_dump(bytestream_t *, lkit_expr_t *, int);
 
 

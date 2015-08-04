@@ -19,6 +19,11 @@
 
 #include "diag.h"
 
+#ifdef DO_MEMDEBUG
+#include <mrkcommon/memdebug.h>
+MEMDEBUG_DECLARE(builtin);
+#endif
+
 /*
  * (keyword name value)
  */
