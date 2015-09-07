@@ -809,7 +809,6 @@ mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *ctx, void *udata)
                (array_initializer_t)modaux_init,
                (array_finalizer_t)modaux_fini);
 
-
     dict_cleanup(&ctx->backends);
 }
 

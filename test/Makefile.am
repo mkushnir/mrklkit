@@ -38,7 +38,7 @@ testlk_CFLAGS = -Wall -Wextra -Werror -std=c99 -I.. -I../src -I$(includedir) @MR
 testlk_LDFLAGS =  -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @MRKLKIT_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 ../src/diag.c ../src/diag.h: ../src/diag.txt
-	sh ../src/gen-diag
+	$(AM_V_GEN) /bin/sh ../src/gen-diag mrklkit
 
 testrun: all
 	for i in $(noinst_PROGRAMS); do if test -x ./$$i; then LD_LIBRARY_PATH=$(libdir) ./$$i; fi; done;
