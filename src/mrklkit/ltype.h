@@ -219,7 +219,7 @@ int lkit_parse_typedef(mrklkit_ctx_t *,
 lkit_type_t *lkit_type_parse(mrklkit_ctx_t *,
                              fparser_datum_t *,
                              int);
-lkit_array_t *lkit_type_get_array(mrklkit_ctx_t *, int);
+lkit_array_t *lkit_type_get_array(mrklkit_ctx_t *, int, int);
 lkit_dict_t *lkit_type_get_dict(mrklkit_ctx_t *, int);
 lkit_type_t *lkit_type_finalize(lkit_type_t *);
 void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *);

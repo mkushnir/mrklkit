@@ -2567,7 +2567,7 @@ tostr_done:
          */
 
         //(sym split (func (array str) str str))
-        ty = lkit_type_get_array(mctx, LKIT_STR);
+        ty = lkit_type_get_array(mctx, LKIT_STR, 0);
         if ((fn = LLVMGetNamedFunction(module,
                     "mrklkit_rt_array_split_gc")) == NULL) {
             FAIL("LLVMGetNamedFunction");

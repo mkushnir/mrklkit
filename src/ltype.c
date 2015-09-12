@@ -380,7 +380,7 @@ lkit_type_get(UNUSED mrklkit_ctx_t *mctx, int tag)
 }
 
 lkit_array_t *
-lkit_type_get_array(mrklkit_ctx_t *mctx, int ftag)
+lkit_type_get_array(mrklkit_ctx_t *mctx, int ftag, int nreserved)
 {
     lkit_array_t *ty;
     lkit_type_t **fty;
@@ -392,6 +392,7 @@ lkit_type_get_array(mrklkit_ctx_t *mctx, int ftag)
     }
 
     *fty = lkit_type_get(mctx, ftag);
+    ty->nreserved = nreserved;
     return (lkit_array_t *)lkit_type_finalize((lkit_type_t *)ty);
 }
 
@@ -804,10 +805,14 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
                 diff = delim_cmp(aa->delim, ab->delim);
 
                 if (diff == 0) {
-                    diff = array_cmp(&aa->fields,
-                                     &ab->fields,
-                                     (array_compar_t)type_cmp,
-                                     0);
+                    diff = aa->nreserved - ab->nreserved;
+
+                    if (diff == 0) {
+                        diff = array_cmp(&aa->fields,
+                                         &ab->fields,
+                                         (array_compar_t)type_cmp,
+                                         0);
+                    }
                 }
             }
             break;
