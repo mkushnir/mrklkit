@@ -861,6 +861,7 @@ dparse_array_from_bytes(lkit_array_t *ty, bytes_t *str)
         if ((dit = dict_get_item(&(*val)->fields, key)) == NULL) {             \
             ar = mrklkit_rt_array_new_gc(ta);                                  \
             dict_set_item_mpool(mpool, &(*val)->fields, key, ar);              \
+            ARRAY_INCREF(ar);                                                  \
         } else {                                                               \
             ar = dit->value;                                                   \
             BYTES_DECREF(&key);                                                \
