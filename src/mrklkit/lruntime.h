@@ -5,7 +5,9 @@
 #include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
+#ifdef USE_MPOOL
 #include <mrkcommon/mpool.h>
+#endif
 #include <mrkcommon/jparse.h>
 
 #include <mrklkit/ltype.h>
@@ -179,7 +181,9 @@ bytes_t *mrklkit_rt_bytes_new_from_bool_gc(char);
 
 rt_array_t *mrklkit_rt_array_new(lkit_array_t *);
 rt_array_t *mrklkit_rt_array_new_gc(lkit_array_t *);
+#ifdef USE_MPOOL
 rt_array_t *mrklkit_rt_array_new_mpool(mpool_ctx_t *, lkit_array_t *);
+#endif
 void mrklkit_rt_array_destroy(rt_array_t **);
 void mrklkit_rt_array_dump(rt_array_t *);
 void mrklkit_rt_array_print(rt_array_t *);
@@ -255,7 +259,9 @@ int rt_dict_load_json(rt_dict_t *, jparse_ctx_t *);
 int rt_struct_load_json(rt_struct_t *, jparse_ctx_t *);
 int rt_struct_load_fields_json(rt_struct_t *, jparse_ctx_t *);
 
+#ifdef USE_MPOOL
 void lruntime_set_mpool(mpool_ctx_t *);
+#endif
 void lruntime_init(void);
 void lruntime_fini(void);
 

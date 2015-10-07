@@ -13,7 +13,9 @@
 //#define TRRET_DEBUG_VERBOSE
 //#define TRRET_DEBUG
 #include <mrkcommon/dumpm.h>
+#ifdef USE_MPOOL
 #include <mrkcommon/mpool.h>
+#endif
 #include <mrkcommon/util.h>
 
 #include <mrklkit/dparser.h>
@@ -30,7 +32,9 @@ MEMDEBUG_DECLARE(dparser);
 
 #define DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR 1
 
+#ifdef USE_MPOOL
 static mpool_ctx_t *mpool;
+#endif
 
 typedef void (*dparse_struct_item_cb_t)(bytestream_t *, char, off_t, off_t, void **);
 
@@ -733,6 +737,11 @@ dparse_optqstr_pos_bytes(bytes_t *str,
  *  bs: SNCHR(bs, spos)
  *  bytes: str->data[spos]
  */
+#ifdef USE_MPOOL
+#define _array_get_safe(a, i) array_get_safe_mpool(mpool, (a), (i))
+#else
+#define _array_get_safe(a, i) array_get_safe((a), (i))
+#endif
 #define DPARSE_ARRAY_CASE(kind, in, ty, fn, __a1)                      \
     idx = 0;                                                           \
     while (spos < epos && __a1 != delim) {                             \
@@ -744,7 +753,7 @@ dparse_optqstr_pos_bytes(bytes_t *str,
         void **v;                                                      \
         fpos = dparser_reach_delim_pos_##kind(in, fdelim, spos, epos); \
         (void)fn(in, fdelim, spos, fpos, &u.x);                        \
-        v = array_get_safe_mpool(mpool, &(*val)->fields, idx);         \
+        v = _array_get_safe(&(*val)->fields, idx);                     \
         *v = u.v;                                                      \
         spos = dparser_reach_value_pos_##kind(in, fdelim, fpos, epos); \
         ++idx;                                                         \
@@ -816,6 +825,13 @@ dparse_array_from_bytes(lkit_array_t *ty, bytes_t *str)
  * dict
  */
 
+#ifdef USE_MPOOL
+#define _dict_set_item(d, k, v) dict_set_item_mpool(mpool, (d), (k), (v))
+#define _array_incr(a) array_incr_mpool(mpool, (a))
+#else
+#define _dict_set_item(d, k, v) dict_set_item((d), (k), (v))
+#define _array_incr(a) array_incr((a))
+#endif
 /*
  * __a1
  *  bs: SNCHR(bs, spos)
@@ -835,7 +851,7 @@ dparse_array_from_bytes(lkit_array_t *ty, bytes_t *str)
         spos = dparser_reach_value_pos_##kind(in, kvdelim, kvpos, epos);       \
         if ((dit = dict_get_item(&(*val)->fields, key)) == NULL) {             \
             fpos = fn(in, fdelim, spos, epos, &u.x);                           \
-            dict_set_item_mpool(mpool, &(*val)->fields, key, u.v);             \
+            _dict_set_item(&(*val)->fields, key, u.v);                         \
             fpos = dparser_reach_delim_pos_##kind(in, fdelim, fpos, epos);     \
         } else {                                                               \
             BYTES_DECREF(&key);                                                \
@@ -860,14 +876,14 @@ dparse_array_from_bytes(lkit_array_t *ty, bytes_t *str)
         (void)_dparse_str_pos_k(in, kvdelim, spos, kvpos, &key);               \
         if ((dit = dict_get_item(&(*val)->fields, key)) == NULL) {             \
             ar = mrklkit_rt_array_new_gc(ta);                                  \
-            dict_set_item_mpool(mpool, &(*val)->fields, key, ar);              \
+            _dict_set_item(&(*val)->fields, key, ar);                          \
             ARRAY_INCREF(ar);                                                  \
         } else {                                                               \
             ar = dit->value;                                                   \
             BYTES_DECREF(&key);                                                \
         }                                                                      \
         spos = dparser_reach_value_pos_##kind(in, kvdelim, kvpos, epos);       \
-        u.v = array_incr_mpool(mpool, &ar->fields);                            \
+        u.v = _array_incr(&ar->fields);                                        \
         fpos = fn(in, fdelim, spos, epos, u.x);                                \
         spos = dparser_reach_value_pos_##kind(in, fdelim, fpos, epos);         \
     }                                                                          \
@@ -1469,9 +1485,11 @@ dparser_bz2_ctx_fini(dparse_bz2_ctx_t *bz2ctx)
 }
 
 
+#ifdef USE_MPOOL
 void
 dparser_set_mpool(mpool_ctx_t *m)
 {
     mpool = m;
 }
+#endif
 

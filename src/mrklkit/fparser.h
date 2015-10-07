@@ -7,7 +7,6 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
-#include <mrkcommon/mpool.h>
 
 #include <mrklkit/util.h>
 

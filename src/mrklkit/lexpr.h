@@ -19,7 +19,7 @@ struct _lkit_type;
 struct _lkit_expr;
 
 /*
- * s named scope-visible item
+ * a named scope-visible item
  */
 typedef struct _lkit_gitem {
     /* strongref */
@@ -45,15 +45,13 @@ typedef struct _lkit_expr {
     array_t subs;
 
     /*
-     * bytes_t *, lkit_expr_t *
-     * values owned by ctx (think more about it ...)
-     * ctx and subs should never intersect
+     * weakref bytes_t *, weakref lkit_expr_t *
      */
     dict_t ctx;
 
     /*
      * glist defines order of ctx's items
-     * lkit_gitem_t
+     * lkit_gitem_t strongref
      */
     array_t glist;
 

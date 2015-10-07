@@ -18,7 +18,9 @@
 
 #include <mrklkit/ltype.h>
 #include <mrklkit/lruntime.h>
+#ifdef USE_MPOOL
 #include <mrkcommon/mpool.h>
+#endif
 #include <mrklkit/util.h>
 
 #ifdef __cplusplus
@@ -100,7 +102,9 @@ int dparser_read_lines_bz2_win(BZFILE *,
                                size_t *,
                                size_t *);
 
+#ifdef USE_MPOOL
 void dparser_set_mpool(mpool_ctx_t *);
+#endif
 #ifdef __cplusplus
 }
 #endif
