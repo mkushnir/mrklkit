@@ -184,7 +184,6 @@ mrklkit_rt_bytes_slice_gc(bytes_t *str, int64_t begin, int64_t end)
     res->data[sz1] = '\0';
 
 end:
-    res->nref = POISON_NREF;
     return res;
 
 empty:
@@ -610,7 +609,6 @@ mrklkit_rt_array_split_gc(lkit_array_t *ty, bytes_t *str, bytes_t *delim)
         }
     }
 
-    res->nref = POISON_NREF;
     return res;
 }
 
@@ -1875,7 +1873,6 @@ mrklkit_rt_struct_pi_data_gc(rt_struct_t *value)
                  value->parser_info.br.start),
            sz);
     res->data[sz] = '\0';
-    res->nref = POISON_NREF;
     return res;
 }
 
