@@ -637,13 +637,31 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             }
         }
 
-    //} else if (strcmp(name, "==") == 0 ||
-    //           strcmp(name, "=") == 0 || /* compat */
-    //           strcmp(name, "!=") == 0 ||
-    //           strcmp(name, "<") == 0 ||
-    //           strcmp(name, "<=") == 0 ||
-    //           strcmp(name, ">") == 0 ||
-    //           strcmp(name, ">=") == 0) {
+    } else if (strcmp(name, "==") == 0 ||
+               strcmp(name, "=") == 0 || /* compat */
+               strcmp(name, "!=") == 0 ||
+               strcmp(name, "<") == 0 ||
+               strcmp(name, "<=") == 0 ||
+               strcmp(name, ">") == 0 ||
+               strcmp(name, ">=") == 0 ||
+               strcmp(name, "and") == 0 ||
+               strcmp(name, "or") == 0) {
+
+        lkit_expr_t **a, **b;
+        array_iter_t it;
+
+        a = array_first(&expr->subs, &it);
+        assert(a != NULL);
+        for (b = array_next(&expr->subs, &it);
+             b != NULL;
+             b = array_next(&expr->subs, &it)) {
+            if (lkit_type_cmp_loose((*a)->type, (*b)->type) != 0) {
+                (*b)->error = 1;
+                TRACE("incompatible argument types in:");
+                lkit_expr_dump(expr);
+                TRRET(REMOVE_UNDEF + 120);
+            }
+        }
 
 
     } else if (strcmp(name, "tostr") == 0) {
@@ -938,6 +956,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx, lkit_expr_t *ectx, lkit_expr_t *expr)
             //}
 
             refty = lkit_expr_type_of(ref);
+            assert(refty != NULL);
 
             if (expr->type->tag == LKIT_UNDEF) {
                 expr->type = refty;
