@@ -57,6 +57,9 @@ void dparser_reach_value_m(bytestream_t *,
 int64_t dparser_strtoi64(char *, char **, char);
 double dparser_strtod(char *, char **, char);
 
+rt_dict_t *dparse_dict_from_bytes(lkit_dict_t *, bytes_t *);
+rt_array_t *dparse_array_from_bytes(lkit_array_t *, bytes_t *);
+
 void
 dparse_struct_setup(bytestream_t *,
                     const byterange_t *,
