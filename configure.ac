@@ -78,37 +78,35 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 
 AC_CHECK_FUNCS([memset])
+AC_CHECK_FUNCS([gettimeofday])
+AC_CHECK_FUNCS([localtime_r])
 AC_CHECK_HEADERS([fcntl.h])
 AC_CHECK_HEADERS([limits.h])
+AC_CHECK_HEADERS([sys/time.h])
+AC_CHECK_HEADER_STDBOOL
+AC_FUNC_MKTIME
 AC_FUNC_STRTOD
+AC_TYPE_INT8_T
 AC_TYPE_INT64_T
 AC_TYPE_SSIZE_T
 AC_TYPE_UINT64_T
 AC_TYPE_OFF_T
 
-
 # LLVM_CFALGS modulo -On
-if which llvm-config36 >/dev/null
-then
-    llvmconfig=llvm-config36
-elif which llvm-config35 >/dev/null
-then
-    llvmconfig=llvm-config35
-elif which llvm-config34 >/dev/null
-then
-    llvmconfig=llvm-config34
-else
-    llvmconfig=llvm-config
-fi
-llvm_version="`$llvmconfig --version`"
+AC_CHECK_PROG([LLVM_CONFIG], [llvm-config36], [llvm-config36])
+test -z "$LLVM_CONFIG" && AC_CHECK_PROG([LLVM_CONFIG], [llvm-config35], [llvm-config35])
+test -z "$LLVM_CONFIG" && AC_CHECK_PROG([LLVM_CONFIG], [llvm-config34], [llvm-config34])
+test -z "$LLVM_CONFIG" && AC_CHECK_PROG([LLVM_CONFIG], [llvm-config], [llvm-config])
+test -z "$LLVM_CONFIG" && AC_MSG_FAILURE(llvm-config36 or llvm-config35 or llvm-config34 or llvm-config is required. Cannot proceed ...)
+llvm_version="`$LLVM_CONFIG --version`"
 llvm_version_maj="`echo $llvm_version | awk -F. '{print $1;}'`"
 llvm_version_min="`echo $llvm_version | awk -F. '{print $2;}'`"
 llvm_version_num="`printf '%d%03d' $llvm_version_maj $llvm_version_min`"
 test "$llvm_version_num" -lt 3004 && AC_MSG_FAILURE(LLVM version 3.4 or higher is required. Cannot proceed ...)
 AC_SUBST(LLVM_VERSION_NUM, [$llvm_version_num])
-AC_SUBST(LLVM_CFLAGS, ["`$llvmconfig --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'` -DLLVM_VERSION_NUM=$llvm_version_num"])
-AC_SUBST(LLVM_LIBS, [" `$llvmconfig --system-libs` $cxxlib  `$llvmconfig --libs engine ipo objcarcopts instrumentation mcjit irreader linker`"])
-AC_SUBST(LLVM_LDFLAGS, ["`$llvmconfig --ldflags`"])
+AC_SUBST(LLVM_CFLAGS, ["`$LLVM_CONFIG --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'` -DLLVM_VERSION_NUM=$llvm_version_num"])
+AC_SUBST(LLVM_LIBS, [" `$LLVM_CONFIG --system-libs` $cxxlib  `$LLVM_CONFIG --libs engine ipo objcarcopts instrumentation mcjit irreader linker`"])
+AC_SUBST(LLVM_LDFLAGS, ["`$LLVM_CONFIG --ldflags`"])
 
 AC_PRESERVE_HELP_ORDER
 
@@ -127,7 +125,7 @@ AC_SUBST(MRKLKIT_LOCAL_LDFLAGS, [-L\$\(top_srcdir\)/src/.libs])
 
 # pass LDFLAGS=-L${LOCALBASE}/lib in the environment
 AC_CHECK_LIB(mrkcommon, _fini, [], [AC_MSG_FAILURE(libmrkcommon.so is required. Please find it at git@github.com:mkushnir/mrkcommon.git)])
-#export LDFLAGS="`$llvmconfig --ldflags` $LDFLAGS"
+#export LDFLAGS="`$LLVM_CONFIG --ldflags` $LDFLAGS"
 #AC_CHECK_LIB(LLVMCore, _fini, [], [AC_MSG_FAILURE(libLLVMCore.a is required. Please find it at ...)])
 
 AC_OUTPUT

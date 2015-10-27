@@ -28,6 +28,14 @@ typedef struct _mrklkit_backend {
     LLVMTypeRef deref;
 } mrklkit_backend_t;
 
+typedef enum _lkit_mpolicy {
+    LKIT_MPUNDEF = 0,
+    LKIT_MPMPOOL = 1,
+    LKIT_MPMALLOC = 2,
+} lkit_mpolicy_t;
+#define MRKLKIT_DEFAULT_MPOLICY LKIT_MPMPOOL
+
+
 typedef struct _mrklkit_ctx {
     array_t modules;
 
@@ -42,6 +50,7 @@ typedef struct _mrklkit_ctx {
     array_t modaux;
     LLVMExecutionEngineRef ee;
 
+    lkit_mpolicy_t dparse_mpolicy;
     int mark_referenced:1;
 } mrklkit_ctx_t;
 

@@ -11,32 +11,34 @@ CLEANFILES = $(BUILT_SOURCES) *.core
 lib_LTLIBRARIES = libmrklkit.la
 
 nobase_include_HEADERS = \
-	mrklkit/fparser.h \
+	mrklkit/builtin.h \
 	mrklkit/dparser.h \
+	mrklkit/dpexpr.h \
+	mrklkit/fparser.h \
 	mrklkit/lexpr.h \
 	mrklkit/lparse.h \
+	mrklkit/lruntime.h \
 	mrklkit/ltype.h \
 	mrklkit/ltypegen.h \
-	mrklkit/lruntime.h \
 	mrklkit/module.h \
 	mrklkit/mrklkit.h \
-	mrklkit/builtin.h \
 	mrklkit/util.h \
 	mrklkit/modules/testrt.h
 
 noinst_HEADERS =
 
 libmrklkit_la_SOURCES = \
-	fparser.c \
-	dparser.c \
-	lexpr.c \
-	lparse.c \
-	ltype.c \
-	ltypegen.c \
-	lruntime.c \
-	mrklkit.c \
 	builtin.c \
 	builtingen.c \
+	dparser.c \
+	dpexpr.c \
+	fparser.c \
+	lexpr.c \
+	lparse.c \
+	lruntime.c \
+	ltype.c \
+	ltypegen.c \
+	mrklkit.c \
 	util.c \
 	modules/testrt.c
 
@@ -48,7 +50,7 @@ else
 DEBUG_FLAGS = -DNDEBUG -O3
 endif
 
-libmrklkit_la_CFLAGS = -Wall -Wextra -Werror -std=c99 -I$(includedir) @MRKCOMMON_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS)
+libmrklkit_la_CFLAGS = -Wall -Wextra -Werror -std=c99 @MRKCOMMON_LOCAL_CFLAGS@ @MRKLKIT_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS) -I$(includedir)
 
 libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lbz2 -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 

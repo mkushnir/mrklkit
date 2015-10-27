@@ -64,8 +64,8 @@ typedef struct _testrt {
 typedef struct _testrt_ctx {
     mrklkit_ctx_t mctx;
     fparser_datum_t *datum_root;
-    lkit_expr_t builtin;
-    lkit_expr_t root;
+    lkit_cexpr_t builtin;
+    lkit_cexpr_t root;
     array_t testrts;
     dsource_t *ds;
 } testrt_ctx_t;

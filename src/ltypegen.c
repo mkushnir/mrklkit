@@ -18,6 +18,7 @@
 #include <mrklkit/lexpr.h>
 #include <mrklkit/ltypegen.h>
 #include <mrklkit/lruntime.h>
+#include <mrklkit/module.h>
 
 #include "diag.h"
 
@@ -248,6 +249,10 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
             }
             break;
 
+        case LKIT_PARSER:
+            backend->ty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
+            break;
+
         default:
             /*
              * tell llvm that all user-defined types are just opaque void *
@@ -301,7 +306,8 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
     if (!(ty->tag == LKIT_ARRAY ||
           ty->tag == LKIT_DICT ||
           ty->tag == LKIT_STRUCT ||
-          ty->tag == LKIT_STR)) {
+          ty->tag == LKIT_STR ||
+          /* ty->tag == LKIT_PARSER */ 0 )) {
         goto end;
     }
 
@@ -312,28 +318,26 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
     snprintf(buf1, sizeof(buf1), "_mrklkit.%s.init", name);
     snprintf(buf2, sizeof(buf2), "_mrklkit.%s.fini", name);
 
-#define BUILDCODE                                          \
-     UNUSED LLVMValueRef pnull, dtor, dparam;              \
-     /* ctor, just set NULL */                             \
-     pnull = LLVMConstPointerNull(                         \
-             ltype_compile(mctx, *fty, module));           \
-     LLVMBuildStore(b1, pnull, gep1);                      \
-     /* dtor, call mrklkit_rt_NNN_destroy() */             \
-     if (ty->setnull) {                                    \
-     } else {                                              \
-         if ((dtor = LLVMGetNamedFunction(module,          \
-                 dtor_name)) == NULL) {                    \
-             TRACE("no name: %s", dtor_name);              \
-             res = LTYPE_COMPILE_METHODS + 3;              \
-             goto err;                                     \
-         }                                                 \
-         dparam = LLVMGetFirstParam(dtor);                 \
-         gep2 = LLVMBuildPointerCast(b2,                   \
-                                     gep2,                 \
-                                     LLVMTypeOf(dparam),   \
-                                     NEWVAR("cast"));      \
-         LLVMBuildCall(b2, dtor, &gep2, 1, "");            \
-     }                                                     \
+#define BUILDCODE                                      \
+     UNUSED LLVMValueRef pnull, dtor, dparam;          \
+     /* ctor, just set NULL */                         \
+     pnull = LLVMConstPointerNull(                     \
+             ltype_compile(mctx, *fty, module));       \
+     LLVMBuildStore(b1, pnull, gep1);                  \
+     /* dtor, call mrklkit_rt_NNN_decref() */          \
+     if ((dtor = LLVMGetNamedFunction(module,          \
+             dtor_name)) == NULL) {                    \
+         TRACE("no name: %s", dtor_name);              \
+         res = LTYPE_COMPILE_METHODS + 3;              \
+         goto err;                                     \
+     }                                                 \
+     dparam = LLVMGetFirstParam(dtor);                 \
+     gep2 = LLVMBuildPointerCast(b2,                   \
+                                 gep2,                 \
+                                 LLVMTypeOf(dparam),   \
+                                 NEWVAR("cast"));      \
+     LLVMBuildCall(b2, dtor, &gep2, 1, "");            \
+
 
     switch (ty->tag) {
     case LKIT_STRUCT:
@@ -403,21 +407,21 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                 switch ((*fty)->tag) {
                 case LKIT_STR:
                     {
-                        dtor_name = "mrklkit_rt_bytes_destroy";
+                        dtor_name = "mrklkit_rt_bytes_decref";
                         BUILDCODE;
                     }
                     break;
 
                 case LKIT_ARRAY:
                     {
-                        dtor_name = "mrklkit_rt_array_destroy";
+                        dtor_name = "mrklkit_rt_array_decref";
                         BUILDCODE;
                     }
                     break;
 
                 case LKIT_DICT:
                     {
-                        dtor_name = "mrklkit_rt_dict_destroy";
+                        dtor_name = "mrklkit_rt_dict_decref";
                         BUILDCODE;
                     }
                     break;
@@ -430,7 +434,7 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
                             res = LTYPE_COMPILE_METHODS + 4;
                             goto err;
                         }
-                        dtor_name = "mrklkit_rt_struct_destroy";
+                        dtor_name = "mrklkit_rt_struct_decref";
                         BUILDCODE;
                     }
 
@@ -505,7 +509,7 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
 
                         snprintf(dtor_name,
                                  sizeof(dtor_name),
-                                 "%s_destroy", (*fty)->name);
+                                 "%s_decref", (*fty)->name);
                         BUILDCODE;
                     }
                     break;
@@ -522,6 +526,21 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
         break;
 
     default:
+        {
+            mrklkit_module_t **mod;
+            array_iter_t it;
+
+            for (mod = array_first(&mctx->modules, &it);
+                 mod != NULL;
+                 mod = array_next(&mctx->modules, &it)) {
+
+                if ((*mod)->compile_type_method != NULL) {
+                    if ((*mod)->compile_type_method(mctx, ty, module) == 0) {
+                        break;
+                    }
+                }
+            }
+        }
         break;
     }
 
@@ -535,10 +554,34 @@ err:
 }
 
 
-UNUSED static int
+static int
 rt_array_bytes_fini(bytes_t **value, UNUSED void *udata)
 {
     BYTES_DECREF(value);
+    return 0;
+}
+
+
+static int
+rt_array_array_fini(rt_array_t **value, UNUSED void *udata)
+{
+    ARRAY_DECREF(value);
+    return 0;
+}
+
+
+static int
+rt_array_dict_fini(rt_dict_t **value, UNUSED void *udata)
+{
+    DICT_DECREF(value);
+    return 0;
+}
+
+
+static int
+rt_array_struct_fini(rt_struct_t **value, UNUSED void *udata)
+{
+    STRUCT_DECREF(value);
     return 0;
 }
 
@@ -555,6 +598,24 @@ rt_dict_fini_keyval_str(bytes_t *key, bytes_t *val)
 {
     BYTES_DECREF(&key);
     BYTES_DECREF(&val);
+    return 0;
+}
+
+
+static int
+rt_dict_fini_keyval_array(bytes_t *key, rt_array_t *val)
+{
+    BYTES_DECREF(&key);
+    ARRAY_DECREF(&val);
+    return 0;
+}
+
+
+static int
+rt_dict_fini_keyval_dict(bytes_t *key, rt_dict_t *val)
+{
+    BYTES_DECREF(&key);
+    DICT_DECREF(&val);
     return 0;
 }
 
@@ -581,7 +642,8 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
 
     if (!(ty->tag == LKIT_ARRAY ||
           ty->tag == LKIT_DICT ||
-          ty->tag == LKIT_STRUCT)) {
+          ty->tag == LKIT_STRUCT ||
+          /* ty->tag == LKIT_PARSER */ 0)) {
         return 0;
     }
 
@@ -630,6 +692,49 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
         }
         break;
 
+    case LKIT_ARRAY:
+        {
+            lkit_array_t *ta;
+            lkit_type_t *elty;
+
+            ta = (lkit_array_t *)ty;
+            if ((elty = lkit_array_get_element_type(ta)) == NULL) {
+                FAIL("lkit_array_get_element_type");
+            }
+
+            switch (elty->tag) {
+            case LKIT_INT:
+            case LKIT_INT_MAX:
+            case LKIT_INT_MIN:
+            case LKIT_FLOAT:
+            case LKIT_FLOAT_MAX:
+            case LKIT_FLOAT_MIN:
+            case LKIT_BOOL:
+                break;
+
+            case LKIT_STR:
+                ta->fini = (array_finalizer_t)rt_array_bytes_fini;
+                break;
+
+            case LKIT_ARRAY:
+                ta->fini = (array_finalizer_t)rt_array_array_fini;
+                break;
+
+            case LKIT_DICT:
+                ta->fini = (array_finalizer_t)rt_array_dict_fini;
+                break;
+
+            case LKIT_STRUCT:
+                ta->fini = (array_finalizer_t)rt_array_struct_fini;
+                break;
+
+            default:
+                break;
+            }
+
+        }
+        break;
+
     case LKIT_DICT:
         {
             lkit_dict_t *td;
@@ -655,6 +760,14 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
                 td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_str;
                 break;
 
+            case LKIT_ARRAY:
+                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_array;
+                break;
+
+            case LKIT_DICT:
+                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_dict;
+                break;
+
             case LKIT_STRUCT:
                 td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_struct;
                 break;
@@ -667,6 +780,21 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
         break;
 
     default:
+        {
+            mrklkit_module_t **mod;
+            array_iter_t it;
+
+            for (mod = array_first(&mctx->modules, &it);
+                 mod != NULL;
+                 mod = array_next(&mctx->modules, &it)) {
+
+                if ((*mod)->method_link != NULL) {
+                    if ((*mod)->method_link(mctx, ty, ee, module) == 0) {
+                        break;
+                    }
+                }
+            }
+        }
         break;
     }
 
@@ -674,8 +802,8 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
 }
 
 
-void
-ltype_unlink_methods(lkit_type_t *ty)
+static void
+ltype_unlink_methods(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
     if (ty == NULL) {
         return;
@@ -694,10 +822,17 @@ ltype_unlink_methods(lkit_type_t *ty)
             for (fty = array_first(&ts->fields, &it);
                  fty != NULL;
                  fty = array_next(&ts->fields, &it)) {
-                ltype_unlink_methods(*fty);
+                ltype_unlink_methods(mctx, *fty);
             }
         }
         break;
+
+    case LKIT_ARRAY:
+        {
+            lkit_array_t *ta;
+            ta = (lkit_array_t *)ty;
+            ta->fini = NULL;
+        }
 
     case LKIT_DICT:
         {
@@ -707,6 +842,21 @@ ltype_unlink_methods(lkit_type_t *ty)
         }
 
     default:
+        {
+            mrklkit_module_t **mod;
+            array_iter_t it;
+
+            for (mod = array_first(&mctx->modules, &it);
+                 mod != NULL;
+                 mod = array_next(&mctx->modules, &it)) {
+
+                if ((*mod)->method_unlink != NULL) {
+                    if ((*mod)->method_unlink(mctx, ty) == 0) {
+                        break;
+                    }
+                }
+            }
+        }
         break;
     }
 }
@@ -790,16 +940,24 @@ lkit_link_types(mrklkit_ctx_t *mctx,
 
 
 static int
-_cb3(lkit_type_t *key, UNUSED lkit_type_t *value, UNUSED void *udata)
+_cb3(lkit_type_t *key, UNUSED lkit_type_t *value, void *udata)
 {
-    (void)ltype_unlink_methods(key);
+    struct {
+        mrklkit_ctx_t *mctx;
+    } *params = udata;
+
+    ltype_unlink_methods(params->mctx, key);
     return 0;
 }
 
 
 int
-lkit_unlink_types(UNUSED mrklkit_ctx_t *mctx)
+lkit_unlink_types(mrklkit_ctx_t *mctx)
 {
-    return lkit_traverse_types((dict_traverser_t)_cb3, NULL);
+    struct {
+        mrklkit_ctx_t *mctx;
+    } params = { mctx };
+
+    return lkit_traverse_types((dict_traverser_t)_cb3, &params);
 }
 

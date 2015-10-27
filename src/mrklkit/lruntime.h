@@ -5,9 +5,7 @@
 #include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
 #include <mrkcommon/dict.h>
-#ifdef USE_MPOOL
 #include <mrkcommon/mpool.h>
-#endif
 #include <mrkcommon/jparse.h>
 
 #include <mrklkit/ltype.h>
@@ -111,19 +109,10 @@ typedef struct _rt_struct {
 #endif
     ssize_t nref;
     lkit_struct_t *type;
-    struct {
-        /* weak ref */
-        bytestream_t *bs;
-        byterange_t br;
-        off_t pos;
-    } parser_info;
-    int next_delim;
-    int current;
-    /* delimiter positions */
-    off_t *dpos;
-    /* array of void * + array of int  */
+    /* array of void * */
     void *fields[];
 } rt_struct_t;
+
 
 #define STRUCT_INCREF(st)                              \
 do {                                                   \
@@ -173,18 +162,21 @@ do {                                           \
     }                                          \
 } while (0)
 
-bytes_t *mrklkit_rt_bytes_new_gc(size_t);
-bytes_t *mrklkit_rt_bytes_new_from_str_gc(const char *);
-bytes_t *mrklkit_rt_bytes_new_from_int_gc(int64_t);
-bytes_t *mrklkit_rt_bytes_new_from_float_gc(double);
-bytes_t *mrklkit_rt_bytes_new_from_bool_gc(char);
+bytes_t *mrklkit_rt_bytes_new(size_t);
+bytes_t *mrklkit_rt_bytes_new_mpool(size_t);
+bytes_t *mrklkit_rt_bytes_new_from_str(const char *);
+bytes_t *mrklkit_rt_bytes_new_from_str_mpool(const char *);
+bytes_t *mrklkit_rt_bytes_new_from_int(int64_t);
+bytes_t *mrklkit_rt_bytes_new_from_int_mpool(int64_t);
+bytes_t *mrklkit_rt_bytes_new_from_float(double);
+bytes_t *mrklkit_rt_bytes_new_from_float_mpool(double);
+bytes_t *mrklkit_rt_bytes_new_from_bool(char);
+bytes_t *mrklkit_rt_bytes_new_from_bool_mpool(char);
 
 rt_array_t *mrklkit_rt_array_new(lkit_array_t *);
-rt_array_t *mrklkit_rt_array_new_gc(lkit_array_t *);
-#ifdef USE_MPOOL
-rt_array_t *mrklkit_rt_array_new_mpool(mpool_ctx_t *, lkit_array_t *);
-#endif
-void mrklkit_rt_array_destroy(rt_array_t **);
+rt_array_t *mrklkit_rt_array_new_mpool(lkit_array_t *);
+rt_array_t *mrklkit_rt_array_new_mpool_sz(lkit_array_t *, int);
+void mrklkit_rt_array_decref(rt_array_t **);
 void mrklkit_rt_array_dump(rt_array_t *);
 void mrklkit_rt_array_print(rt_array_t *);
 int64_t mrklkit_rt_array_get_item_int(rt_array_t *, int64_t, int64_t);
@@ -193,8 +185,10 @@ bytes_t *mrklkit_rt_array_get_item_str(rt_array_t *, int64_t, bytes_t *);
 int64_t mrklkit_rt_array_len(rt_array_t *);
 
 rt_dict_t *mrklkit_rt_dict_new(lkit_dict_t *);
-rt_dict_t *mrklkit_rt_dict_new_gc(lkit_dict_t *);
-void mrklkit_rt_dict_destroy(rt_dict_t **);
+rt_dict_t *mrklkit_rt_dict_new_sz(lkit_dict_t *, int);
+rt_dict_t *mrklkit_rt_dict_new_mpool(lkit_dict_t *);
+rt_dict_t *mrklkit_rt_dict_new_mpool_sz(lkit_dict_t *, int);
+void mrklkit_rt_dict_decref(rt_dict_t **);
 void mrklkit_rt_dict_dump(rt_dict_t *);
 void mrklkit_rt_dict_print(rt_dict_t *);
 int64_t mrklkit_rt_dict_get_item_int(rt_dict_t *, bytes_t *, int64_t);
@@ -203,9 +197,9 @@ bytes_t *mrklkit_rt_dict_get_item_str(rt_dict_t *, bytes_t *, bytes_t *);
 rt_struct_t *mrklkit_rt_dict_get_item_struct(rt_dict_t *, bytes_t *, rt_struct_t *);
 
 rt_struct_t *mrklkit_rt_struct_new(lkit_struct_t *);
-rt_struct_t *mrklkit_rt_struct_new_gc(lkit_struct_t *);
-void mrklkit_rt_struct_destroy(rt_struct_t **);
-void mrklkit_rt_struct_destroy_no_destruct(rt_struct_t **);
+rt_struct_t *mrklkit_rt_struct_new_mpool(lkit_struct_t *);
+void mrklkit_rt_struct_decref(rt_struct_t **);
+void mrklkit_rt_struct_decref_no_destruct(rt_struct_t **);
 int mrklkit_rt_struct_init(rt_struct_t *);
 int mrklkit_rt_struct_fini(rt_struct_t *);
 void mrklkit_rt_struct_dump(rt_struct_t *);
@@ -236,20 +230,17 @@ rt_struct_t *mrklkit_rt_struct_get_item_struct(rt_struct_t *,
                                                int64_t,
                                                rt_struct_t *);
 void mrklkit_rt_struct_set_item_int(rt_struct_t *, int64_t, int64_t);
-void mrklkit_rt_struct_set_item_int_gc(rt_struct_t *, int64_t, int64_t);
+void mrklkit_rt_struct_set_item_int_mpool(rt_struct_t *, int64_t, int64_t);
 void mrklkit_rt_struct_set_item_float(rt_struct_t *, int64_t, double);
-void mrklkit_rt_struct_set_item_float_gc(rt_struct_t *, int64_t, double);
+void mrklkit_rt_struct_set_item_float_mpool(rt_struct_t *, int64_t, double);
 void mrklkit_rt_struct_set_item_bool(rt_struct_t *, int64_t, int64_t);
-void mrklkit_rt_struct_set_item_bool_gc(rt_struct_t *, int64_t, int64_t);
+void mrklkit_rt_struct_set_item_bool_mpool(rt_struct_t *, int64_t, int64_t);
 void mrklkit_rt_struct_set_item_str(rt_struct_t *, int64_t, bytes_t *);
-void mrklkit_rt_struct_set_item_str_gc(rt_struct_t *, int64_t, bytes_t *);
-void mrklkit_rt_struct_set_item_str_unsafe(rt_struct_t *, int64_t, bytes_t *);
+void mrklkit_rt_struct_set_item_str_mpool(rt_struct_t *, int64_t, bytes_t *);
 
 void mrklkit_rt_struct_shallow_copy(rt_struct_t *, rt_struct_t *);
 void mrklkit_rt_struct_deep_copy(rt_struct_t *, rt_struct_t *);
-void mrklkit_rt_struct_deep_copy_gc(rt_struct_t *, rt_struct_t *);
-
-bytes_t *mrklkit_rt_struct_pi_data_gc(rt_struct_t *);
+void mrklkit_rt_struct_deep_copy_mpool(rt_struct_t *, rt_struct_t *);
 
 void rt_array_dump_json(rt_array_t *, bytestream_t *);
 void rt_dict_dump_json(rt_dict_t *, bytestream_t *);
@@ -259,9 +250,7 @@ int rt_dict_load_json(rt_dict_t *, jparse_ctx_t *);
 int rt_struct_load_json(rt_struct_t *, jparse_ctx_t *);
 int rt_struct_load_fields_json(rt_struct_t *, jparse_ctx_t *);
 
-#ifdef USE_MPOOL
 void lruntime_set_mpool(mpool_ctx_t *);
-#endif
 void lruntime_init(void);
 void lruntime_fini(void);
 

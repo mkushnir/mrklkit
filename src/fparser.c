@@ -19,6 +19,7 @@ MEMDEBUG_DECLARE(fparser);
 #endif
 
 #define BLOCKSZ (1024 * 1024)
+#define POISON_NREF 0x333333330000
 
 static int fparser_datum_init(fparser_datum_t *, fparser_tag_t);
 static int fparser_datum_fini(fparser_datum_t *);
@@ -123,7 +124,7 @@ compile_value(struct tokenizer_ctx *ctx,
         }
         fparser_datum_init(dat, FPARSER_STR);
         value = (bytes_t *)(dat->body);
-        value->nref = 0;
+        value->nref = POISON_NREF;
         value->hash = 0;
         value->sz = (size_t)sz + 1;
 
@@ -250,7 +251,7 @@ compile_value(struct tokenizer_ctx *ctx,
             }
             fparser_datum_init(dat, FPARSER_WORD);
             value = (bytes_t *)(dat->body);
-            value->nref = 0;
+            value->nref = POISON_NREF;
             value->hash = 0;
             value->sz = (size_t)sz + 1;
 
@@ -907,7 +908,7 @@ fparser_datum_build_bool(char val)
     }                                                          \
     fparser_datum_init(dat, tag);                              \
     value = (bytes_t *)(dat->body);                            \
-    value->nref = 0;                                           \
+    value->nref = POISON_NREF;                                           \
     value->hash = 0;                                           \
     value->sz = sz + 1;                                        \
     escaped = fparser_unescape((char *)value->data, str, sz);  \
@@ -939,7 +940,7 @@ fparser_datum_build_str(const char *str)
     }                                                          \
     fparser_datum_init(dat, FPARSER_STR);                      \
     value = (bytes_t *)(dat->body);                            \
-    value->nref = 0;                                           \
+    value->nref = POISON_NREF;                                           \
     value->hash = 0;                                           \
     value->sz = sz;                                            \
     escaped = fparser_unescape((char *)value->data, str, sz);  \

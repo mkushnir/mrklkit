@@ -28,12 +28,12 @@ static void lexpr_dump(bytestream_t *, lkit_expr_t *, int);
 
 
 bytes_t *
-lkit_expr_qual_name(lkit_expr_t *ectx, bytes_t *name)
+lkit_cexpr_qual_name(lkit_cexpr_t *ectx, bytes_t *name)
 {
     bytes_t *res;
 
-    if (ectx->name != NULL) {
-        res = bytes_printf("%s::%s", ectx->name->data, name->data);
+    if (ectx->base.name != NULL) {
+        res = bytes_printf("%s::%s", ectx->base.name->data, name->data);
     } else {
         res = bytes_new_from_str((char *)name->data);
     }
@@ -56,6 +56,9 @@ lkit_expr_is_constant(lkit_expr_t *expr)
 static void
 lexpr_dump_flags(bytestream_t *bs, lkit_expr_t *expr)
 {
+    if (expr->isctx) {
+        bytestream_cat(bs, 1, "c");
+    }
     if (expr->isref) {
         bytestream_cat(bs, 1, "r");
     }
@@ -73,6 +76,19 @@ lexpr_dump_flags(bytestream_t *bs, lkit_expr_t *expr)
     }
     if (expr->fparam) {
         bytestream_cat(bs, 1, "f");
+    }
+    if (expr->zref) {
+        bytestream_cat(bs, 1, "z");
+    }
+    switch (expr->mpolicy) {
+    case LKIT_MPMALLOC:
+        bytestream_cat(bs, 1, "a");
+        break;
+    case LKIT_MPMPOOL:
+        bytestream_cat(bs, 1, "p");
+        break;
+    default:
+        break;
     }
 }
 
@@ -233,16 +249,16 @@ lkit_expr_type_of(lkit_expr_t *expr)
 
 
 lkit_expr_t *
-lkit_expr_find(lkit_expr_t *ectx, bytes_t *name)
+lkit_expr_find(lkit_cexpr_t *ectx, bytes_t *name)
 {
-    dict_item_t *it;
-    lkit_expr_t *cctx;
+    dict_item_t *dit;
+    lkit_cexpr_t *cctx;
 
     for (cctx = ectx; cctx!= NULL; cctx = cctx->parent) {
-        if ((it = dict_get_item(&cctx->ctx, name)) != NULL) {
+        if ((dit = dict_get_item(&cctx->ctx, name)) != NULL) {
             lkit_expr_t *expr;
 
-            expr = it->value;
+            expr = dit->value;
             return expr;
         }
     }
@@ -275,9 +291,47 @@ lkit_expr_set_referenced(lkit_expr_t *expr)
 }
 
 
-void
-lexpr_fini_ctx(lkit_expr_t *ectx)
+/*
+ * XXX TODO
+ */
+static int
+_lkit_expr_promote_policy(mrklkit_ctx_t *mctx,
+                          lkit_expr_t *expr,
+                          lkit_mpolicy_t mpolicy)
 {
+    if (expr->isref) {
+        assert(expr->value.ref != NULL);
+        if (_lkit_expr_promote_policy(mctx, expr->value.ref, mpolicy) == 0) {
+            if (expr->mpolicy <= mpolicy) {
+                expr->mpolicy = mpolicy;
+                return 0;
+            }
+        }
+    } else {
+        return 0;
+    }
+    return 1;
+}
+
+int
+lkit_expr_promote_policy(mrklkit_ctx_t *mctx,
+                         lkit_expr_t *expr,
+                         lkit_mpolicy_t mpolicy)
+{
+    if (expr->mpolicy == mpolicy) {
+        return 0;
+    }
+    if (expr->mpolicy > mpolicy) {
+        return 1;
+    }
+    return _lkit_expr_promote_policy(mctx, expr, mpolicy);
+}
+
+
+void
+lkit_cexpr_fini(lkit_cexpr_t *ectx)
+{
+    array_fini(&(ectx->base.subs));
     dict_fini(&ectx->ctx);
     array_fini(&ectx->glist);
 }
@@ -286,8 +340,14 @@ lexpr_fini_ctx(lkit_expr_t *ectx)
 void
 lkit_expr_fini(lkit_expr_t *expr)
 {
-    lexpr_fini_ctx(expr);
     array_fini(&(expr->subs));
+    if (expr->isctx) {
+        lkit_cexpr_t *cexpr;
+
+        cexpr = (lkit_cexpr_t *)expr;
+        dict_fini(&cexpr->ctx);
+        array_fini(&cexpr->glist);
+    }
 }
 
 
@@ -304,28 +364,83 @@ lkit_expr_destroy(lkit_expr_t **pexpr)
 
 
 lkit_expr_t *
-lkit_expr_new(lkit_expr_t *ectx)
+lkit_expr_new(void)
 {
     lkit_expr_t *expr;
 
     if ((expr = malloc(sizeof(lkit_expr_t))) == NULL) {
         FAIL("malloc");
     }
-    lkit_expr_init(expr, ectx);
+    lkit_expr_init(expr);
 
     return expr;
 }
 
 
+static int
+gitem_fini(lkit_gitem_t **gitem)
+{
+    if (*gitem != NULL) {
+        BYTES_DECREF(&(*gitem)->name);
+        free(*gitem);
+        *gitem = NULL;
+    }
+    return 0;
+}
+
+
+static int
+gitem_init(lkit_gitem_t **gitem)
+{
+    if ((*gitem = malloc(sizeof(lkit_gitem_t))) == NULL) {
+        FAIL("malloc");
+    }
+    (*gitem)->name = NULL;
+    (*gitem)->expr = NULL;
+    return 0;
+}
+
+
+void
+lkit_cexpr_init(lkit_cexpr_t *ectx, lkit_cexpr_t *pectx)
+{
+    lkit_expr_init(&ectx->base);
+    ectx->base.isctx = -1;
+    ectx->parent = pectx;
+    array_init(&ectx->glist, sizeof(lkit_gitem_t *), 0,
+               (array_initializer_t)gitem_init,
+               (array_finalizer_t)gitem_fini);
+    dict_init(&ectx->ctx, 101,
+              (dict_hashfn_t)lkit_expr_hash,
+              (dict_item_comparator_t)lkit_expr_cmp,
+              NULL);
+}
+
+
+lkit_cexpr_t *
+lkit_cexpr_new(lkit_cexpr_t *pectx)
+{
+    lkit_cexpr_t *ectx;
+
+    if ((ectx = malloc(sizeof(lkit_cexpr_t))) == NULL) {
+        FAIL("malloc");
+    }
+    lkit_cexpr_init(ectx, pectx);
+
+    return ectx;
+}
+
+
 lkit_expr_t *
-lkit_expr_build_ref(lkit_expr_t *ectx, bytes_t *name)
+lkit_expr_build_ref(lkit_cexpr_t *ectx, bytes_t *name)
 {
     lkit_expr_t *expr;
 
-    expr = lkit_expr_new(ectx);
+    expr = lkit_expr_new();
     expr->name = name;
     expr->isref = -1;
     expr->value.ref = lkit_expr_find(ectx, name);
+    expr->mpolicy = expr->value.ref->mpolicy;
     expr->type = lkit_expr_type_of(expr->value.ref);
     return expr;
 }
@@ -333,12 +448,11 @@ lkit_expr_build_ref(lkit_expr_t *ectx, bytes_t *name)
 
 lkit_expr_t *
 lkit_expr_build_literal(mrklkit_ctx_t *mctx,
-                        lkit_expr_t *ectx,
                         fparser_datum_t *value)
 {
     lkit_expr_t *expr;
 
-    expr = lkit_expr_new(ectx);
+    expr = lkit_expr_new();
     expr->value.literal = value;
     switch (value->tag) {
     case FPARSER_STR:
@@ -384,32 +498,8 @@ lkit_expr_add_sub(lkit_expr_t *expr, lkit_expr_t *sub)
     return sub;
 }
 
-static int
-gitem_fini(lkit_gitem_t **gitem)
-{
-    if (*gitem != NULL) {
-        BYTES_DECREF(&(*gitem)->name);
-        free(*gitem);
-        *gitem = NULL;
-    }
-    return 0;
-}
-
-
-static int
-gitem_init(lkit_gitem_t **gitem)
-{
-    if ((*gitem = malloc(sizeof(lkit_gitem_t))) == NULL) {
-        FAIL("malloc");
-    }
-    (*gitem)->name = NULL;
-    (*gitem)->expr = NULL;
-    return 0;
-}
-
-
 void
-lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
+lkit_expr_init(lkit_expr_t *expr)
 {
     expr->name = NULL;
     expr->title = NULL;
@@ -418,8 +508,8 @@ lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
                    (array_finalizer_t)lkit_expr_destroy) != 0) {
         FAIL("array_init");
     }
-    lexpr_init_ctx(expr);
-    expr->parent = ectx;
+    expr->mpolicy = MRKLKIT_DEFAULT_MPOLICY;
+    expr->isctx = 0;
     expr->isref = 0;
     expr->isbuiltin = 0;
     expr->value.literal = NULL;
@@ -430,25 +520,13 @@ lkit_expr_init(lkit_expr_t *expr, lkit_expr_t *ectx)
     expr->undef_removed = 0;
     expr->fparam = 0;
     expr->fparam_idx = -1;
+    expr->zref = 0;
     expr->type = NULL;
 }
 
 
 void
-lexpr_init_ctx(lkit_expr_t *ectx)
-{
-    dict_init(&ectx->ctx, 101,
-              (dict_hashfn_t)lkit_expr_hash,
-              (dict_item_comparator_t)lkit_expr_cmp,
-              NULL);
-    array_init(&ectx->glist, sizeof(lkit_gitem_t *), 0,
-               (array_initializer_t)gitem_init,
-               (array_finalizer_t)gitem_fini);
-}
-
-
-void
-lexpr_add_to_ctx(lkit_expr_t *ectx, bytes_t *name, lkit_expr_t *expr)
+lexpr_add_to_ctx(lkit_cexpr_t *ectx, bytes_t *name, lkit_expr_t *expr)
 {
     lkit_gitem_t **gitem;
 
@@ -456,7 +534,7 @@ lexpr_add_to_ctx(lkit_expr_t *ectx, bytes_t *name, lkit_expr_t *expr)
     if ((gitem = array_incr(&ectx->glist)) == NULL) {
         FAIL("array_incr");
     }
-    (*gitem)->name = lkit_expr_qual_name(ectx, name);
+    (*gitem)->name = lkit_cexpr_qual_name(ectx, name);
     (*gitem)->expr = expr;
 }
 
@@ -515,47 +593,54 @@ do {                                   \
 
 lkit_expr_t *
 lkit_expr_parse(mrklkit_ctx_t *mctx,
-                lkit_expr_t *ectx,
+                lkit_cexpr_t *ectx,
                 fparser_datum_t *dat,
                 int seterror)
 {
+    lkit_type_t *ty;
     lkit_expr_t *expr;
 
-    expr = lkit_expr_new(ectx);
+    expr = NULL;
 
     /* first probe for type/reference */
-    if ((expr->type = lkit_type_parse(mctx, dat, 0)) == NULL) {
+    if ((ty = lkit_type_parse(mctx, dat, 0)) == NULL) {
         /* expr found ? */
         //TRACE("value:");
         //fparser_datum_dump(&dat, NULL);
 
         switch (FPARSER_DATUM_TAG(dat)) {
         case FPARSER_INT:
+            expr = lkit_expr_new();
             expr->value.literal = dat;
             expr->type = lkit_type_get(mctx, LKIT_INT);
             break;
 
         case FPARSER_STR:
+            expr = lkit_expr_new();
             expr->value.literal = dat;
             expr->type = lkit_type_get(mctx, LKIT_STR);
             break;
 
         case FPARSER_FLOAT:
+            expr = lkit_expr_new();
             expr->value.literal = dat;
             expr->type = lkit_type_get(mctx, LKIT_FLOAT);
             break;
 
         case FPARSER_BOOL:
+            expr = lkit_expr_new();
             expr->value.literal = dat;
             expr->type = lkit_type_get(mctx, LKIT_BOOL);
             break;
 
         case FPARSER_VOID:
+            expr = lkit_expr_new();
             expr->value.literal = dat;
             expr->type = lkit_type_get(mctx, LKIT_VOID);
             break;
 
         case FPARSER_NULL:
+            expr = lkit_expr_new();
             expr->value.literal = dat;
             expr->type = lkit_type_get(mctx, LKIT_NULL);
             break;
@@ -564,6 +649,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
             /*
              * must be exprref
              */
+            expr = lkit_expr_new();
             expr->name = (bytes_t *)(dat->body);
             if ((expr->value.ref = lkit_expr_find(ectx, expr->name)) == NULL) {
                 TRACEN("cannot find reference target: ");
@@ -573,6 +659,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
             }
             //TRACE("ISREF by %s", expr->name->data);
             expr->isref = -1;
+            expr->mpolicy = expr->value.ref->mpolicy;
             expr->type = expr->value.ref->type;
 
             break;
@@ -585,15 +672,17 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                 fparser_datum_t **node;
                 fparser_tag_t tag;
 
+                expr = lkit_expr_new();
                 form = (array_t *)(dat->body);
-
                 if ((node = array_first(form, &it)) == NULL) {
                     TR(LKIT_EXPR_PARSE + 2);
                     goto err;
                 }
-
                 tag = FPARSER_DATUM_TAG(*node);
                 if (tag == FPARSER_WORD) {
+                    /*
+                     * XXX (xxx) (xxx :q q :w w :e e)
+                     */
                     if (lparse_first_word_bytes(form,
                                                 &it,
                                                 &expr->name,
@@ -603,34 +692,23 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                     }
 
                     if ((expr->value.ref = lkit_expr_find(
-                            ectx, expr->name)) == NULL) {
+                                    ectx, expr->name)) == NULL) {
                         TRACEN("cannot find definition: ");
                         TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
                         TR(LKIT_EXPR_PARSE + 4);
                         goto err;
                     }
 
-                    //TRACE("ISREF by %s", expr->name->data);
                     expr->isref = -1;
-
-                    /*
-                     * XXX (xxx) (xxx :q q :w w :e e)
-                     */
-
-                    /*
-                     * Please note difference expr->value.ref->type vs
-                     * expr->type.
-                     *
-                     */
+                    expr->mpolicy = expr->value.ref->mpolicy;
                     expr->type = lkit_expr_type_of(expr->value.ref);
+                    assert(expr->type != NULL);
 
                     /* quals */
                     lparse_quals(form,
                                  &it,
                                  (quals_parser_t)parse_expr_quals,
                                  expr);
-
-                    assert(expr->type != NULL);
 
                     if (expr->value.ref->type->tag == LKIT_FUNC) {
                         lkit_func_t *tf = NULL;
@@ -744,7 +822,6 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                         /*
                          * re-work it
                          */
-                        expr->isref = 0;
                         if (lparse_next_str_datum(form,
                                                   &it,
                                                   &expr->value.literal,
@@ -754,6 +831,10 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                             TR(LKIT_EXPR_PARSE + 14);
                             goto err;
                         }
+
+                        expr->type = ty;
+                        expr->isref = 0;
+
                     } else {
                         /*
                          * (xxx) not a function
@@ -836,6 +917,12 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
 
     } else {
         /* typed declaration */
+        if (ty->tag == LKIT_FUNC) {
+            expr = (lkit_expr_t *)lkit_cexpr_new(ectx);
+        } else {
+            expr = lkit_expr_new();
+        }
+        expr->type = ty;
         expr->value.ref = NULL;
         //TRACE("type:");
         //lkit_type_dump(expr->type);
