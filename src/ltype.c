@@ -1321,7 +1321,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                 }
 
             } else if (strcmp((char *)first->data, "struct") == 0) {
-                lkit_struct_t *ts;
+                UNUSED lkit_struct_t *ts;
                 fparser_datum_t **node;
 
                 ty = lkit_type_get(mctx, LKIT_STRUCT);

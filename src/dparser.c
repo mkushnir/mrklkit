@@ -986,7 +986,7 @@ dparse_dict_from_bytes_mpool(lkit_dpdict_t *pa, bytes_t *str)
     case LKIT_ARRAY:
         /* multiple values */
         {
-            lkit_dparray_t *dpa;
+            UNUSED lkit_dparray_t *dpa;
             lkit_type_t *afty;
 
             /* nreserved */

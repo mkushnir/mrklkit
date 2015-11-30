@@ -78,7 +78,7 @@ compile_incref(LLVMModuleRef module,
                lkit_expr_t *expr,
                LLVMValueRef v)
 {
-    LLVMContextRef lctx;
+    UNUSED LLVMContextRef lctx;
     char *torprefix;
 
     if (expr->mpolicy == LKIT_MPMPOOL) {
@@ -127,7 +127,7 @@ compile_decref(LLVMModuleRef module,
                lkit_expr_t *expr,
                LLVMValueRef v)
 {
-    LLVMContextRef lctx;
+    UNUSED LLVMContextRef lctx;
     char *torprefix;
 
     if (expr->mpolicy == LKIT_MPMPOOL) {
