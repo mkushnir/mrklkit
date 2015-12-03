@@ -341,7 +341,7 @@ _compile_cmp(mrklkit_ctx_t *mctx,
     } else if (a->type->tag == LKIT_STR) {
         LLVMValueRef fn, args[2], rv;
 
-        if ((fn = LLVMGetNamedFunction(module, "bytes_cmp")) == NULL) {
+        if ((fn = LLVMGetNamedFunction(module, "bytes_cmpv")) == NULL) {
             FAIL("LLVMGetNamedFunction");
         }
 
@@ -357,7 +357,7 @@ _compile_cmp(mrklkit_ctx_t *mctx,
                           fn,
                           args,
                           2,
-                          NEWVAR("strcmp"));
+                          NEWVAR("call"));
         rv = LLVMBuildCast(builder, LLVMTrunc, rv, ty, NEWVAR("cast"));
         v = LLVMBuildICmp(builder,
                           ip,
