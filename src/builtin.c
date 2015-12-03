@@ -24,7 +24,7 @@
 MEMDEBUG_DECLARE(builtin);
 #endif
 
-static bytes_t _copy = BYTES_DECLARE_CONSTANT(5, {'c', 'o', 'p', 'y', '\0'});
+static bytes_t _copy = BYTES_INITIALIZER("copy");
 
 /*
  * (keyword name value)
