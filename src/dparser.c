@@ -46,78 +46,6 @@ typedef off_t (*dparse_ty_pos_t)(rt_parser_info_t *,
                                  off_t,
                                  off_t,
                                  void *);
-/*
- * reach
- */
-
-/*
- * deprecate
- */
-void
-dparser_reach_delim(bytestream_t *bs, char delim, off_t epos)
-{
-    while (SPOS(bs) < epos) {
-        if (SPCHR(bs) == delim || SPCHR(bs) == '\0') {
-            break;
-        }
-        SINCR(bs);
-    }
-}
-
-
-static int
-dparser_reach_delim_readmore_unix(bytestream_t *bs, int fd, off_t epos)
-{
-    while (SPOS(bs) <= epos) {
-        //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
-        //      SNEEDMORE(bs), SPOS(bs), epos);
-        //TRACE("SPCHR='%c'", SPCHR(bs));
-        if (SNEEDMORE(bs)) {
-            if (bytestream_read_more(bs, fd, bs->growsz) <= 0) {
-                return DPARSE_EOD;
-            }
-            epos = SEOD(bs);
-        }
-        if (SPCHR(bs) == '\n' || SPCHR(bs) == '\0') {
-            return 0;
-        }
-        SINCR(bs);
-    }
-    return DPARSE_EOD;
-}
-
-
-static int
-dparser_reach_delim_readmore_win(bytestream_t *bs, int fd, off_t epos)
-{
-    int state;
-
-    state = 0;
-    while (SPOS(bs) <= epos) {
-        //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
-        //      SNEEDMORE(bs), SPOS(bs), epos);
-        //TRACE("SPCHR='%c'", SPCHR(bs));
-        if (SNEEDMORE(bs)) {
-            if (bytestream_read_more(bs, fd, bs->growsz) <= 0) {
-                return DPARSE_EOD;
-            }
-            epos = SEOD(bs);
-        }
-        if (SPCHR(bs) == '\r') {
-            state = DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR;
-        } else if (SPCHR(bs) == '\n') {
-            if (state == DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR) {
-                return 0;
-            } else {
-                state = 0;
-            }
-        } else if (SPCHR(bs) == '\0') {
-            return 0;
-        }
-        SINCR(bs);
-    }
-    return DPARSE_EOD;
-}
 
 
 static ssize_t
@@ -147,17 +75,21 @@ bytestream_read_more_bz2(bytestream_t *bs, BZFILE *bzf, ssize_t sz)
 }
 
 
+/*
+ * reach
+ */
 static int
-dparser_reach_delim_readmore_bz2_unix(bytestream_t *bs,
-                                      BZFILE *bzf,
-                                      off_t epos)
+dparser_reach_delim_readmore_unix(bytestream_t *bs, int fd, off_t epos)
 {
-    while (SPOS(bs) <= epos) {
+    off_t oldspos;
+
+    for (oldspos = SPOS(bs); SPOS(bs) <= epos; SINCR(bs)) {
         //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
         //      SNEEDMORE(bs), SPOS(bs), epos);
         //TRACE("SPCHR='%c'", SPCHR(bs));
         if (SNEEDMORE(bs)) {
-            if (bytestream_read_more_bz2(bs, bzf, bs->growsz) <= 0) {
+            if (bytestream_read_more(bs, fd, bs->growsz) <= 0) {
+                SPOS(bs) = oldspos;
                 return DPARSE_EOD;
             }
             epos = SEOD(bs);
@@ -165,26 +97,24 @@ dparser_reach_delim_readmore_bz2_unix(bytestream_t *bs,
         if (SPCHR(bs) == '\n' || SPCHR(bs) == '\0') {
             return 0;
         }
-        SINCR(bs);
     }
     return DPARSE_EOD;
 }
 
 
 static int
-dparser_reach_delim_readmore_bz2_win(bytestream_t *bs,
-                                     BZFILE *bzf,
-                                     off_t epos)
+dparser_reach_delim_readmore_win(bytestream_t *bs, int fd, off_t epos)
 {
     int state;
+    off_t oldspos;
 
-    state = 0;
-    while (SPOS(bs) <= epos) {
+    for (state = 0, oldspos = SPOS(bs); SPOS(bs) <= epos; SINCR(bs)) {
         //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
         //      SNEEDMORE(bs), SPOS(bs), epos);
         //TRACE("SPCHR='%c'", SPCHR(bs));
         if (SNEEDMORE(bs)) {
-            if (bytestream_read_more_bz2(bs, bzf, bs->growsz) <= 0) {
+            if (bytestream_read_more(bs, fd, bs->growsz) <= 0) {
+                SPOS(bs) = oldspos;
                 return DPARSE_EOD;
             }
             epos = SEOD(bs);
@@ -200,28 +130,79 @@ dparser_reach_delim_readmore_bz2_win(bytestream_t *bs,
         } else if (SPCHR(bs) == '\0') {
             return 0;
         }
-        SINCR(bs);
+    }
+    return DPARSE_EOD;
+}
+
+
+static int
+dparser_reach_delim_readmore_bz2_unix(bytestream_t *bs,
+                                      BZFILE *bzf,
+                                      off_t epos)
+{
+    off_t oldspos;
+
+    for (oldspos = SPOS(bs); SPOS(bs) <= epos; SINCR(bs)) {
+        //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
+        //      SNEEDMORE(bs), SPOS(bs), epos);
+        //TRACE("SPCHR='%c'", SPCHR(bs));
+        if (SNEEDMORE(bs)) {
+            if (bytestream_read_more_bz2(bs, bzf, bs->growsz) <= 0) {
+                SPOS(bs) = oldspos;
+                return DPARSE_EOD;
+            }
+            epos = SEOD(bs);
+        }
+        if (SPCHR(bs) == '\n' || SPCHR(bs) == '\0') {
+            return 0;
+        }
+    }
+    return DPARSE_EOD;
+}
+
+
+static int
+dparser_reach_delim_readmore_bz2_win(bytestream_t *bs,
+                                     BZFILE *bzf,
+                                     off_t epos)
+{
+    int state;
+    off_t oldspos;
+
+    for (state = 0, oldspos = SPOS(bs); SPOS(bs) <= epos; SINCR(bs)) {
+        //TRACE("SNEEDMORE=%d SPOS=%ld epos=%ld",
+        //      SNEEDMORE(bs), SPOS(bs), epos);
+        //TRACE("SPCHR='%c'", SPCHR(bs));
+        if (SNEEDMORE(bs)) {
+            if (bytestream_read_more_bz2(bs, bzf, bs->growsz) <= 0) {
+                SPOS(bs) = oldspos;
+                return DPARSE_EOD;
+            }
+            epos = SEOD(bs);
+        }
+        if (SPCHR(bs) == '\r') {
+            state = DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR;
+        } else if (SPCHR(bs) == '\n') {
+            if (state == DPARSER_REACH_DELIM_READMORE_WIN_STATE_CR) {
+                return 0;
+            } else {
+                state = 0;
+            }
+        } else if (SPCHR(bs) == '\0') {
+            return 0;
+        }
     }
     return DPARSE_EOD;
 }
 
 
 static void
-dparser_reach_end(bytestream_t *bs, off_t epos)
+dparser_safe_next(bytestream_t *bs, off_t epos)
 {
     if (SPOS(bs) < epos) {
         SINCR(bs);
     }
 }
-
-void
-dparser_reach_value_m(bytestream_t *bs, char delim, off_t epos)
-{
-    while (SPOS(bs) < epos && SPCHR(bs) == delim) {
-        SINCR(bs);
-    }
-}
-
 
 static off_t
 dparser_reach_delim_pos(bytestream_t *bs,
@@ -1500,7 +1481,7 @@ rt_parser_info_pos(rt_parser_info_t *pi)
         if ((res = cb(bs, &br, udata)) != 0) {                         \
             break;                                                     \
         }                                                              \
-        dparser_reach_end(bs, SEOD(bs));                               \
+        dparser_safe_next(bs, SEOD(bs));                               \
         br.end = SEOD(bs);                                             \
         if (SPOS(bs) >= bs->growsz - 8192) {                           \
             off_t recycled;                                            \
@@ -1580,7 +1561,7 @@ dparser_read_lines_win(int fd,
         if ((res = cb(bs, &br, udata)) != 0) {                                 \
             break;                                                             \
         }                                                                      \
-        dparser_reach_end(bs, SEOD(bs));                                       \
+        dparser_safe_next(bs, SEOD(bs));                                       \
         br.end = SEOD(bs);                                                     \
         if (SPOS(bs) >= bs->growsz - 8192) {                                   \
             off_t recycled;                                                    \

@@ -76,9 +76,6 @@ rt_array_t *dparse_struct_item_ra_array(rt_parser_info_t *, int64_t);
 rt_dict_t *dparse_struct_item_ra_dict(rt_parser_info_t *, int64_t);
 rt_struct_t *dparse_struct_item_ra_struct(rt_parser_info_t *, int64_t);
 
-void dparser_reach_delim(bytestream_t *, char, off_t);
-void dparser_reach_value_m(bytestream_t *,
-                           char, off_t);
 int64_t dparser_strtoi64(char *, char **, char);
 double dparser_strtod(char *, char **, char);
 
