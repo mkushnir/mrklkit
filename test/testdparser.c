@@ -106,9 +106,12 @@ main(int argc, char *argv[])
             //assert(0)const ;
         }
 
+        nlines = 0;
+        nbytes = 0;
         while (1) {
             int res;
 
+            TRACE("%ld/%ld", nlines, nbytes);
             if ((res = dparser_read_lines_unix(fd,
                                                &bs,
                                                mycb,
