@@ -34,7 +34,7 @@ MEMDEBUG_DECLARE(dparser);
 #define _array_get_safe(ar, idx) array_get_safe_mpool(mpool, (ar), (idx))
 
 
-#define _dict_set_item(d, k, v) hash_set_item_mpool(mpool, (d), (k), (v))
+#define _hash_set_item(d, k, v) hash_set_item_mpool(mpool, (d), (k), (v))
 
 
 static mpool_ctx_t *mpool;
@@ -845,7 +845,7 @@ dparse_dict_pos_mpool(rt_parser_info_t *pi,
     DICT_POS_BODY(dparse_str_pos_brushdown_mpool,
                   dparse_str_pos_mpool,
                   dparse_optqstr_pos_mpool,
-                  _dict_set_item)
+                  _hash_set_item)
 }
 
 
@@ -876,7 +876,7 @@ dparse_dict_pos(rt_parser_info_t *pi,
         spos = dparser_reach_value_pos(pi->bs, pdelim, kvpos, epos);           \
         if ((dit = hash_get_item(&(*val)->fields, key)) == NULL) {             \
             aval = mrklkit_rt_array_new_mpool_sz((lkit_array_t *)fty, 16);     \
-            _dict_set_item(&(*val)->fields, key, aval);                        \
+            _hash_set_item(&(*val)->fields, key, aval);                        \
         } else {                                                               \
             aval = dit->value;                                                 \
         }                                                                      \
@@ -952,16 +952,16 @@ dparse_dict_from_bytes_mpool(lkit_dpdict_t *pa, bytes_t *str)
             } else {
                 _dparse_str_pos_v = dparse_str_pos_mpool;
             }
-            DPARSE_DICT_CASE(_dict_set_item, bytes_t *, _dparse_str_pos_v);
+            DPARSE_DICT_CASE(_hash_set_item, bytes_t *, _dparse_str_pos_v);
         }
         break;
 
     case LKIT_INT:
-        DPARSE_DICT_CASE(_dict_set_item, int64_t, dparse_int_pos);
+        DPARSE_DICT_CASE(_hash_set_item, int64_t, dparse_int_pos);
         break;
 
     case LKIT_FLOAT:
-        DPARSE_DICT_CASE(_dict_set_item, double, dparse_float_pos);
+        DPARSE_DICT_CASE(_hash_set_item, double, dparse_float_pos);
         break;
 
     case LKIT_ARRAY:
