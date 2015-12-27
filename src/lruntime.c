@@ -78,7 +78,7 @@ static mpool_ctx_t *mpool;
     hash_init_mpool(mpool, (dict), (sz), (hashfn), (cmpfn), (finifn))  \
 
 
-#define _dict_set_item(d, k, v) hash_set_item_mpool(mpool, (d), (k), (v))
+#define _hash_set_item(d, k, v) hash_set_item_mpool(mpool, (d), (k), (v))
 
 
 void
@@ -1013,7 +1013,7 @@ mrklkit_rt_dict_set_item_int(rt_dict_t *value, bytes_t *key, int64_t val)
 void
 mrklkit_rt_dict_set_item_int_mpool(rt_dict_t *value, bytes_t *key, int64_t val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_INT_BODY(_dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_INT_BODY(_hash_set_item)
 }
 
 
@@ -1037,7 +1037,7 @@ mrklkit_rt_dict_set_item_float(rt_dict_t *value, bytes_t *key, double val)
 void
 mrklkit_rt_dict_set_item_float_mpool(rt_dict_t *value, bytes_t *key, double val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_FLOAT_BODY(_dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_FLOAT_BODY(_hash_set_item)
 }
 
 
@@ -1061,7 +1061,7 @@ mrklkit_rt_dict_set_item_bool(rt_dict_t *value, bytes_t *key, char val)
 void
 mrklkit_rt_dict_set_item_bool_mpool(rt_dict_t *value, bytes_t *key, char val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_BOOL_BODY(_dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_BOOL_BODY(_hash_set_item)
 }
 
 
@@ -1086,7 +1086,7 @@ mrklkit_rt_dict_set_item_str(rt_dict_t *value, bytes_t *key, bytes_t *val)
 void
 mrklkit_rt_dict_set_item_str_mpool(rt_dict_t *value, bytes_t *key, bytes_t *val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_STR_BODY(_dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_STR_BODY(_hash_set_item)
 }
 
 
@@ -1111,7 +1111,7 @@ mrklkit_rt_dict_set_item_array(rt_dict_t *value, bytes_t *key, rt_array_t *val)
 void
 mrklkit_rt_dict_set_item_array_mpool(rt_dict_t *value, bytes_t *key, rt_array_t *val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_ARRAY_BODY(_dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_ARRAY_BODY(_hash_set_item)
 }
 
 
@@ -1136,7 +1136,7 @@ mrklkit_rt_dict_set_item_dict(rt_dict_t *value, bytes_t *key, rt_dict_t *val)
 void
 mrklkit_rt_dict_set_item_dict_mpool(rt_dict_t *value, bytes_t *key, rt_dict_t *val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_DICT_BODY(_dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_DICT_BODY(_hash_set_item)
 }
 
 
@@ -1166,7 +1166,7 @@ mrklkit_rt_dict_set_item_struct_mpool(rt_dict_t *value,
                                 bytes_t *key,
                                 rt_struct_t *val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_STRUCT_BODY(_dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_STRUCT_BODY(_hash_set_item)
 }
 
 
