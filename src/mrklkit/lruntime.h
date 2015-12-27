@@ -4,7 +4,7 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 #include <mrkcommon/mpool.h>
 #include <mrkcommon/jparse.h>
 
@@ -73,7 +73,7 @@ typedef struct _rt_dict {
 #endif
     ssize_t nref;
     lkit_dict_t *type;
-    dict_t fields;
+    hash_t fields;
 } rt_dict_t;
 
 #define DICT_INCREF(dc) (++(dc)->nref)
@@ -84,7 +84,7 @@ do {                                           \
         --(*(dc))->nref;                       \
         if ((*(dc))->nref <= 0) {              \
             MEMDEBUG_ENTER_LRT(*(dc));         \
-            dict_fini(&(*(dc))->fields);       \
+            hash_fini(&(*(dc))->fields);       \
             free(*(dc));                       \
             MEMDEBUG_LEAVE_LRT(*(dc));         \
         }                                      \
@@ -97,7 +97,7 @@ do {                                   \
     --(dc)->nref;                      \
     if ((dc)->nref <= 0) {             \
         MEMDEBUG_ENTER_LRT(dc);        \
-        dict_fini(&(dc)->fields);      \
+        hash_fini(&(dc)->fields);      \
         free(dc);                      \
         MEMDEBUG_LEAVE_LRT(dc);        \
     }                                  \

@@ -5,7 +5,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 
 #include <mrklkit/fparser.h>
 #include <mrklkit/mrklkit.h>
@@ -76,7 +76,7 @@ typedef struct _lkit_cexpr {
     /*
      * weakref bytes_t *, weakref lkit_expr_t *
      */
-    dict_t ctx;
+    hash_t ctx;
 } lkit_cexpr_t;
 
 

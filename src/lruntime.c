@@ -5,7 +5,7 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream_aux.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 #include <mrkcommon/util.h>
 //#define TRRET_DEBUG
 #include <mrkcommon/dumpm.h>
@@ -75,10 +75,10 @@ static mpool_ctx_t *mpool;
                    hashfn,                                             \
                    cmpfn,                                              \
                    finifn)                                             \
-    dict_init_mpool(mpool, (dict), (sz), (hashfn), (cmpfn), (finifn))  \
+    hash_init_mpool(mpool, (dict), (sz), (hashfn), (cmpfn), (finifn))  \
 
 
-#define _dict_set_item(d, k, v) dict_set_item_mpool(mpool, (d), (k), (v))
+#define _dict_set_item(d, k, v) hash_set_item_mpool(mpool, (d), (k), (v))
 
 
 void
@@ -745,28 +745,28 @@ mrklkit_rt_dict_dump(rt_dict_t *value)
         case LKIT_INT:
         case LKIT_INT_MIN:
         case LKIT_INT_MAX:
-            dict_traverse(&value->fields,
-                          (dict_traverser_t)dump_int_dict,
+            hash_traverse(&value->fields,
+                          (hash_traverser_t)dump_int_dict,
                           NULL);
             break;
 
         case LKIT_FLOAT:
         case LKIT_FLOAT_MIN:
         case LKIT_FLOAT_MAX:
-            dict_traverse(&value->fields,
-                          (dict_traverser_t)dump_float_dict,
+            hash_traverse(&value->fields,
+                          (hash_traverser_t)dump_float_dict,
                           NULL);
             break;
 
         case LKIT_STR:
-            dict_traverse(&value->fields,
-                          (dict_traverser_t)dump_bytes_dict,
+            hash_traverse(&value->fields,
+                          (hash_traverser_t)dump_bytes_dict,
                           NULL);
             break;
 
         case LKIT_STRUCT:
-            dict_traverse(&value->fields,
-                          (dict_traverser_t)dump_struct_dict,
+            hash_traverse(&value->fields,
+                          (hash_traverser_t)dump_struct_dict,
                           NULL);
             break;
 
@@ -791,22 +791,22 @@ mrklkit_rt_dict_print(rt_dict_t *value)
     case LKIT_INT:
     case LKIT_INT_MIN:
     case LKIT_INT_MAX:
-        dict_traverse(&value->fields,
-                      (dict_traverser_t)dump_int_dict,
+        hash_traverse(&value->fields,
+                      (hash_traverser_t)dump_int_dict,
                       NULL);
         break;
 
     case LKIT_FLOAT:
     case LKIT_FLOAT_MIN:
     case LKIT_FLOAT_MAX:
-        dict_traverse(&value->fields,
-                      (dict_traverser_t)dump_float_dict,
+        hash_traverse(&value->fields,
+                      (hash_traverser_t)dump_float_dict,
                       NULL);
         break;
 
     case LKIT_STR:
-        dict_traverse(&value->fields,
-                      (dict_traverser_t)dump_bytes_dict,
+        hash_traverse(&value->fields,
+                      (hash_traverser_t)dump_bytes_dict,
                       NULL);
         break;
 
@@ -817,7 +817,7 @@ mrklkit_rt_dict_print(rt_dict_t *value)
 
 
 #define MRKLKIT_RT_DICT_NEW_BODY(malloc_fn,            \
-                                 dict_init_fn,         \
+                                 hash_init_fn,         \
                                  nreserved,            \
                                  ref)                  \
     rt_dict_t *res;                                    \
@@ -828,10 +828,10 @@ mrklkit_rt_dict_print(rt_dict_t *value)
     MEMDEBUG_ENTER(res);                               \
     res->nref = ref;                                   \
     res->type = ty;                                    \
-    dict_init_fn(&res->fields,                         \
+    hash_init_fn(&res->fields,                         \
               nreserved,                               \
-              (dict_hashfn_t)bytes_hash,               \
-              (dict_item_comparator_t)bytes_cmp,       \
+              (hash_hashfn_t)bytes_hash,               \
+              (hash_item_comparator_t)bytes_cmp,       \
               ty->fini);                               \
     MEMDEBUG_LEAVE(res);                               \
 
@@ -839,7 +839,7 @@ mrklkit_rt_dict_print(rt_dict_t *value)
 rt_dict_t *
 mrklkit_rt_dict_new(lkit_dict_t *ty)
 {
-    MRKLKIT_RT_DICT_NEW_BODY(malloc, dict_init, 17, 0);
+    MRKLKIT_RT_DICT_NEW_BODY(malloc, hash_init, 17, 0);
     return res;
 }
 
@@ -847,7 +847,7 @@ mrklkit_rt_dict_new(lkit_dict_t *ty)
 rt_dict_t *
 mrklkit_rt_dict_new_sz(lkit_dict_t *ty, int nreserved)
 {
-    MRKLKIT_RT_DICT_NEW_BODY(malloc, dict_init, nreserved, 0);
+    MRKLKIT_RT_DICT_NEW_BODY(malloc, hash_init, nreserved, 0);
     return res;
 }
 
@@ -878,13 +878,13 @@ mrklkit_rt_dict_decref(rt_dict_t **value)
 int64_t
 mrklkit_rt_dict_get_item_int(rt_dict_t *value, bytes_t *key, int64_t dflt)
 {
-    dict_item_t *it;
+    hash_item_t *it;
     union {
         void *v;
         int64_t i;
     } res;
 
-    if ((it = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = hash_get_item(&value->fields, key)) == NULL) {
         res.i = dflt;
     } else {
         res.v = it->value;
@@ -896,13 +896,13 @@ mrklkit_rt_dict_get_item_int(rt_dict_t *value, bytes_t *key, int64_t dflt)
 double
 mrklkit_rt_dict_get_item_float(rt_dict_t *value, bytes_t *key, double dflt)
 {
-    dict_item_t *it;
+    hash_item_t *it;
     union {
         void *v;
         double d;
     } res;
 
-    if ((it = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = hash_get_item(&value->fields, key)) == NULL) {
         res.d = dflt;
     } else {
         res.v = it->value;
@@ -914,10 +914,10 @@ mrklkit_rt_dict_get_item_float(rt_dict_t *value, bytes_t *key, double dflt)
 bytes_t *
 mrklkit_rt_dict_get_item_str(rt_dict_t *value, bytes_t *key, bytes_t *dflt)
 {
-    dict_item_t *it;
+    hash_item_t *it;
     bytes_t *res;
 
-    if ((it = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = hash_get_item(&value->fields, key)) == NULL) {
         res = dflt;
     } else {
         res = it->value == NULL ? dflt : it->value;
@@ -931,10 +931,10 @@ mrklkit_rt_dict_get_item_array(rt_dict_t *value,
                                 bytes_t *key,
                                 rt_array_t *dflt)
 {
-    dict_item_t *it;
+    hash_item_t *it;
     rt_array_t *res;
 
-    if ((it = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = hash_get_item(&value->fields, key)) == NULL) {
         res = dflt;
     } else {
         res = it->value == NULL ? dflt : it->value;
@@ -948,10 +948,10 @@ mrklkit_rt_dict_get_item_struct(rt_dict_t *value,
                                 bytes_t *key,
                                 rt_struct_t *dflt)
 {
-    dict_item_t *it;
+    hash_item_t *it;
     rt_struct_t *res;
 
-    if ((it = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = hash_get_item(&value->fields, key)) == NULL) {
         res = dflt;
     } else {
         res = it->value == NULL ? dflt : it->value;
@@ -965,10 +965,10 @@ mrklkit_rt_dict_get_item_dict(rt_dict_t *value,
                               bytes_t *key,
                               rt_dict_t *dflt)
 {
-    dict_item_t *it;
+    hash_item_t *it;
     rt_dict_t *res;
 
-    if ((it = dict_get_item(&value->fields, key)) == NULL) {
+    if ((it = hash_get_item(&value->fields, key)) == NULL) {
         res = dflt;
     } else {
         res = it->value == NULL ? dflt : it->value;
@@ -980,7 +980,7 @@ mrklkit_rt_dict_get_item_dict(rt_dict_t *value,
 int64_t
 mrklkit_rt_dict_has_item(rt_dict_t *value, bytes_t *key)
 {
-    return dict_get_item(&value->fields, key) != NULL;
+    return hash_get_item(&value->fields, key) != NULL;
 }
 
 
@@ -993,20 +993,20 @@ mrklkit_rt_dict_incref(rt_dict_t *d)
 }
 
 
-#define MRKLKI_RT_DICT_SET_ITEM_INT_BODY(dict_set_item_fn)     \
+#define MRKLKI_RT_DICT_SET_ITEM_INT_BODY(hash_set_item_fn)     \
     union {                                                    \
         int64_t i;                                             \
         void *v;                                               \
     } v;                                                       \
     v.i = val;                                                 \
     BYTES_INCREF(key);                                         \
-    dict_set_item_fn(&value->fields, key, v.v);                \
+    hash_set_item_fn(&value->fields, key, v.v);                \
 
 
 void
 mrklkit_rt_dict_set_item_int(rt_dict_t *value, bytes_t *key, int64_t val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_INT_BODY(dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_INT_BODY(hash_set_item)
 }
 
 
@@ -1017,20 +1017,20 @@ mrklkit_rt_dict_set_item_int_mpool(rt_dict_t *value, bytes_t *key, int64_t val)
 }
 
 
-#define MRKLKI_RT_DICT_SET_ITEM_FLOAT_BODY(dict_set_item_fn)   \
+#define MRKLKI_RT_DICT_SET_ITEM_FLOAT_BODY(hash_set_item_fn)   \
     union {                                                    \
         double f;                                              \
         void *v;                                               \
     } v;                                                       \
     v.f = val;                                                 \
     BYTES_INCREF(key);                                         \
-    dict_set_item_fn(&value->fields, key, v.v);                \
+    hash_set_item_fn(&value->fields, key, v.v);                \
 
 
 void
 mrklkit_rt_dict_set_item_float(rt_dict_t *value, bytes_t *key, double val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_FLOAT_BODY(dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_FLOAT_BODY(hash_set_item)
 }
 
 
@@ -1041,20 +1041,20 @@ mrklkit_rt_dict_set_item_float_mpool(rt_dict_t *value, bytes_t *key, double val)
 }
 
 
-#define MRKLKI_RT_DICT_SET_ITEM_BOOL_BODY(dict_set_item_fn)    \
+#define MRKLKI_RT_DICT_SET_ITEM_BOOL_BODY(hash_set_item_fn)    \
     union {                                                    \
         char b;                                                \
         void *v;                                               \
     } v;                                                       \
     v.b = val;                                                 \
     BYTES_INCREF(key);                                         \
-    dict_set_item_fn(&value->fields, key, v.v);                \
+    hash_set_item_fn(&value->fields, key, v.v);                \
 
 
 void
 mrklkit_rt_dict_set_item_bool(rt_dict_t *value, bytes_t *key, char val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_BOOL_BODY(dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_BOOL_BODY(hash_set_item)
 }
 
 
@@ -1065,7 +1065,7 @@ mrklkit_rt_dict_set_item_bool_mpool(rt_dict_t *value, bytes_t *key, char val)
 }
 
 
-#define MRKLKI_RT_DICT_SET_ITEM_STR_BODY(dict_set_item_fn)     \
+#define MRKLKI_RT_DICT_SET_ITEM_STR_BODY(hash_set_item_fn)     \
     union {                                                    \
         bytes_t *s;                                            \
         void *v;                                               \
@@ -1073,13 +1073,13 @@ mrklkit_rt_dict_set_item_bool_mpool(rt_dict_t *value, bytes_t *key, char val)
     v.s = val;                                                 \
     BYTES_INCREF(key);                                         \
     BYTES_INCREF(val);                                         \
-    dict_set_item_fn(&value->fields, key, v.v);                \
+    hash_set_item_fn(&value->fields, key, v.v);                \
 
 
 void
 mrklkit_rt_dict_set_item_str(rt_dict_t *value, bytes_t *key, bytes_t *val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_STR_BODY(dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_STR_BODY(hash_set_item)
 }
 
 
@@ -1090,7 +1090,7 @@ mrklkit_rt_dict_set_item_str_mpool(rt_dict_t *value, bytes_t *key, bytes_t *val)
 }
 
 
-#define MRKLKI_RT_DICT_SET_ITEM_ARRAY_BODY(dict_set_item_fn)   \
+#define MRKLKI_RT_DICT_SET_ITEM_ARRAY_BODY(hash_set_item_fn)   \
     union {                                                    \
         rt_array_t *a;                                         \
         void *v;                                               \
@@ -1098,13 +1098,13 @@ mrklkit_rt_dict_set_item_str_mpool(rt_dict_t *value, bytes_t *key, bytes_t *val)
     v.a = val;                                                 \
     BYTES_INCREF(key);                                         \
     ARRAY_INCREF(val);                                         \
-    dict_set_item_fn(&value->fields, key, v.v);                \
+    hash_set_item_fn(&value->fields, key, v.v);                \
 
 
 void
 mrklkit_rt_dict_set_item_array(rt_dict_t *value, bytes_t *key, rt_array_t *val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_ARRAY_BODY(dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_ARRAY_BODY(hash_set_item)
 }
 
 
@@ -1115,7 +1115,7 @@ mrklkit_rt_dict_set_item_array_mpool(rt_dict_t *value, bytes_t *key, rt_array_t 
 }
 
 
-#define MRKLKI_RT_DICT_SET_ITEM_DICT_BODY(dict_set_item_fn)    \
+#define MRKLKI_RT_DICT_SET_ITEM_DICT_BODY(hash_set_item_fn)    \
     union {                                                    \
         rt_dict_t *d;                                          \
         void *v;                                               \
@@ -1123,13 +1123,13 @@ mrklkit_rt_dict_set_item_array_mpool(rt_dict_t *value, bytes_t *key, rt_array_t 
     v.d = val;                                                 \
     BYTES_INCREF(key);                                         \
     DICT_INCREF(val);                                          \
-    dict_set_item_fn(&value->fields, key, v.v);                \
+    hash_set_item_fn(&value->fields, key, v.v);                \
 
 
 void
 mrklkit_rt_dict_set_item_dict(rt_dict_t *value, bytes_t *key, rt_dict_t *val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_DICT_BODY(dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_DICT_BODY(hash_set_item)
 }
 
 
@@ -1140,7 +1140,7 @@ mrklkit_rt_dict_set_item_dict_mpool(rt_dict_t *value, bytes_t *key, rt_dict_t *v
 }
 
 
-#define MRKLKI_RT_DICT_SET_ITEM_STRUCT_BODY(dict_set_item_fn)  \
+#define MRKLKI_RT_DICT_SET_ITEM_STRUCT_BODY(hash_set_item_fn)  \
     union {                                                    \
         rt_struct_t *s;                                        \
         void *v;                                               \
@@ -1148,7 +1148,7 @@ mrklkit_rt_dict_set_item_dict_mpool(rt_dict_t *value, bytes_t *key, rt_dict_t *v
     v.s = val;                                                 \
     BYTES_INCREF(key);                                         \
     STRUCT_INCREF(val);                                        \
-    dict_set_item_fn(&value->fields, key, v.v);                \
+    hash_set_item_fn(&value->fields, key, v.v);                \
 
 
 
@@ -1157,7 +1157,7 @@ mrklkit_rt_dict_set_item_struct(rt_dict_t *value,
                                 bytes_t *key,
                                 rt_struct_t *val)
 {
-    MRKLKI_RT_DICT_SET_ITEM_STRUCT_BODY(dict_set_item)
+    MRKLKI_RT_DICT_SET_ITEM_STRUCT_BODY(hash_set_item)
 }
 
 
@@ -1174,10 +1174,10 @@ void
 mrklkit_rt_dict_del_item_mpool(rt_dict_t *value,
                                bytes_t *key)
 {
-    dict_item_t *dit;
+    hash_item_t *dit;
 
-    if ((dit = dict_get_item(&value->fields, key)) != NULL) {
-        dict_delete_pair_no_fini_mpool(mpool, &value->fields, dit);
+    if ((dit = hash_get_item(&value->fields, key)) != NULL) {
+        hash_delete_pair_no_fini_mpool(mpool, &value->fields, dit);
     }
 
 }
@@ -1187,17 +1187,17 @@ void
 mrklkit_rt_dict_del_item(rt_dict_t *value,
                          bytes_t *key)
 {
-    dict_item_t *dit;
+    hash_item_t *dit;
 
-    if ((dit = dict_get_item(&value->fields, key)) != NULL) {
-        dict_delete_pair(&value->fields, dit);
+    if ((dit = hash_get_item(&value->fields, key)) != NULL) {
+        hash_delete_pair(&value->fields, dit);
     }
 
 }
 
 
 static int
-dict_traverse_cb(bytes_t *key, void *value, void *udata)
+hash_traverse_cb(bytes_t *key, void *value, void *udata)
 {
     struct {
         void (*cb)(bytes_t *, void *);
@@ -1215,8 +1215,8 @@ mrklkit_rt_dict_traverse(rt_dict_t *value, void (*cb)(bytes_t *, void *))
     } params;
 
     params.cb = cb;
-    (void)dict_traverse(&value->fields,
-                        (dict_traverser_t)dict_traverse_cb,
+    (void)hash_traverse(&value->fields,
+                        (hash_traverser_t)hash_traverse_cb,
                         &params);
 }
 
@@ -2111,8 +2111,8 @@ rt_dict_dump_json(rt_dict_t *value, bytestream_t *bs)
         params.bs = bs;
         bytestream_cat(bs, 1, "{");
         eod = SEOD(bs);
-        (void)dict_traverse(&value->fields,
-                            (dict_traverser_t)rt_dict_dump_json_item,
+        (void)hash_traverse(&value->fields,
+                            (hash_traverser_t)rt_dict_dump_json_item,
                             &params);
         if (SEOD(bs) > eod) {
             SADVANCEEOD(bs, -1);
@@ -2482,7 +2482,7 @@ _rt_dict_expect_item_int_cb(jparse_ctx_t *jctx,
     if (k != NULL) {
         k = bytes_new_from_bytes(k);
         BYTES_INCREF(k);
-        dict_set_item(&value->fields, k, v.v);
+        hash_set_item(&value->fields, k, v.v);
     }
     return 0;
 }
@@ -2510,7 +2510,7 @@ _rt_dict_expect_item_float_cb(jparse_ctx_t *jctx,
     if (k != NULL) {
         k = bytes_new_from_bytes(k);
         BYTES_INCREF(k);
-        dict_set_item(&value->fields, k, v.v);
+        hash_set_item(&value->fields, k, v.v);
     }
     return 0;
 }
@@ -2544,7 +2544,7 @@ _rt_dict_expect_item_str_cb(jparse_ctx_t *jctx,
     if (k != NULL) {
         k = bytes_new_from_bytes(k);
         BYTES_INCREF(k);
-        dict_set_item(&value->fields, k, v.v);
+        hash_set_item(&value->fields, k, v.v);
     } else {
         BYTES_DECREF(&v.s);
     }
@@ -2574,7 +2574,7 @@ _rt_dict_expect_item_bool_cb(jparse_ctx_t *jctx,
     if (k != NULL) {
         k = bytes_new_from_bytes(k);
         BYTES_INCREF(k);
-        dict_set_item(&value->fields, k, v.v);
+        hash_set_item(&value->fields, k, v.v);
     }
     return 0;
 }
@@ -2639,7 +2639,7 @@ _rt_dict_expect_item_array_cb(jparse_ctx_t *jctx,
         k = bytes_new_from_bytes(k);
         BYTES_INCREF(k);
         ARRAY_INCREF(v);
-        dict_set_item(&value->fields, k, v);
+        hash_set_item(&value->fields, k, v);
     } else {
         ARRAY_DECREF(&v);
     }
@@ -2706,7 +2706,7 @@ _rt_dict_expect_item_dict_cb(jparse_ctx_t *jctx,
         k = bytes_new_from_bytes(k);
         BYTES_INCREF(k);
         DICT_INCREF(v);
-        dict_set_item(&value->fields, k, v);
+        hash_set_item(&value->fields, k, v);
     } else {
         DICT_DECREF(&v);
     }
@@ -2741,7 +2741,7 @@ _rt_dict_expect_item_struct_cb(jparse_ctx_t *jctx,
         k = bytes_new_from_bytes(k);
         BYTES_INCREF(k);
         STRUCT_INCREF(v);
-        dict_set_item(&value->fields, k, v);
+        hash_set_item(&value->fields, k, v);
     } else {
         STRUCT_DECREF(&v);
     }

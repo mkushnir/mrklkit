@@ -8,7 +8,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 //#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
@@ -30,10 +30,10 @@ MEMDEBUG_DECLARE(ltypegen);
 static LLVMTypeRef
 ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 {
-    dict_item_t *dit;
+    hash_item_t *dit;
     mrklkit_backend_t *backend;
 
-    if ((dit = dict_get_item(&mctx->backends, ty)) == NULL) {
+    if ((dit = hash_get_item(&mctx->backends, ty)) == NULL) {
         LLVMContextRef lctx;
         lkit_type_t **field;
         array_iter_t it;
@@ -259,7 +259,7 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
              */
             backend->ty = LLVMPointerType(LLVMInt8TypeInContext(lctx), 0);
         }
-        dict_set_item(&mctx->backends, ty, backend);
+        hash_set_item(&mctx->backends, ty, backend);
     } else {
         backend = dit->value;
     }
@@ -272,7 +272,7 @@ ltype_maybe_compile_type(mrklkit_ctx_t *mctx,
                          lkit_type_t *ty,
                          LLVMModuleRef module)
 {
-    if (dict_get_item(&mctx->backends, ty) == NULL) {
+    if (hash_get_item(&mctx->backends, ty) == NULL) {
         (void)ltype_compile(mctx, ty, module);
     }
 }
@@ -281,9 +281,9 @@ ltype_maybe_compile_type(mrklkit_ctx_t *mctx,
 static mrklkit_backend_t *
 ltype_get_backend(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
-    dict_item_t *dit;
+    hash_item_t *dit;
 
-    if ((dit = dict_get_item(&mctx->backends, ty)) == NULL) {
+    if ((dit = hash_get_item(&mctx->backends, ty)) == NULL) {
         FAIL("mrklkit_ctx_get_type_backend");
     }
     return dit->value;
@@ -571,7 +571,7 @@ rt_array_array_fini(rt_array_t **value, UNUSED void *udata)
 
 
 static int
-rt_array_dict_fini(rt_dict_t **value, UNUSED void *udata)
+rt_array_hash_fini(rt_dict_t **value, UNUSED void *udata)
 {
     DICT_DECREF(value);
     return 0;
@@ -721,7 +721,7 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
                 break;
 
             case LKIT_DICT:
-                ta->fini = (array_finalizer_t)rt_array_dict_fini;
+                ta->fini = (array_finalizer_t)rt_array_hash_fini;
                 break;
 
             case LKIT_STRUCT:
@@ -753,23 +753,23 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
             case LKIT_FLOAT_MAX:
             case LKIT_FLOAT_MIN:
             case LKIT_BOOL:
-                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyonly;
+                td->fini = (hash_item_finalizer_t)rt_dict_fini_keyonly;
                 break;
 
             case LKIT_STR:
-                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_str;
+                td->fini = (hash_item_finalizer_t)rt_dict_fini_keyval_str;
                 break;
 
             case LKIT_ARRAY:
-                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_array;
+                td->fini = (hash_item_finalizer_t)rt_dict_fini_keyval_array;
                 break;
 
             case LKIT_DICT:
-                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_dict;
+                td->fini = (hash_item_finalizer_t)rt_dict_fini_keyval_dict;
                 break;
 
             case LKIT_STRUCT:
-                td->fini = (dict_item_finalizer_t)rt_dict_fini_keyval_struct;
+                td->fini = (hash_item_finalizer_t)rt_dict_fini_keyval_struct;
                 break;
 
             default:
@@ -882,7 +882,7 @@ lkit_compile_types(mrklkit_ctx_t *mctx, LLVMModuleRef module)
         mrklkit_ctx_t *mctx;
         LLVMModuleRef module;
     } params = { mctx, module };
-    return lkit_traverse_types((dict_traverser_t)_cb0, &params);
+    return lkit_traverse_types((hash_traverser_t)_cb0, &params);
 }
 
 
@@ -906,7 +906,7 @@ lkit_compile_type_methods(mrklkit_ctx_t *mctx, LLVMModuleRef module)
         mrklkit_ctx_t *mctx;
         LLVMModuleRef module;
     } params = { mctx, module };
-    return lkit_traverse_types((dict_traverser_t)_cb1, &params);
+    return lkit_traverse_types((hash_traverser_t)_cb1, &params);
 }
 
 
@@ -935,7 +935,7 @@ lkit_link_types(mrklkit_ctx_t *mctx,
         LLVMModuleRef module;
     } params = { mctx, ee, module };
 
-    return lkit_traverse_types((dict_traverser_t)_cb2, &params);
+    return lkit_traverse_types((hash_traverser_t)_cb2, &params);
 }
 
 
@@ -958,6 +958,6 @@ lkit_unlink_types(mrklkit_ctx_t *mctx)
         mrklkit_ctx_t *mctx;
     } params = { mctx };
 
-    return lkit_traverse_types((dict_traverser_t)_cb3, &params);
+    return lkit_traverse_types((hash_traverser_t)_cb3, &params);
 }
 

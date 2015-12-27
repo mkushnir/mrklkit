@@ -7,7 +7,7 @@
 #include <llvm-c/ExecutionEngine.h>
 
 #include <mrkcommon/array.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 
 #include <mrklkit/fparser.h>
 
@@ -43,7 +43,7 @@ typedef struct _mrklkit_ctx {
      * program
      */
     /* weakref lkit_type_t*, strongref mrklkit_backend_t* */
-    dict_t backends;
+    hash_t backends;
     LLVMContextRef lctx;
     LLVMModuleRef module;
     /* mrklkit_modaux_t */

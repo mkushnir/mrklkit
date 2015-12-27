@@ -5,7 +5,7 @@
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
 #include <mrkcommon/bytestream.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 //#define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/fasthash.h>
@@ -28,12 +28,12 @@ MEMDEBUG_DECLARE(ltype);
 /*
  * lkit_type_t *, lkit_type_t *
  */
-static dict_t types;
+static hash_t types;
 static array_t builtin_types;
 /*
  * bytes_t *, lkit_type_t *
  */
-static dict_t typedefs;
+static hash_t typedefs;
 
 static int
 null_init(void **v)
@@ -432,13 +432,13 @@ lkit_type_get_parser(mrklkit_ctx_t *mctx, int ftag)
 lkit_type_t *
 lkit_type_finalize(lkit_type_t *ty)
 {
-    dict_item_t *probe;
+    hash_item_t *probe;
 
     assert(ty != NULL);
 
-    if ((probe = dict_get_item(&types, ty)) == NULL) {
+    if ((probe = hash_get_item(&types, ty)) == NULL) {
         /* this is new one */
-        dict_set_item(&types, ty, ty);
+        hash_set_item(&types, ty, ty);
     } else {
         lkit_type_t *pty;
 
@@ -450,7 +450,7 @@ lkit_type_finalize(lkit_type_t *ty)
             } else {
                 TRACE("a new instance of builtin type??? (%d)", ty->tag);
                 lkit_type_dump(ty);
-                FAIL("dict_get_item");
+                FAIL("hash_get_item");
             }
             ty = pty;
         }
@@ -465,10 +465,10 @@ lkit_register_typedef(UNUSED mrklkit_ctx_t *mctx,
                       lkit_type_t *ty,
                       bytes_t *typename)
 {
-    dict_item_t *probe;
+    hash_item_t *probe;
 
     /* have it unique */
-    if ((probe = dict_get_item(&typedefs, typename)) != NULL) {
+    if ((probe = hash_get_item(&typedefs, typename)) != NULL) {
         lkit_type_t *pty;
 
         pty = probe->value;
@@ -480,7 +480,7 @@ lkit_register_typedef(UNUSED mrklkit_ctx_t *mctx,
             FAIL("lkit_type_cmp");
         }
     } else {
-        dict_set_item(&typedefs,
+        hash_set_item(&typedefs,
                       bytes_new_from_str((char *)typename->data),
                       ty);
     }
@@ -490,9 +490,9 @@ lkit_register_typedef(UNUSED mrklkit_ctx_t *mctx,
 lkit_type_t *
 lkit_typedef_get(UNUSED mrklkit_ctx_t *mctx, bytes_t *typename)
 {
-    dict_item_t *dit;
+    hash_item_t *dit;
 
-    if ((dit = dict_get_item(&typedefs, typename)) != NULL) {
+    if ((dit = hash_get_item(&typedefs, typename)) != NULL) {
         return dit->value;
     }
     return NULL;
@@ -525,7 +525,7 @@ lkit_typename_get(UNUSED mrklkit_ctx_t *mctx, lkit_type_t *ty)
 
     params.ty = ty;
     params.typename = NULL;
-    dict_traverse(&typedefs, (dict_traverser_t)_lkit_typename_get, &params);
+    hash_traverse(&typedefs, (hash_traverser_t)_lkit_typename_get, &params);
 
     return params.typename;
 }
@@ -1226,12 +1226,12 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
         } else if (strcmp(typename, "...") == 0) {
             ty = lkit_type_get(mctx, LKIT_VARARG);
         } else {
-            dict_item_t *probe = NULL;
+            hash_item_t *probe = NULL;
 
             /*
              * XXX handle typedefs here, or unknown type ...
              */
-            if ((probe = dict_get_item(&typedefs,
+            if ((probe = hash_get_item(&typedefs,
                                        (bytes_t *)(dat->body))) != NULL) {
                 lkit_type_t *pty;
 
@@ -1575,23 +1575,23 @@ lkit_typedef_fini_dict(bytes_t *key, UNUSED lkit_type_t *value)
 
 
 int
-lkit_traverse_types(dict_traverser_t cb, void *udata)
+lkit_traverse_types(hash_traverser_t cb, void *udata)
 {
-    return dict_traverse(&types, cb, udata);
+    return hash_traverse(&types, cb, udata);
 }
 
 
 static void
-mrklkit_init_types(dict_t *types,
+mrklkit_init_types(hash_t *types,
                    array_t *builtin_types,
-                   dict_t *typedefs)
+                   hash_t *typedefs)
 {
     lkit_tag_t t;
 
-    dict_init(types, 101,
-             (dict_hashfn_t)lkit_type_hash,
-             (dict_item_comparator_t)lkit_type_cmp,
-             (dict_item_finalizer_t)lkit_type_fini_dict);
+    hash_init(types, 101,
+             (hash_hashfn_t)lkit_type_hash,
+             (hash_item_comparator_t)lkit_type_cmp,
+             (hash_item_finalizer_t)lkit_type_fini_dict);
 
     /* builtin types */
 
@@ -1612,10 +1612,10 @@ mrklkit_init_types(dict_t *types,
         *pty = lkit_type_finalize(ty);
     }
 
-    dict_init(typedefs, 101,
-             (dict_hashfn_t)bytes_hash,
-             (dict_item_comparator_t)bytes_cmp,
-             (dict_item_finalizer_t)lkit_typedef_fini_dict
+    hash_init(typedefs, 101,
+             (hash_hashfn_t)bytes_hash,
+             (hash_item_comparator_t)bytes_cmp,
+             (hash_item_finalizer_t)lkit_typedef_fini_dict
              /* strongref key and weakref value */);
 
 }
@@ -1630,7 +1630,7 @@ ltype_init(void)
 void
 ltype_fini(void)
 {
-    dict_fini(&typedefs);
+    hash_fini(&typedefs);
     array_fini(&builtin_types);
-    dict_fini(&types);
+    hash_fini(&types);
 }

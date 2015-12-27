@@ -34,7 +34,7 @@ MEMDEBUG_DECLARE(dparser);
 #define _array_get_safe(ar, idx) array_get_safe_mpool(mpool, (ar), (idx))
 
 
-#define _dict_set_item(d, k, v) dict_set_item_mpool(mpool, (d), (k), (v))
+#define _dict_set_item(d, k, v) hash_set_item_mpool(mpool, (d), (k), (v))
 
 
 static mpool_ctx_t *mpool;
@@ -747,10 +747,10 @@ dparse_array_from_bytes(UNUSED lkit_dparray_t *pa, UNUSED bytes_t *str)
  * dict
  */
 
-#define DPARSE_DICT_CASE(dict_set_item_fn, ty, fn)                     \
+#define DPARSE_DICT_CASE(hash_set_item_fn, ty, fn)                     \
     while (spos < epos && SNCHR(pi->bs, spos) != delim) {              \
         off_t kvpos, fpos;                                             \
-        dict_item_t *dit;                                              \
+        hash_item_t *dit;                                              \
         bytes_t *key = NULL;                                           \
         union {                                                        \
             void *v;                                                   \
@@ -759,9 +759,9 @@ dparse_array_from_bytes(UNUSED lkit_dparray_t *pa, UNUSED bytes_t *str)
         kvpos = dparser_reach_delim_pos(pi->bs, pdelim, spos, epos);   \
         (void)_dparse_str_pos_k(pi, -1, pdelim, spos, kvpos, &key);    \
         spos = dparser_reach_value_pos(pi->bs, pdelim, kvpos, epos);   \
-        if ((dit = dict_get_item(&(*val)->fields, key)) == NULL) {     \
+        if ((dit = hash_get_item(&(*val)->fields, key)) == NULL) {     \
             fpos = fn(pi, -1, fdelim, spos, epos, &u.x);               \
-            dict_set_item_fn(&(*val)->fields, key, u.v);               \
+            hash_set_item_fn(&(*val)->fields, key, u.v);               \
             fpos = dparser_reach_delim_pos(pi->bs, fdelim, fpos, epos);\
         } else {                                                       \
             BYTES_DECREF(&key);                                        \
@@ -775,7 +775,7 @@ dparse_array_from_bytes(UNUSED lkit_dparray_t *pa, UNUSED bytes_t *str)
 #define DICT_POS_BODY(str_pos_brushdown_fn,                                    \
                       str_pos_fn,                                              \
                       optqstr_pos_fn,                                          \
-                      dict_set_item_fn)                                        \
+                      hash_set_item_fn)                                        \
     char pdelim;                                                               \
     char fdelim;                                                               \
     lkit_dpdict_t *dppa;                                                       \
@@ -818,14 +818,14 @@ dparse_array_from_bytes(UNUSED lkit_dparray_t *pa, UNUSED bytes_t *str)
             } else {                                                           \
                 _dparse_str_pos_v = str_pos_fn;                                \
             }                                                                  \
-            DPARSE_DICT_CASE(dict_set_item_fn, bytes_t *, _dparse_str_pos_v);  \
+            DPARSE_DICT_CASE(hash_set_item_fn, bytes_t *, _dparse_str_pos_v);  \
         }                                                                      \
         break;                                                                 \
     case LKIT_INT:                                                             \
-        DPARSE_DICT_CASE(dict_set_item_fn, int64_t, dparse_int_pos);           \
+        DPARSE_DICT_CASE(hash_set_item_fn, int64_t, dparse_int_pos);           \
         break;                                                                 \
     case LKIT_FLOAT:                                                           \
-        DPARSE_DICT_CASE(dict_set_item_fn, double, dparse_float_pos);          \
+        DPARSE_DICT_CASE(hash_set_item_fn, double, dparse_float_pos);          \
         break;                                                                 \
     default:                                                                   \
         /* cannot be recursively nested */                                     \
@@ -860,21 +860,21 @@ dparse_dict_pos(rt_parser_info_t *pi,
     DICT_POS_BODY(dparse_str_pos_brushdown,
                   dparse_str_pos,
                   dparse_optqstr_pos,
-                  dict_set_item)
+                  hash_set_item)
 }
 
 
 #define DPARSER_DICT_CASE_ARRAY(ty, fn)                                        \
     while (spos < epos && SNCHR(pi->bs, spos) != delim) {                      \
         off_t kvpos, fpos;                                                     \
-        dict_item_t *dit;                                                      \
+        hash_item_t *dit;                                                      \
         bytes_t *key = NULL;                                                   \
         rt_array_t *aval;                                                      \
         ty *x;                                                                 \
         kvpos = dparser_reach_delim_pos(pi->bs, pdelim, spos, epos);           \
         (void)_dparse_str_pos_k(pi, -1, pdelim, spos, kvpos, &key);            \
         spos = dparser_reach_value_pos(pi->bs, pdelim, kvpos, epos);           \
-        if ((dit = dict_get_item(&(*val)->fields, key)) == NULL) {             \
+        if ((dit = hash_get_item(&(*val)->fields, key)) == NULL) {             \
             aval = mrklkit_rt_array_new_mpool_sz((lkit_array_t *)fty, 16);     \
             _dict_set_item(&(*val)->fields, key, aval);                        \
         } else {                                                               \

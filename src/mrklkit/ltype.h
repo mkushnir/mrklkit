@@ -7,7 +7,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 #include <mrkcommon/bytestream.h>
 
 #include <mrklkit/mrklkit.h>
@@ -160,7 +160,7 @@ typedef struct _lkit_dict {
     /*
      * see mrklkit_rt_dict_new, mrklkit_rt_dict_destroy
      */
-    dict_item_finalizer_t fini;
+    hash_item_finalizer_t fini;
     array_t fields;
 } lkit_dict_t;
 
@@ -192,7 +192,7 @@ typedef struct _lkit_parser {
 
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
-int lkit_traverse_types(dict_traverser_t, void *);
+int lkit_traverse_types(hash_traverser_t, void *);
 void lkit_type_dump(lkit_type_t *);
 void lkit_type_str(lkit_type_t *, bytestream_t *);
 int lkit_type_destroy(lkit_type_t **);

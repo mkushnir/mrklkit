@@ -6,7 +6,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
@@ -251,11 +251,11 @@ lkit_expr_type_of(lkit_expr_t *expr)
 lkit_expr_t *
 lkit_expr_find(lkit_cexpr_t *ectx, bytes_t *name)
 {
-    dict_item_t *dit;
+    hash_item_t *dit;
     lkit_cexpr_t *cctx;
 
     for (cctx = ectx; cctx!= NULL; cctx = cctx->parent) {
-        if ((dit = dict_get_item(&cctx->ctx, name)) != NULL) {
+        if ((dit = hash_get_item(&cctx->ctx, name)) != NULL) {
             lkit_expr_t *expr;
 
             expr = dit->value;
@@ -332,7 +332,7 @@ void
 lkit_cexpr_fini(lkit_cexpr_t *ectx)
 {
     array_fini(&(ectx->base.subs));
-    dict_fini(&ectx->ctx);
+    hash_fini(&ectx->ctx);
     array_fini(&ectx->glist);
 }
 
@@ -345,7 +345,7 @@ lkit_expr_fini(lkit_expr_t *expr)
         lkit_cexpr_t *cexpr;
 
         cexpr = (lkit_cexpr_t *)expr;
-        dict_fini(&cexpr->ctx);
+        hash_fini(&cexpr->ctx);
         array_fini(&cexpr->glist);
     }
 }
@@ -410,9 +410,9 @@ lkit_cexpr_init(lkit_cexpr_t *ectx, lkit_cexpr_t *pectx)
     array_init(&ectx->glist, sizeof(lkit_gitem_t *), 0,
                (array_initializer_t)gitem_init,
                (array_finalizer_t)gitem_fini);
-    dict_init(&ectx->ctx, 101,
-              (dict_hashfn_t)lkit_expr_hash,
-              (dict_item_comparator_t)lkit_expr_cmp,
+    hash_init(&ectx->ctx, 101,
+              (hash_hashfn_t)lkit_expr_hash,
+              (hash_item_comparator_t)lkit_expr_cmp,
               NULL);
 }
 
@@ -530,7 +530,7 @@ lexpr_add_to_ctx(lkit_cexpr_t *ectx, bytes_t *name, lkit_expr_t *expr)
 {
     lkit_gitem_t **gitem;
 
-    dict_set_item(&ectx->ctx, name, expr);
+    hash_set_item(&ectx->ctx, name, expr);
     if ((gitem = array_incr(&ectx->glist)) == NULL) {
         FAIL("array_incr");
     }

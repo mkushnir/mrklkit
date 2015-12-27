@@ -14,7 +14,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 //#define TRRET_DEBUG_VERBOSE
 #define TRRET_DEBUG
 #include <mrkcommon/dumpm.h>
@@ -658,7 +658,7 @@ modaux_fini(mrklkit_modaux_t *modaux)
 
 
 static int
-dict_item_backend_fini(UNUSED lkit_type_t *key, UNUSED mrklkit_backend_t *value)
+hash_item_backend_fini(UNUSED lkit_type_t *key, UNUSED mrklkit_backend_t *value)
 {
     if (value != NULL) {
         free(value);
@@ -685,11 +685,11 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
             *pm = mod[i];
         }
     }
-    dict_init(&ctx->backends,
+    hash_init(&ctx->backends,
               101,
-              (dict_hashfn_t)lkit_type_hash,
-              (dict_item_comparator_t)lkit_type_cmp,
-              (dict_item_finalizer_t)dict_item_backend_fini);
+              (hash_hashfn_t)lkit_type_hash,
+              (hash_item_comparator_t)lkit_type_cmp,
+              (hash_item_finalizer_t)hash_item_backend_fini);
     ctx->lctx = LLVMContextCreate();
     if ((ctx->module = LLVMModuleCreateWithNameInContext(name,
             ctx->lctx)) == NULL) {
@@ -800,10 +800,10 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
 LLVMTypeRef
 mrklkit_ctx_get_type_backend(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
-    dict_item_t *dit;
+    hash_item_t *dit;
     mrklkit_backend_t *backend;
 
-    if ((dit = dict_get_item(&mctx->backends, ty)) == NULL) {
+    if ((dit = hash_get_item(&mctx->backends, ty)) == NULL) {
         FAIL("mrklkit_ctx_get_type_backend");
     }
     backend = dit->value;
@@ -846,7 +846,7 @@ mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *ctx, void *udata)
                (array_initializer_t)modaux_init,
                (array_finalizer_t)modaux_fini);
 
-    dict_cleanup(&ctx->backends);
+    hash_cleanup(&ctx->backends);
 }
 
 
@@ -858,7 +858,7 @@ mrklkit_ctx_fini(mrklkit_ctx_t *ctx)
     array_fini(&ctx->modaux);
     LLVMContextDispose(ctx->lctx);
     ctx->lctx = NULL;
-    dict_fini(&ctx->backends);
+    hash_fini(&ctx->backends);
 }
 
 

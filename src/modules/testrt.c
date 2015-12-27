@@ -5,7 +5,7 @@
 
 #include <mrkcommon/array.h>
 #include <mrkcommon/bytes.h>
-#include <mrkcommon/dict.h>
+#include <mrkcommon/hash.h>
 #include <mrkcommon/bytestream.h>
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
@@ -47,7 +47,7 @@ static lkit_struct_t *null_struct;
 
 /* shared context */
 static array_t dsources;
-static dict_t targets;
+static hash_t targets;
 rt_struct_t *testrt_source = NULL;
 
 static int
@@ -1260,7 +1260,7 @@ testrt_target_fini(testrt_target_t *tgt)
 
 
 static void
-testrt_target_fini_dict_item(testrt_target_t *k, testrt_target_t *v)
+testrt_target_fini_hash_item(testrt_target_t *k, testrt_target_t *v)
 {
     if (k != NULL) {
         testrt_target_fini(k);
@@ -1285,17 +1285,17 @@ testrt_acquire_take_key(testrt_t *trt)
 void *
 testrt_get_do(testrt_t *trt)
 {
-    dict_item_t *it;
+    hash_item_t *it;
     testrt_target_t *d0;
 
-    if ((it = dict_get_item(&targets, &trt->key)) == NULL) {
+    if ((it = hash_get_item(&targets, &trt->key)) == NULL) {
         testrt_target_t *take;
 
         take = testrt_target_new(trt->id,
                                  (lkit_struct_t *)trt->takeexpr->type);
         d0 = testrt_target_new(trt->id, (lkit_struct_t *)trt->doexpr->type);
         mrklkit_rt_struct_shallow_copy(take->value, trt->key.value);
-        dict_set_item(&targets, take, d0);
+        hash_set_item(&targets, take, d0);
     } else {
         d0 = it->value;
     }
@@ -1306,17 +1306,17 @@ testrt_get_do(testrt_t *trt)
 void
 testrt_get_do_empty(testrt_t *trt)
 {
-    dict_item_t *it;
+    hash_item_t *it;
     testrt_target_t *d0;
 
-    if ((it = dict_get_item(&targets, &trt->key)) == NULL) {
+    if ((it = hash_get_item(&targets, &trt->key)) == NULL) {
         testrt_target_t *take;
 
         take = testrt_target_new(trt->id,
                                  (lkit_struct_t *)trt->takeexpr->type);
         d0 = testrt_target_new(trt->id, null_struct);
         mrklkit_rt_struct_shallow_copy(take->value, trt->key.value);
-        dict_set_item(&targets, take, d0);
+        hash_set_item(&targets, take, d0);
     }
     testrt_target_fini(&trt->key);
 }
@@ -1378,7 +1378,7 @@ void
 testrt_dump_targets(void)
 {
     //array_traverse(&tctx->testrts, (array_traverser_t)dump_trt, NULL);
-    dict_traverse(&targets, (dict_traverser_t)dump_tgt, NULL);
+    hash_traverse(&targets, (hash_traverser_t)dump_tgt, NULL);
 }
 
 
@@ -1414,10 +1414,10 @@ _init(testrt_ctx_t *tctx)
     array_init(&tctx->testrts, sizeof(testrt_t), 0,
                (array_initializer_t)testrt_init,
                (array_finalizer_t)testrt_fini);
-    dict_init(&targets, 101,
-              (dict_hashfn_t)testrt_target_hash,
-              (dict_item_comparator_t)testrt_target_cmp,
-              (dict_item_finalizer_t)testrt_target_fini_dict_item);
+    hash_init(&targets, 101,
+              (hash_hashfn_t)testrt_target_hash,
+              (hash_item_comparator_t)testrt_target_cmp,
+              (hash_item_finalizer_t)testrt_target_fini_hash_item);
 }
 
 
