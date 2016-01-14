@@ -64,6 +64,7 @@ int mrklkit_parse(mrklkit_ctx_t *, int fd, void *, fparser_datum_t **);
 int mrklkit_compile(mrklkit_ctx_t *, int, uint64_t, void *);
 void mrklkit_ctx_setup_runtime(mrklkit_ctx_t *, void *);
 void mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *, void *);
+void mrklkit_ctx_cleanup_runtime_dirty(mrklkit_ctx_t *, void *);
 int mrklkit_call_void(mrklkit_ctx_t *, const char *);
 struct _mrklkit_module;
 void mrklkit_ctx_init(mrklkit_ctx_t *,

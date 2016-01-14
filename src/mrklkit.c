@@ -851,6 +851,45 @@ mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *ctx, void *udata)
 
 
 void
+mrklkit_ctx_cleanup_runtime_dirty(mrklkit_ctx_t *ctx, void *udata)
+{
+    array_iter_t it;
+    mrklkit_module_t **mod;
+
+    /*
+     * no module unlink, fini only
+     */
+    for (mod = array_last(&ctx->modules, &it);
+         mod != NULL;
+         mod = array_prev(&ctx->modules, &it)) {
+        if ((*mod)->fini != NULL) {
+            (*mod)->fini(udata);
+        }
+    }
+
+    if (ctx->ee != NULL) {
+        LLVMRunStaticDestructors(ctx->ee);
+        LLVMDisposeExecutionEngine(ctx->ee);
+        ctx->ee = NULL;
+    }
+
+    if (ctx->module != NULL) {
+        //LLVMDisposeModule(ctx->module);
+        ctx->module = NULL;
+    }
+
+    array_fini(&ctx->modaux);
+    array_init(&ctx->modaux,
+               sizeof(mrklkit_modaux_t),
+               0,
+               (array_initializer_t)modaux_init,
+               (array_finalizer_t)modaux_fini);
+
+    hash_cleanup(&ctx->backends);
+}
+
+
+void
 mrklkit_ctx_fini(mrklkit_ctx_t *ctx)
 {
     array_fini(&ctx->modules);
