@@ -602,12 +602,18 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
                  node = array_next(form, &it)) {
 
                 if (FPARSER_DATUM_TAG(*node) != FPARSER_SEQ) {
-                    lkit_type_destroy((lkit_type_t **)&ts);
+                    lkit_type_t *ty;
+
+                    ty = (lkit_type_t *)ts;
+                    lkit_type_destroy(&ty);
                     TR(LKIT_DPEXPR_PARSE + 41);
                     goto err;
                 }
                 if (parse_fielddef(mctx, *node, dps, ts, seterror) != 0) {
-                    lkit_type_destroy((lkit_type_t **)&ts);
+                    lkit_type_t *ty;
+
+                    ty = (lkit_type_t *)ts;
+                    lkit_type_destroy(&ty);
                     TR(LKIT_DPEXPR_PARSE + 42);
                     goto err;
                 }
