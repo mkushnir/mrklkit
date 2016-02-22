@@ -674,7 +674,7 @@ dparse_optqstr_pos(rt_parser_info_t *pi,
     }                                                                  \
     assert(lkit_type_cmp(LKIT_PARSER_GET_TYPE(dppa->base.ty),          \
                          (lkit_type_t *)(*val)->type) == 0);           \
-    fdelim = pi->dpexpr->fdelim;                                       \
+    fdelim = dppa->fdelim;                                             \
     if ((dfpa = lkit_dparray_get_element_parser(dppa)) == NULL) {      \
         FAIL("lkit_dparray_get_element_parser");                       \
     }                                                                  \
@@ -1036,7 +1036,7 @@ dparse_dict_from_bytes_mpool(lkit_dpdict_t *pa, bytes_t *str)
     }                                                                  \
     assert(lkit_type_cmp(LKIT_PARSER_GET_TYPE(dppa->base.ty),          \
                          (lkit_type_t *)(*val)->type) == 0);           \
-    fdelim = pi->dpexpr->fdelim;                                       \
+    fdelim = dppa->fdelim;                                             \
     for (dfpa = array_first(&dppa->fields, &it);                       \
          dfpa != NULL;                                                 \
          dfpa = array_next(&dppa->fields, &it)) {                      \
