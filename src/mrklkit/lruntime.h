@@ -183,6 +183,8 @@ int64_t mrklkit_rt_array_get_item_int(rt_array_t *, int64_t, int64_t);
 double mrklkit_rt_array_get_item_float(rt_array_t *, int64_t, double);
 bytes_t *mrklkit_rt_array_get_item_str(rt_array_t *, int64_t, bytes_t *);
 int64_t mrklkit_rt_array_len(rt_array_t *);
+rt_array_t *mrklkit_rt_array_split(lkit_array_t *, bytes_t *, bytes_t *);
+rt_array_t *mrklkit_rt_array_split_mpool(lkit_array_t *, bytes_t *, bytes_t *);
 
 rt_dict_t *mrklkit_rt_dict_new(lkit_dict_t *);
 rt_dict_t *mrklkit_rt_dict_new_sz(lkit_dict_t *, int);

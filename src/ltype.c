@@ -499,6 +499,18 @@ lkit_typedef_get(UNUSED mrklkit_ctx_t *mctx, bytes_t *typename)
 }
 
 
+lkit_type_t *
+lkit_typedef_get2(bytes_t *typename)
+{
+    hash_item_t *dit;
+
+    if ((dit = hash_get_item(&typedefs, typename)) != NULL) {
+        return dit->value;
+    }
+    return NULL;
+}
+
+
 static int
 _lkit_typename_get(bytes_t *typename, lkit_type_t *ty, void *udata)
 {

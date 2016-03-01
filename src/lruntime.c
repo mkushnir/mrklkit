@@ -608,11 +608,12 @@ mrklkit_rt_array_get_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
 #define ARRAY_SPLIT_BODY(array_new_fn, array_incr_fn, bytes_new_fn)    \
     rt_array_t *res;                                                   \
     char ch;                                                           \
-    char *s0, *s1;                                                     \
+    char *s0, *s1, *s2;                                                \
     res = array_new_fn(ty);                                            \
     ch = delim->data[0];                                               \
+    s2 = (char *)str->data + str->sz;                                  \
     for (s0 = (char *)str->data, s1 = s0;                              \
-         s0 < (char *)str->data + str->sz;                             \
+         s0 < s2 && s1 < s2;                                           \
          ++s1) {                                                       \
         if (*s1 == ch) {                                               \
             bytes_t **item;                                            \
@@ -627,6 +628,18 @@ mrklkit_rt_array_get_item_str(rt_array_t *value, int64_t idx, bytes_t *dflt)
             (*item)->data[sz] = '\0';                                  \
             s0 = s1 + 1;                                               \
         }                                                              \
+    }                                                                  \
+    if (s1 > s0) {                                                     \
+        bytes_t **item;                                                \
+        size_t sz;                                                     \
+                                                                       \
+        if ((item = array_incr_fn(&res->fields)) == NULL) {            \
+            FAIL(#array_incr_fn);                                      \
+        }                                                              \
+        sz = s1 - s0;                                                  \
+        *item = bytes_new_fn(sz);                                      \
+        memcpy((*item)->data, s0, sz);                                 \
+        (*item)->data[sz-1] = '\0';                                    \
     }                                                                  \
     return res;                                                        \
 
