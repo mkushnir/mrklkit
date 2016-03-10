@@ -463,21 +463,25 @@ lkit_type_finalize(lkit_type_t *ty)
 void
 lkit_register_typedef(UNUSED mrklkit_ctx_t *mctx,
                       lkit_type_t *ty,
-                      bytes_t *typename)
+                      bytes_t *typename,
+                      int flags)
 {
-    hash_item_t *probe;
+    hash_item_t *hit;
 
     /* have it unique */
-    if ((probe = hash_get_item(&typedefs, typename)) != NULL) {
+    if ((hit = hash_get_item(&typedefs, typename)) != NULL) {
         lkit_type_t *pty;
 
-        pty = probe->value;
+        pty = hit->value;
         if (lkit_type_cmp(pty, ty) != 0) {
-
-            //lkit_type_dump(pty);
-            lkit_type_dump(ty);
-            TRACE("pty=%p ty=%p", pty, ty);
-            FAIL("lkit_type_cmp");
+            if (flags & LKIT_REGISTER_TYPEDEF_FORCE) {
+                hit->value = ty;
+            } else {
+                TRACE("pty=%p ty=%p", pty, ty);
+                lkit_type_dump(pty);
+                lkit_type_dump(ty);
+                FAIL("lkit_type_cmp");
+            }
         }
     } else {
         hash_set_item(&typedefs,
@@ -618,6 +622,39 @@ lkit_struct_get_field_index(lkit_struct_t *ts, bytes_t *name)
 }
 
 
+void
+lkit_struct_copy(lkit_struct_t *src, lkit_struct_t *dst)
+{
+    lkit_type_t **pty0;
+    bytes_t **pname0;
+    array_iter_t it;
+
+    assert(dst->fields.elnum == 0);
+    assert(dst->names.elnum == 0);
+
+    for (pty0 = array_first(&src->fields, &it);
+         pty0 != NULL;
+         pty0 = array_next(&src->fields, &it)) {
+        lkit_type_t **pty1;
+
+        if ((pty1 = array_incr(&dst->fields)) == NULL) {
+            FAIL("array_incr");
+        }
+        *pty1 = *pty0;
+    }
+    for (pname0 = array_first(&src->names, &it);
+         pname0 != NULL;
+         pname0 = array_next(&src->names, &it)) {
+        bytes_t **pname1;
+
+        if ((pname1 = array_incr(&dst->names)) == NULL) {
+            FAIL("array_incr");
+        }
+        *pname1 = *pname0;
+    }
+}
+
+
 lkit_type_t *
 lkit_func_get_arg_type(lkit_func_t *tf, size_t idx)
 {
@@ -646,15 +683,15 @@ _lkit_type_dump(lkit_type_t *ty, int level)
         return;
     }
 
-    LTRACEN(0, "%s", ty->name);
-
     switch (ty->tag) {
     case LKIT_ARRAY:
         {
             lkit_array_t *ta;
 
             ta = (lkit_array_t *)ty;
+            LTRACEN(0, "(%s ", ty->name);
             _lkit_type_dump(lkit_array_get_element_type(ta), level + 1);
+            TRACEC(") ");
         }
         break;
 
@@ -663,7 +700,9 @@ _lkit_type_dump(lkit_type_t *ty, int level)
             lkit_dict_t *td;
 
             td = (lkit_dict_t *)ty;
+            LTRACEN(0, "(%s ", ty->name);
             _lkit_type_dump(lkit_dict_get_element_type(td), level + 1);
+            TRACEC(") ");
         }
         break;
 
@@ -672,6 +711,8 @@ _lkit_type_dump(lkit_type_t *ty, int level)
             lkit_struct_t *ts;
             lkit_type_t **elty;
             array_iter_t it;
+
+            LTRACEN(0, "(%s ", ty->name);
 
             ts = (lkit_struct_t *)ty;
             for (elty = array_first(&ts->fields, &it);
@@ -682,13 +723,15 @@ _lkit_type_dump(lkit_type_t *ty, int level)
 
                 if ((name = array_get(&ts->names, it.iter)) != NULL &&
                     *name != NULL) {
-                    TRACEC(" (%s ", (*name)->data);
+                    TRACEC("(%s ", (*name)->data);
                     _lkit_type_dump(*elty, level + 1);
                     TRACEC(") ");
                 } else {
                     _lkit_type_dump(*elty, level + 1);
                 }
             }
+
+            TRACEC(") ");
         }
         break;
 
@@ -699,6 +742,8 @@ _lkit_type_dump(lkit_type_t *ty, int level)
             array_iter_t it;
             lkit_func_t *tf;
 
+            LTRACEN(0, "(%s ", ty->name);
+
             tf = (lkit_func_t *)ty;
             for (elty = array_first(&tf->fields, &it);
                  elty != NULL;
@@ -708,13 +753,15 @@ _lkit_type_dump(lkit_type_t *ty, int level)
 
                 if ((name = array_get(&tf->names, it.iter)) != NULL &&
                     *name != NULL) {
-                    TRACEC(" (%s ", (*name)->data);
+                    TRACEC("(%s ", (*name)->data);
                     _lkit_type_dump(*elty, level + 1);
                     TRACEC(") ");
                 } else {
                     _lkit_type_dump(*elty, level + 1);
                 }
             }
+
+            TRACEC(") ");
         }
         break;
 
@@ -723,8 +770,12 @@ _lkit_type_dump(lkit_type_t *ty, int level)
             lkit_parser_t *tp;
 
             tp = (lkit_parser_t *)ty;
-            TRACEC(" (");
+            LTRACEN(0, "(%s ", ty->name);
+
+            TRACEC("(");
             _lkit_type_dump(LKIT_PARSER_GET_TYPE(tp), level + 1);
+            TRACEC(") ");
+
             TRACEC(") ");
         }
         break;
@@ -732,6 +783,7 @@ _lkit_type_dump(lkit_type_t *ty, int level)
 
     default:
         /* builtin */
+        LTRACEN(0, "%s", ty->name);
         break;
     }
 }
@@ -787,8 +839,15 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
                 for (elty = array_first(&ts->fields, &it);
                      elty != NULL;
                      elty = array_next(&ts->fields, &it)) {
+                    bytes_t **fname;
 
-                    lkit_type_str(*elty, bs);
+                    if ((fname = array_get(&ts->names, it.iter)) != NULL) {
+                        bytestream_nprintf(bs, 1024, "(%s ", (*fname)->data);
+                        lkit_type_str(*elty, bs);
+                        bytestream_cat(bs, 2, ") ");
+                    } else {
+                        lkit_type_str(*elty, bs);
+                    }
                 }
             }
             break;
@@ -1463,7 +1522,7 @@ lkit_parse_typedef(mrklkit_ctx_t *mctx,
         goto err;
     }
 
-    lkit_register_typedef(mctx, type, typename);
+    lkit_register_typedef(mctx, type, typename, 0);
 
 end:
     return res;

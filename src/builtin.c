@@ -786,6 +786,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
         if ((elty = lkit_struct_get_field_type(ts, bname)) == NULL) {
             (*cont)->error = 1;
             TRACE("problem name: %s", bname->data);
+            lkit_expr_dump(expr);
             TRRET(REMOVE_UNDEF + 284);
         }
         expr->type = elty;

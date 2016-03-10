@@ -371,6 +371,7 @@ parse_fielddef(mrklkit_ctx_t *mctx,
                fparser_datum_t *dat,
                lkit_dpstruct_t *dps,
                lkit_struct_t *ts,
+               void *udata,
                int seterror)
 {
     array_t *form;
@@ -404,7 +405,7 @@ parse_fielddef(mrklkit_ctx_t *mctx,
         TRRET(PARSE_FIELDDEF + 2);
     }
 
-    if ((*fpa = lkit_dpexpr_parse(mctx, *node, seterror)) == NULL) {
+    if ((*fpa = lkit_dpexpr_parse(mctx, *node, udata, seterror)) == NULL) {
         (*node)->error = seterror;
         TRRET(PARSE_FIELDDEF + 3);
     }
@@ -420,8 +421,9 @@ parse_fielddef(mrklkit_ctx_t *mctx,
 
 lkit_dpexpr_t *
 lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
-                   fparser_datum_t *dat,
-                   int seterror)
+                  fparser_datum_t *dat,
+                  void *udata,
+                  int seterror)
 {
     lkit_dpexpr_t *res;
     fparser_tag_t tag;
@@ -507,7 +509,10 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
                 TR(LKIT_DPEXPR_PARSE + 21);
                 goto err;
             }
-            if ((*fpa = lkit_dpexpr_parse(mctx, *node, seterror)) == NULL) {
+            if ((*fpa = lkit_dpexpr_parse(mctx,
+                                          *node,
+                                          udata,
+                                          seterror)) == NULL) {
                 TR(LKIT_DPEXPR_PARSE + 22);
                 goto err;
             }
@@ -555,7 +560,10 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
                 TR(LKIT_DPEXPR_PARSE + 31);
                 goto err;
             }
-            if ((*fpa = lkit_dpexpr_parse(mctx, *node, seterror)) == NULL) {
+            if ((*fpa = lkit_dpexpr_parse(mctx,
+                                          *node,
+                                          udata,
+                                          seterror)) == NULL) {
                 TR(LKIT_DPEXPR_PARSE + 32);
                 goto err;
             }
@@ -582,7 +590,7 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
             lkit_dpstruct_t *dps;
             lkit_struct_t *ts;
             fparser_datum_t **node;
-            //lkit_type_t **fty;
+            array_t *custom_fields;
 
             dps = (lkit_dpstruct_t *)lkit_dpexpr_new(mctx, LKIT_STRUCT);
             res = (lkit_dpexpr_t *)dps;
@@ -609,13 +617,78 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
                     TR(LKIT_DPEXPR_PARSE + 41);
                     goto err;
                 }
-                if (parse_fielddef(mctx, *node, dps, ts, seterror) != 0) {
+                if (parse_fielddef(mctx,
+                                   *node,
+                                   dps,
+                                   ts,
+                                   udata,
+                                   seterror) != 0) {
                     lkit_type_t *ty;
 
                     ty = (lkit_type_t *)ts;
                     lkit_type_destroy(&ty);
                     TR(LKIT_DPEXPR_PARSE + 42);
                     goto err;
+                }
+            }
+
+            custom_fields = udata;
+
+            if (custom_fields != NULL && custom_fields->elnum > 0) {
+                array_iter_t it0;
+                bytes_t **cname;
+
+                for (cname = array_first(custom_fields, &it0);
+                     cname != NULL;
+                     cname = array_next(custom_fields, &it0)) {
+
+                    array_iter_t it1;
+                    bytes_t **fname0;
+
+                    it1 = it0;
+                    for (fname0 = array_get_iter(&ts->names, &it1);
+                         fname0 != NULL;
+                         fname0 = array_next(&ts->names, &it1)) {
+
+                        if (bytes_cmp(*cname, *fname0) == 0) {
+                            assert(it0.iter <= it1.iter);
+
+                            if (it0.iter < it1.iter) {
+                                bytes_t **fname1, *tmp;
+                                lkit_type_t **fty0, **fty1, *ftmp;
+                                lkit_dpexpr_t **dpa0, **dpa1, *dpatmp;
+                                /*
+                                 * swap ts
+                                 */
+                                fname1 = array_get(&ts->names,
+                                                    it0.iter);
+                                tmp = *fname1;
+                                *fname1 = *fname0;
+                                *fname0 = tmp;
+
+                                fty0 = array_get(&ts->fields,
+                                                 it1.iter);
+                                fty1 = array_get(&ts->fields,
+                                                 it0.iter);
+                                ftmp = *fty1;
+                                *fty1 = *fty0;
+                                *fty0 = ftmp;
+
+                                /*
+                                 * swap dps
+                                 */
+                                dpa0 = array_get(&dps->fields,
+                                                 it1.iter);
+                                dpa1 = array_get(&dps->fields,
+                                                 it0.iter);
+                                dpatmp = *dpa1;
+                                *dpa1 = *dpa0;
+                                *dpa0 = dpatmp;
+                            }
+
+                            break;
+                        }
+                    }
                 }
             }
 

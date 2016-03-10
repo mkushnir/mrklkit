@@ -88,6 +88,7 @@ lkit_dpexpr_t *lkit_dpexpr_find(mrklkit_ctx_t *, bytes_t *, void *);
 
 lkit_dpexpr_t *lkit_dpexpr_parse(mrklkit_ctx_t *,
                                  fparser_datum_t *,
+                                 void *,
                                  int);
 void lkit_dpexpr_destroy(lkit_dpexpr_t **);
 

@@ -206,7 +206,8 @@ lkit_array_t *lkit_type_get_array(mrklkit_ctx_t *, int);
 lkit_dict_t *lkit_type_get_dict(mrklkit_ctx_t *, int);
 lkit_parser_t *lkit_type_get_parser(mrklkit_ctx_t *, int);
 lkit_type_t *lkit_type_finalize(lkit_type_t *);
-void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *);
+#define LKIT_REGISTER_TYPEDEF_FORCE (0x01)
+void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *, int);
 lkit_type_t *lkit_typedef_get(mrklkit_ctx_t *, bytes_t *);
 lkit_type_t *lkit_typedef_get2(bytes_t *);
 bytes_t *lkit_typename_get(mrklkit_ctx_t *, lkit_type_t *);
@@ -218,6 +219,7 @@ lkit_type_t *lkit_array_get_element_type(lkit_array_t *);
 lkit_type_t *lkit_dict_get_element_type(lkit_dict_t *);
 lkit_type_t *lkit_struct_get_field_type(lkit_struct_t *, bytes_t *);
 int lkit_struct_get_field_index(lkit_struct_t *, bytes_t *);
+void lkit_struct_copy(lkit_struct_t *, lkit_struct_t *);
 lkit_type_t *lkit_func_get_arg_type(lkit_func_t *, size_t);
 lkit_type_t *lkit_parser_get_type(lkit_parser_t *);
 #ifdef NDEBUG
