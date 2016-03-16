@@ -24,6 +24,17 @@
 MEMDEBUG_DECLARE(builtin);
 #endif
 
+#define ETR(m, expr, aty, pty)         \
+do {                                   \
+    TRACE(m);                          \
+    lkit_type_dump((lkit_type_t *)aty);\
+    TRACEC(" !~\n");                   \
+    lkit_type_dump((lkit_type_t *)pty);\
+    TRACEC("in:\n");                   \
+    lkit_expr_dump(expr);\
+} while (0)                            \
+
+
 static bytes_t _copy = BYTES_INITIALIZER("copy");
 
 /*
@@ -1167,6 +1178,40 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
                 if ((*mod)->remove_undef(mctx, ectx, expr) != 0) {
                     TR(REMOVE_UNDEF + 2000);
                     break;
+                }
+            }
+        }
+    }
+
+    /*
+     * special check for function call parameters (both undef and not)
+     */
+    if (expr->isref && expr->value.ref->type->tag == LKIT_FUNC) {
+        lkit_func_t *tf = NULL;
+        array_iter_t it;
+        lkit_expr_t **psub;
+
+        tf = (lkit_func_t *)(expr->value.ref->type);
+        for (psub = array_first(&expr->subs, &it);
+             psub != NULL;
+             psub = array_next(&expr->subs, &it)) {
+            lkit_type_t *aty, *pty;
+
+            aty = lkit_func_get_arg_type(tf, it.iter);
+            pty = lkit_expr_type_of(*psub);
+            if (aty != NULL &&
+                pty != NULL &&
+                !(aty->tag == LKIT_UNDEF ||
+                  aty->tag == LKIT_IR ||
+                  aty->tag == LKIT_TY ||
+                  aty->tag == LKIT_VOID ||
+                  aty->tag == LKIT_NULL ||
+                  aty->tag == LKIT_ANY ||
+                  aty->tag == LKIT_VARARG)) {
+                if (lkit_type_cmp_loose(aty, pty) != 0) {
+                    ETR("argument type does not match formal "
+                        "parameter type:", expr, aty, pty);
+                    TRRET(REMOVE_UNDEF + 500);
                 }
             }
         }
