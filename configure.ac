@@ -42,12 +42,17 @@ else
 fi
 
 cxxlib='-lc++'
-uname_s=`uname -s`
-if test "$uname_s" = "Linux"
-then
-    AC_SUBST(_GNU_SOURCE_MACRO, ['-D_GNU_SOURCE'])
-    cxxlib='-lstdc++'
-fi
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+case "$target_os" in
+    *linux*)
+        AC_SUBST(_GNU_SOURCE_MACRO, ['-D_GNU_SOURCE'])
+        cxxlib='-lstdc++'
+    ;;
+    *)
+        AC_SUBST(_GNU_SOURCE_MACRO)
+    ;;
+esac
 
 AC_CONFIG_MACRO_DIR([m4])
 
