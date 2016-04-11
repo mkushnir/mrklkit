@@ -479,15 +479,10 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
         if ((*mod)->parse != NULL) {
             if ((*mod)->parse(ctx, fd, udata)) {
                 PROFILE_STOP(parse_p);
-                TRRET(MRKLKIT_COMPILE + 5);
+                TRRET(MRKLKIT_COMPILE + 1);
             }
         }
     }
-    ///* parse */
-    //if (mrklkit_parse(ctx, fd, udata) != 0) {
-    //    PROFILE_STOP(parse_p);
-    //    TRRET(MRKLKIT_COMPILE + 1);
-    //}
 
     /* post parse */
     for (mod = array_first(&ctx->modules, &it);
@@ -497,7 +492,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
         if ((*mod)->post_parse != NULL) {
             if ((*mod)->post_parse(udata)) {
                 PROFILE_STOP(parse_p);
-                TRRET(MRKLKIT_COMPILE + 5);
+                TRRET(MRKLKIT_COMPILE + 2);
             }
         }
     }
@@ -515,7 +510,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
         if ((*mod)->compile_type != NULL) {
             if ((*mod)->compile_type(udata, ctx->module)) {
                 PROFILE_STOP(compile_p);
-                TRRET(MRKLKIT_COMPILE + 5);
+                TRRET(MRKLKIT_COMPILE + 3);
             }
         }
     }
@@ -526,7 +521,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
 
         if ((*mod)->compile != NULL) {
             if ((*mod)->compile(udata, ctx->module)) {
-                TRRET(MRKLKIT_COMPILE + 5);
+                TRRET(MRKLKIT_COMPILE + 4);
             }
         }
     }
@@ -589,12 +584,53 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
                                                   &mb);
         if (res != 0) {
             TRACE("res=%d %s", res, error_msg);
-            TRRET(MRKLKIT_COMPILE + 6);
+            TRRET(MRKLKIT_COMPILE + 5);
         }
         TRACEC("%s", LLVMGetBufferStart(mb));
         LLVMDisposeMemoryBuffer(mb);
         LLVMDisposeTargetMachine(tmr);
     }
+
+    return 0;
+}
+
+
+int
+mrklkit_compile_incomplete(mrklkit_ctx_t *ctx,
+                           int fd,
+                           UNUSED uint64_t flags,
+                           void *udata)
+{
+    mrklkit_module_t **mod;
+    array_iter_t it;
+
+    PROFILE_START(parse_p);
+    /* parse */
+    for (mod = array_first(&ctx->modules, &it);
+         mod != NULL;
+         mod = array_next(&ctx->modules, &it)) {
+
+        if ((*mod)->parse != NULL) {
+            if ((*mod)->parse(ctx, fd, udata)) {
+                PROFILE_STOP(parse_p);
+                TRRET(MRKLKIT_COMPILE + 1);
+            }
+        }
+    }
+
+    /* post parse */
+    for (mod = array_first(&ctx->modules, &it);
+         mod != NULL;
+         mod = array_next(&ctx->modules, &it)) {
+
+        if ((*mod)->post_parse != NULL) {
+            if ((*mod)->post_parse(udata)) {
+                PROFILE_STOP(parse_p);
+                TRRET(MRKLKIT_COMPILE + 2);
+            }
+        }
+    }
+    PROFILE_STOP(parse_p);
 
     return 0;
 }

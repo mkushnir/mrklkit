@@ -62,6 +62,7 @@ int mrklkit_parse(mrklkit_ctx_t *, int fd, void *, fparser_datum_t **);
 #define MRKLKIT_COMPILE_DUMP1 0x02
 #define MRKLKIT_COMPILE_DUMP2 0x04
 int mrklkit_compile(mrklkit_ctx_t *, int, uint64_t, void *);
+int mrklkit_compile_incomplete(mrklkit_ctx_t *, int, uint64_t, void *);
 void mrklkit_ctx_setup_runtime(mrklkit_ctx_t *, void *);
 void mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *, void *);
 void mrklkit_ctx_cleanup_runtime_dirty(mrklkit_ctx_t *, void *);

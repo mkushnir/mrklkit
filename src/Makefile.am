@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
 distdir = $(top_srcdir)/$(PACKAGE)-$(VERSION)/src
-dist_HEADERS = fparser_private.h
+dist_HEADERS =
 
 BUILT_SOURCES = diag.c diag.h
 EXTRA_DIST = diag.txt gen-diag
@@ -25,7 +25,7 @@ nobase_include_HEADERS = \
 	mrklkit/util.h \
 	mrklkit/modules/testrt.h
 
-noinst_HEADERS =
+noinst_HEADERS = fparser_private.h
 
 libmrklkit_la_SOURCES = \
 	builtin.c \
