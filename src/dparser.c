@@ -1541,6 +1541,7 @@ dparser_read_lines_win(int fd,
      */                                                                        \
     assert(bs->udata != NULL);                                                 \
     bz2ctx = bs->udata;                                                        \
+    br.end = OFF_MAX;                                                          \
     bytestream_rewind(bs);                                                     \
     if (bz2ctx->tail != NULL) {                                                \
         bytestream_cat(bs, bz2ctx->tail->sz, (char *)bz2ctx->tail->data);      \
