@@ -967,7 +967,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
         }
 
     } else if (strcmp(name, "len") == 0) {
-        lkit_expr_t **subj;
+        UNUSED lkit_expr_t **subj;
 
         subj = array_get(&expr->subs, 0);
         assert(subj != NULL);

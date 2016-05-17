@@ -1139,7 +1139,7 @@ lkit_compile_parse(mrklkit_ctx_t *mctx,
 {
     LLVMContextRef lctx;
     LLVMValueRef v = NULL;
-    lkit_type_t *ty;
+    UNUSED lkit_type_t *ty;
     lkit_struct_t *ts;
     lkit_expr_t **cont, **key;
     LLVMValueRef fn, args[2];
