@@ -4,12 +4,10 @@ CLEANFILES = *.core
 
 noinst_PROGRAMS=testfoo testfparser testdparser testlk
 
-distdir = $(top_srcdir)/$(PACKAGE)-$(VERSION)/test
-dist_HEADERS = unittest.h ../src/mrklkit/mrklkit.h ../src/mrklkit/util.h
 
 BUILT_SOURCES = ../src/diag.c ../src/diag.h
 
-noinst_HEADERS =
+noinst_HEADERS = unittest.h ../src/mrklkit/mrklkit.h ../src/mrklkit/util.h
 
 if DEBUG
 DEBUG_FLAGS = -g -O0 @CLANG_DEBUG@
