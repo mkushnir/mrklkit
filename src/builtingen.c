@@ -3164,6 +3164,7 @@ tostr_done:
         }
 
         if ((fn = LLVMGetNamedFunction(module, buf)) == NULL) {
+            TRACE("cannot find function: %s", buf);
             FAIL("LLVMGetNamedFunction");
         }
 

@@ -722,12 +722,86 @@ dparse_array_pos(rt_parser_info_t *pi,
 rt_array_t *
 dparse_array_from_bytes_mpool(UNUSED lkit_dparray_t *pa, UNUSED bytes_t *str)
 {
-    rt_array_t *val;
+    char delim;
+    off_t spos;
+    off_t epos;
+    rt_parser_info_t _pi, *pi;
+    byterange_t br;
+    bytestream_t bs;
+    rt_array_t *_val, **val;
+    lkit_array_t *ty;
+    char fdelim;
+    lkit_dpexpr_t *fpa;
+    lkit_type_t *fty;
+    unsigned i;
+    off_t (*_dparse_str_pos_k)(rt_parser_info_t *,
+                               int64_t,
+                               char,
+                               off_t,
+                               off_t,
+                               bytes_t **);
 
-    val = NULL;
-    FAIL("not implemented");
+    delim = '\0';
+    spos = 0;
+    epos = str->sz;
 
-    return val;
+    br.start = 0;
+    br.end = epos;
+    bytestream_from_bytes(&bs, str);
+    rt_parser_info_init(&_pi, &bs, &br, NULL, NULL);
+    pi = &_pi;
+
+    ty = (lkit_array_t *)LKIT_PARSER_GET_TYPE(pa->base.ty);
+
+    _val = mrklkit_rt_array_new_mpool_sz(ty, pa->nreserved);
+    val = &_val;
+
+    fdelim = pa->fdelim;
+
+    if (pa->base.parser == LKIT_PARSER_SMARTDELIM) {
+        _dparse_str_pos_k = dparse_str_pos_brushdown_mpool;
+    } else {
+        _dparse_str_pos_k = dparse_str_pos_mpool;
+    }
+
+    if ((fpa = lkit_dparray_get_element_parser(pa)) == NULL) {
+        FAIL("lkit_dparray_get_element_parser");
+    }
+    fty = LKIT_PARSER_GET_TYPE(fpa->ty);
+
+    switch (fty->tag) {
+    case LKIT_STR:
+        {
+            off_t (*_dparse_str_pos_v)(rt_parser_info_t *,
+                                       int64_t,
+                                       char,
+                                       off_t,
+                                       off_t,
+                                       bytes_t **);
+            if (pa->base.parser == LKIT_PARSER_OPTQSTRDELIM) {
+                _dparse_str_pos_v = dparse_optqstr_pos_mpool;
+            } else {
+                _dparse_str_pos_v = dparse_str_pos_mpool;
+            }
+            DPARSE_ARRAY_CASE(_array_get_safe, bytes_t *, _dparse_str_pos_v);
+        }
+        break;
+
+    case LKIT_INT:
+        DPARSE_ARRAY_CASE(_array_get_safe, int64_t, dparse_int_pos);
+        break;
+
+    case LKIT_FLOAT:
+        DPARSE_ARRAY_CASE(_array_get_safe, double, dparse_float_pos);
+        break;
+
+    default:
+        /* cannot be recursively nested */
+        FAIL("dparse_dict_pos");
+    }
+
+    rt_parser_info_fini(&_pi);
+    return _val;
 }
 
 
