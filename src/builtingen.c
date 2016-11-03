@@ -2124,9 +2124,7 @@ compile_function(mrklkit_ctx_t *mctx,
         }
         v = LLVMBuildNot(builder, v, NEWVAR("not"));
 
-    } else if (strcmp(name , "==") == 0 ||
-               strcmp(name , "=" /* compat */
-              ) == 0) {
+    } else if (strcmp(name , "==") == 0) {
         //(sym == (func bool undef undef)) done
         v = compile_cmp(mctx,
                         ectx,
@@ -2249,11 +2247,7 @@ compile_function(mrklkit_ctx_t *mctx,
         //(sym bswap (func int int )) done
         MRKLKIT_BUILTINGEN_INTRINSIC_BODY2("ctlz", "i64", 1354)
 
-    } else if (strcmp(name, "get") == 0 ||
-               strcmp(name, "dp-get") == 0 || /* compat */
-               strcmp(name, "get-index") == 0 || /* compat */
-               strcmp(name, "get-key") == 0 /* compat */
-              ) {
+    } else if (strcmp(name, "get") == 0) {
         //(sym get (func undef undef undef under)) done
         v = lkit_compile_get(mctx,
                              ectx,
@@ -2965,8 +2959,7 @@ tostr_done:
             FAIL("compile_function");
         }
 
-    } else if (strcmp(name, "has") == 0 ||
-               strcmp(name, "has-key") == 0) {
+    } else if (strcmp(name, "has") == 0) {
         lkit_expr_t **cont, **name;
         LLVMValueRef fn, args[2];
 

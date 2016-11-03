@@ -2,7 +2,8 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 CLEANFILES = *.core
 #CLEANFILES += *.in
 
-noinst_PROGRAMS=testfoo testfparser testdparser testlk
+noinst_PROGRAMS=testfoo testfparser testdparser testlk testminmodule
+
 
 
 BUILT_SOURCES = ../src/diag.c ../src/diag.h
@@ -34,6 +35,11 @@ nodist_testlk_SOURCES = ../src/diag.c
 testlk_SOURCES = testlk.c
 testlk_CFLAGS = -Wall -Wextra -Werror -std=c99 @MRKCOMMON_LOCAL_CFLAGS@ @MRKLKIT_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS) -I.. -I../src -I$(includedir)
 testlk_LDFLAGS =  -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @MRKLKIT_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
+
+nodist_testminmodule_SOURCES = ../src/diag.c
+testminmodule_SOURCES = testminmodule.c
+testminmodule_CFLAGS = -Wall -Wextra -Werror -std=c99 @MRKCOMMON_LOCAL_CFLAGS@ @MRKLKIT_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS) -I.. -I../src -I$(includedir)
+testminmodule_LDFLAGS =  -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @MRKLKIT_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 ../src/diag.c ../src/diag.h: ../src/diag.txt
 	$(AM_V_GEN) /bin/sh ../src/gen-diag mrklkit

@@ -190,9 +190,12 @@ typedef struct _lkit_parser {
     lkit_type_t *ty;
 } lkit_parser_t;
 
+void mrklkit_ctx_init_types(mrklkit_ctx_t *);
+void mrklkit_ctx_fini_types(mrklkit_ctx_t *);
+
 typedef int (*lkit_type_traverser_t)(lkit_type_t *, void *);
 int lkit_type_traverse(lkit_type_t *, lkit_type_traverser_t, void *);
-int lkit_traverse_types(hash_traverser_t, void *);
+int lkit_traverse_types(mrklkit_ctx_t *, hash_traverser_t, void *);
 void lkit_type_dump(lkit_type_t *);
 void lkit_type_str(lkit_type_t *, bytestream_t *);
 int lkit_type_destroy(lkit_type_t **);
@@ -205,11 +208,10 @@ lkit_type_t *lkit_type_parse(mrklkit_ctx_t *,
 lkit_array_t *lkit_type_get_array(mrklkit_ctx_t *, int);
 lkit_dict_t *lkit_type_get_dict(mrklkit_ctx_t *, int);
 lkit_parser_t *lkit_type_get_parser(mrklkit_ctx_t *, int);
-lkit_type_t *lkit_type_finalize(lkit_type_t *);
+lkit_type_t *lkit_type_finalize(mrklkit_ctx_t *, lkit_type_t *);
 #define LKIT_REGISTER_TYPEDEF_FORCE (0x01)
 void lkit_register_typedef(mrklkit_ctx_t *, lkit_type_t *, bytes_t *, int);
 lkit_type_t *lkit_typedef_get(mrklkit_ctx_t *, bytes_t *);
-lkit_type_t *lkit_typedef_get2(bytes_t *);
 bytes_t *lkit_typename_get(mrklkit_ctx_t *, lkit_type_t *);
 uint64_t lkit_type_hash(lkit_type_t *);
 int lkit_type_cmp(lkit_type_t *, lkit_type_t *);
@@ -229,9 +231,6 @@ lkit_type_t *lkit_parser_get_type(lkit_parser_t *);
 #endif
 
 LLVMTypeRef mrklkit_ctx_get_type_backend(mrklkit_ctx_t *, lkit_type_t *);
-
-void ltype_init(void);
-void ltype_fini(void);
 
 #ifdef __cplusplus
 }

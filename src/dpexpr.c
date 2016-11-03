@@ -524,7 +524,7 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
             *fty = LKIT_PARSER_GET_TYPE((*fpa)->ty);
 
             dpa->base.ty = (lkit_parser_t *)lkit_type_get(mctx, LKIT_PARSER);
-            dpa->base.ty->ty = lkit_type_finalize((lkit_type_t *)ta);
+            dpa->base.ty->ty = lkit_type_finalize(mctx, (lkit_type_t *)ta);
 
 
         } else {
@@ -575,7 +575,7 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
             *fty = LKIT_PARSER_GET_TYPE((*fpa)->ty);
 
             dpd->base.ty = (lkit_parser_t *)lkit_type_get(mctx, LKIT_PARSER);
-            dpd->base.ty->ty = lkit_type_finalize((lkit_type_t *)td);
+            dpd->base.ty->ty = lkit_type_finalize(mctx, (lkit_type_t *)td);
 
         } else {
             TR(LKIT_DPEXPR_PARSE + 33);
@@ -693,7 +693,7 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
             }
 
             dps->base.ty = (lkit_parser_t *)lkit_type_get(mctx, LKIT_PARSER);
-            dps->base.ty->ty = lkit_type_finalize((lkit_type_t *)ts);
+            dps->base.ty->ty = lkit_type_finalize(mctx, (lkit_type_t *)ts);
 
         } else {
             TR(LKIT_DPEXPR_PARSE + 43);
@@ -722,7 +722,7 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
         res = dpty;
     }
 
-    res->ty = (lkit_parser_t *)lkit_type_finalize((lkit_type_t *)res->ty);
+    res->ty = (lkit_parser_t *)lkit_type_finalize(mctx, (lkit_type_t *)res->ty);
 
 end:
     return res;

@@ -208,6 +208,9 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin copy (func undef undef))\n"
 "(builtin , (func undef ...))\n"
 "(builtin if (func undef bool undef undef))\n"
+"(builtin then (func undef ...))\n"
+"(builtin else (func undef ...))\n"
+"(builtin do (func undef ...))\n"
 "(builtin print (func undef undef ...))\n"
 "\n"
 "(builtin + (func undef undef ...))\n"
@@ -223,7 +226,6 @@ const char *mrklkit_meta = "; libc\n"
 "(builtin not (func bool bool))\n"
 "\n"
 "(builtin == (func bool undef undef))\n"
-"(builtin = (func bool undef undef))\n" /* compat */
 "(builtin != (func bool undef undef))\n"
 "(builtin < (func bool undef undef))\n"
 "(builtin <= (func bool undef undef))\n"
@@ -244,19 +246,14 @@ const char *mrklkit_meta = "; libc\n"
 "\n"
 "(builtin parse (func undef undef undef))\n"
 "(builtin get (func undef undef undef undef))\n"
-"(builtin get-index (func undef undef undef undef))\n" /* compat */
-"(builtin get-key (func undef undef undef undef))\n" /* compat */
 "(builtin set (func void undef undef undef))\n"
 "(builtin del (func void undef undef))\n"
 "(builtin has (func bool undef undef))\n"
-"(builtin has-key (func bool undef undef))\n" /* compat */
 "(builtin len (func int undef))\n"
 "(builtin traverse (func void undef undef))\n"
 "\n"
 "(builtin itof (func float int))\n"
-"(builtin float (func float int))\n" /* compat */
 "(builtin ftoi (func int float))\n"
-"(builtin int (func int float))\n" /* compat */
 "(builtin atoi (func int str int))\n"
 "(builtin atoi-loose (func int str))\n"
 "(builtin atof (func float str float))\n"
@@ -401,14 +398,11 @@ do_analysis(LLVMModuleRef module)
     LLVMPassManagerBuilderRef pmb;
     LLVMPassManagerRef fpm;
     LLVMPassManagerRef pm;
-    LLVMTargetDataRef tdr;
     UNUSED int res = 0;
     LLVMValueRef fn = NULL;
 
     pmb = LLVMPassManagerBuilderCreate();
     LLVMPassManagerBuilderSetOptLevel(pmb, 3);
-
-    tdr = LLVMCreateTargetData("i1:64:64");
 
     /*
      * module
@@ -416,7 +410,6 @@ do_analysis(LLVMModuleRef module)
     if ((pm = LLVMCreatePassManager()) == NULL) {
         FAIL("LLVMCreatePassManager");
     }
-    LLVMAddTargetData(tdr, pm);
     LLVMPassManagerBuilderPopulateModulePassManager(pmb, pm);
 
     /*
@@ -425,7 +418,6 @@ do_analysis(LLVMModuleRef module)
     if ((fpm = LLVMCreateFunctionPassManagerForModule(module)) == NULL) {
         FAIL("LLVMCreateFunctionPassManagerForModule");
     }
-    LLVMAddTargetData(tdr, fpm);
     LLVMPassManagerBuilderPopulateFunctionPassManager(pmb, fpm);
 
     if (LLVMInitializeFunctionPassManager(fpm)) {
@@ -454,7 +446,6 @@ do_analysis(LLVMModuleRef module)
     LLVMPassManagerBuilderDispose(pmb);
     LLVMDisposePassManager(pm);
     LLVMDisposePassManager(fpm);
-    LLVMDisposeTargetData(tdr);
 }
 
 
@@ -714,6 +705,8 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
     mrklkit_module_t **pm;
     size_t i;
 
+    mrklkit_ctx_init_types(ctx);
+
     array_init(&ctx->modules, sizeof(mrklkit_module_t *), 0, NULL, NULL);
     if (mod != NULL) {
         for (i = 0; i < modsz; ++i) {
@@ -764,32 +757,6 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
 
     PROFILE_START(setup_runtime_p);
 
-#if LLVM_VERSION_NUM < 3006
-    LLVMLinkInJIT();
-    for (modaux = array_first(&ctx->modaux, &it);
-         modaux != NULL;
-         modaux = array_next(&ctx->modaux, &it)) {
-        if (LLVMLinkModules(ctx->module,
-                            modaux->module,
-                            LLVMLinkerPreserveSource,
-                            &error_msg) != 0) {
-            TRACE("%s", error_msg);
-            FAIL("LLVMLinkModules");
-        }
-        if (error_msg != NULL) {
-            free(error_msg);
-            error_msg = NULL;
-        }
-    }
-    if (LLVMCreateJITCompilerForModule(&ctx->ee,
-                                       ctx->module,
-                                       3,
-                                       &error_msg) != 0) {
-        TRACE("%s", error_msg);
-        FAIL("LLVMCreateJITCompilerForModule");
-    }
-    LLVMRunStaticConstructors(ctx->ee);
-#else
     LLVMLinkInMCJIT();
     LLVMInitializeMCJITCompilerOptions(&opts, sizeof(opts));
     opts.EnableFastISel = 1;
@@ -798,16 +765,9 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
     for (modaux = array_first(&ctx->modaux, &it);
          modaux != NULL;
          modaux = array_next(&ctx->modaux, &it)) {
-        if (LLVMLinkModules(ctx->module,
-                            modaux->module,
-                            LLVMLinkerPreserveSource,
-                            &error_msg) != 0) {
-            TRACE("%s", error_msg);
+        if (LLVMLinkModules2(ctx->module,
+                             modaux->module) != 0) {
             FAIL("LLVMLinkModules");
-        }
-        if (error_msg != NULL) {
-            free(error_msg);
-            error_msg = NULL;
         }
     }
     if (LLVMCreateMCJITCompilerForModule(&ctx->ee,
@@ -818,8 +778,8 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
         TRACE("%s", error_msg);
         FAIL("LLVMCreateExecutionEngineForModule");
     }
+
     LLVMRunStaticConstructors(ctx->ee);
-#endif
 
     for (mod = array_last(&ctx->modules, &it);
          mod != NULL;
@@ -934,6 +894,7 @@ mrklkit_ctx_fini(mrklkit_ctx_t *ctx)
     LLVMContextDispose(ctx->lctx);
     ctx->lctx = NULL;
     hash_fini(&ctx->backends);
+    mrklkit_ctx_fini_types(ctx);
 }
 
 
@@ -988,7 +949,6 @@ mrklkit_init(void)
     compile_p = PROFILE_REGISTER("compile");
     analyze_p = PROFILE_REGISTER("analyze");
     setup_runtime_p = PROFILE_REGISTER("setup_runtime");
-    ltype_init();
     lexpr_init();
     llvm_init();
     lruntime_init();
@@ -1001,7 +961,6 @@ mrklkit_fini(void)
     lruntime_fini();
     llvm_fini();
     lexpr_fini();
-    ltype_fini();
     profile_fini_module();
 }
 

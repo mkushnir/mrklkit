@@ -25,15 +25,6 @@
 MEMDEBUG_DECLARE(ltype);
 #endif
 
-/*
- * lkit_type_t *, lkit_type_t *
- */
-static hash_t types;
-static array_t builtin_types;
-/*
- * bytes_t *, lkit_type_t *
- */
-static hash_t typedefs;
 
 static int
 null_init(void **v)
@@ -359,14 +350,14 @@ lkit_type_new(lkit_tag_t tag)
 
 
 lkit_type_t *
-lkit_type_get(UNUSED mrklkit_ctx_t *mctx, int tag)
+lkit_type_get(mrklkit_ctx_t *mctx, int tag)
 {
     lkit_type_t *ty;
 
     if (tag < _LKIT_END_OF_BUILTIN_TYPES) {
         lkit_type_t **pty;
 
-        if ((pty = array_get(&builtin_types, tag)) == NULL) {
+        if ((pty = array_get(&mctx->builtin_types, tag)) == NULL) {
             FAIL("array_get");
         }
         ty = *pty;
@@ -393,7 +384,7 @@ lkit_type_get_array(mrklkit_ctx_t *mctx, int ftag)
     }
 
     *fty = lkit_type_get(mctx, ftag);
-    return (lkit_array_t *)lkit_type_finalize((lkit_type_t *)ty);
+    return (lkit_array_t *)lkit_type_finalize(mctx, (lkit_type_t *)ty);
 }
 
 
@@ -412,7 +403,7 @@ lkit_type_get_dict(mrklkit_ctx_t *mctx, int ftag)
     }
 
     *fty = lkit_type_get(mctx, ftag);
-    return (lkit_dict_t *)lkit_type_finalize((lkit_type_t *)ty);
+    return (lkit_dict_t *)lkit_type_finalize(mctx, (lkit_type_t *)ty);
 }
 
 
@@ -425,20 +416,20 @@ lkit_type_get_parser(mrklkit_ctx_t *mctx, int ftag)
 
     ty = (lkit_parser_t *)lkit_type_get(mctx, LKIT_PARSER);
     ty->ty = lkit_type_get(mctx, ftag);
-    return (lkit_parser_t *)lkit_type_finalize((lkit_type_t *)ty);
+    return (lkit_parser_t *)lkit_type_finalize(mctx, (lkit_type_t *)ty);
 }
 
 
 lkit_type_t *
-lkit_type_finalize(lkit_type_t *ty)
+lkit_type_finalize(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
     hash_item_t *probe;
 
     assert(ty != NULL);
 
-    if ((probe = hash_get_item(&types, ty)) == NULL) {
+    if ((probe = hash_get_item(&mctx->types, ty)) == NULL) {
         /* this is new one */
-        hash_set_item(&types, ty, ty);
+        hash_set_item(&mctx->types, ty, ty);
     } else {
         lkit_type_t *pty;
 
@@ -461,7 +452,7 @@ lkit_type_finalize(lkit_type_t *ty)
 
 
 void
-lkit_register_typedef(UNUSED mrklkit_ctx_t *mctx,
+lkit_register_typedef(mrklkit_ctx_t *mctx,
                       lkit_type_t *ty,
                       bytes_t *typename,
                       int flags)
@@ -469,7 +460,7 @@ lkit_register_typedef(UNUSED mrklkit_ctx_t *mctx,
     hash_item_t *hit;
 
     /* have it unique */
-    if ((hit = hash_get_item(&typedefs, typename)) != NULL) {
+    if ((hit = hash_get_item(&mctx->typedefs, typename)) != NULL) {
         lkit_type_t *pty;
 
         pty = hit->value;
@@ -484,7 +475,7 @@ lkit_register_typedef(UNUSED mrklkit_ctx_t *mctx,
             }
         }
     } else {
-        hash_set_item(&typedefs,
+        hash_set_item(&mctx->typedefs,
                       bytes_new_from_str((char *)typename->data),
                       ty);
     }
@@ -492,23 +483,11 @@ lkit_register_typedef(UNUSED mrklkit_ctx_t *mctx,
 
 
 lkit_type_t *
-lkit_typedef_get(UNUSED mrklkit_ctx_t *mctx, bytes_t *typename)
+lkit_typedef_get(mrklkit_ctx_t *mctx, bytes_t *typename)
 {
     hash_item_t *dit;
 
-    if ((dit = hash_get_item(&typedefs, typename)) != NULL) {
-        return dit->value;
-    }
-    return NULL;
-}
-
-
-lkit_type_t *
-lkit_typedef_get2(bytes_t *typename)
-{
-    hash_item_t *dit;
-
-    if ((dit = hash_get_item(&typedefs, typename)) != NULL) {
+    if ((dit = hash_get_item(&mctx->typedefs, typename)) != NULL) {
         return dit->value;
     }
     return NULL;
@@ -532,7 +511,7 @@ _lkit_typename_get(bytes_t *typename, lkit_type_t *ty, void *udata)
 
 
 bytes_t *
-lkit_typename_get(UNUSED mrklkit_ctx_t *mctx, lkit_type_t *ty)
+lkit_typename_get(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
     struct {
         lkit_type_t *ty;
@@ -541,7 +520,7 @@ lkit_typename_get(UNUSED mrklkit_ctx_t *mctx, lkit_type_t *ty)
 
     params.ty = ty;
     params.typename = NULL;
-    hash_traverse(&typedefs, (hash_traverser_t)_lkit_typename_get, &params);
+    hash_traverse(&mctx->typedefs, (hash_traverser_t)_lkit_typename_get, &params);
 
     return params.typename;
 }
@@ -1302,7 +1281,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
             /*
              * XXX handle typedefs here, or unknown type ...
              */
-            if ((probe = hash_get_item(&typedefs,
+            if ((probe = hash_get_item(&mctx->typedefs,
                                        (bytes_t *)(dat->body))) != NULL) {
                 lkit_type_t *pty;
 
@@ -1476,7 +1455,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
         goto end;
     }
 
-    ty = lkit_type_finalize(ty);
+    ty = lkit_type_finalize(mctx, ty);
 
 end:
     return ty;
@@ -1646,27 +1625,25 @@ lkit_typedef_fini_dict(bytes_t *key, UNUSED lkit_type_t *value)
 
 
 int
-lkit_traverse_types(hash_traverser_t cb, void *udata)
+lkit_traverse_types(mrklkit_ctx_t *mctx, hash_traverser_t cb, void *udata)
 {
-    return hash_traverse(&types, cb, udata);
+    return hash_traverse(&mctx->types, cb, udata);
 }
 
 
-static void
-mrklkit_init_types(hash_t *types,
-                   array_t *builtin_types,
-                   hash_t *typedefs)
+void
+mrklkit_ctx_init_types(mrklkit_ctx_t *mctx)
 {
     lkit_tag_t t;
 
-    hash_init(types, 101,
+    hash_init(&mctx->types, 101,
              (hash_hashfn_t)lkit_type_hash,
              (hash_item_comparator_t)lkit_type_cmp,
              (hash_item_finalizer_t)lkit_type_fini_dict);
 
     /* builtin types */
 
-    array_init(builtin_types,
+    array_init(&mctx->builtin_types,
                sizeof(lkit_type_t *),
                _LKIT_END_OF_BUILTIN_TYPES,
                NULL,
@@ -1677,13 +1654,13 @@ mrklkit_init_types(hash_t *types,
         lkit_type_t *ty, **pty;
         ty = lkit_type_new(t);
 
-        if ((pty = array_get(builtin_types, t)) == NULL) {
+        if ((pty = array_get(&mctx->builtin_types, t)) == NULL) {
             FAIL("array_get");
         }
-        *pty = lkit_type_finalize(ty);
+        *pty = lkit_type_finalize(mctx, ty);
     }
 
-    hash_init(typedefs, 101,
+    hash_init(&mctx->typedefs, 101,
              (hash_hashfn_t)bytes_hash,
              (hash_item_comparator_t)bytes_cmp,
              (hash_item_finalizer_t)lkit_typedef_fini_dict
@@ -1693,15 +1670,9 @@ mrklkit_init_types(hash_t *types,
 
 
 void
-ltype_init(void)
+mrklkit_ctx_fini_types(mrklkit_ctx_t *mctx)
 {
-    mrklkit_init_types(&types, &builtin_types, &typedefs);
-}
-
-void
-ltype_fini(void)
-{
-    hash_fini(&typedefs);
-    array_fini(&builtin_types);
-    hash_fini(&types);
+    hash_fini(&mctx->typedefs);
+    array_fini(&mctx->builtin_types);
+    hash_fini(&mctx->types);
 }

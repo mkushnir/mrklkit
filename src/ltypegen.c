@@ -882,7 +882,7 @@ lkit_compile_types(mrklkit_ctx_t *mctx, LLVMModuleRef module)
         mrklkit_ctx_t *mctx;
         LLVMModuleRef module;
     } params = { mctx, module };
-    return lkit_traverse_types((hash_traverser_t)_cb0, &params);
+    return lkit_traverse_types(mctx, (hash_traverser_t)_cb0, &params);
 }
 
 
@@ -906,7 +906,7 @@ lkit_compile_type_methods(mrklkit_ctx_t *mctx, LLVMModuleRef module)
         mrklkit_ctx_t *mctx;
         LLVMModuleRef module;
     } params = { mctx, module };
-    return lkit_traverse_types((hash_traverser_t)_cb1, &params);
+    return lkit_traverse_types(mctx, (hash_traverser_t)_cb1, &params);
 }
 
 
@@ -935,7 +935,7 @@ lkit_link_types(mrklkit_ctx_t *mctx,
         LLVMModuleRef module;
     } params = { mctx, ee, module };
 
-    return lkit_traverse_types((hash_traverser_t)_cb2, &params);
+    return lkit_traverse_types(mctx, (hash_traverser_t)_cb2, &params);
 }
 
 
@@ -958,6 +958,6 @@ lkit_unlink_types(mrklkit_ctx_t *mctx)
         mrklkit_ctx_t *mctx;
     } params = { mctx };
 
-    return lkit_traverse_types((hash_traverser_t)_cb3, &params);
+    return lkit_traverse_types(mctx, (hash_traverser_t)_cb3, &params);
 }
 

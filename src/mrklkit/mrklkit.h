@@ -37,6 +37,16 @@ typedef enum _lkit_mpolicy {
 
 
 typedef struct _mrklkit_ctx {
+    /*
+     * lkit_type_t *, lkit_type_t *
+     */
+    hash_t types;
+    array_t builtin_types;
+    /*
+     * bytes_t *, lkit_type_t *
+     */
+    hash_t typedefs;
+
     array_t modules;
 
     /*

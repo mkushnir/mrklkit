@@ -1,4 +1,4 @@
-AC_INIT(mrklkit, 0.1, markiyan.kushnir@gmail.com, mrklkit, https://github.com/mkushnir/mrklkit)
+AC_INIT(mrklkit, 0.2, markiyan.kushnir@gmail.com, mrklkit, https://github.com/mkushnir/mrklkit)
 if test -n "$USE_GCC"
 then
     probe="gcc${USE_GCC}"
@@ -98,18 +98,18 @@ AC_TYPE_UINT64_T
 AC_TYPE_OFF_T
 
 # LLVM_CFALGS modulo -On
-AC_CHECK_PROG([LLVM_CONFIG], [llvm-config36], [llvm-config36])
-test -z "$LLVM_CONFIG" && AC_CHECK_PROG([LLVM_CONFIG], [llvm-config35], [llvm-config35])
-test -z "$LLVM_CONFIG" && AC_CHECK_PROG([LLVM_CONFIG], [llvm-config34], [llvm-config34])
+AC_CHECK_PROG([LLVM_CONFIG], [llvm-config39], [llvm-config39])
+test -z "$LLVM_CONFIG" && AC_CHECK_PROG([LLVM_CONFIG], [llvm-config-devel], [llvm-config-devel])
 test -z "$LLVM_CONFIG" && AC_CHECK_PROG([LLVM_CONFIG], [llvm-config], [llvm-config])
-test -z "$LLVM_CONFIG" && AC_MSG_FAILURE(llvm-config36 or llvm-config35 or llvm-config34 or llvm-config is required. Cannot proceed ...)
+test -z "$LLVM_CONFIG" && AC_MSG_FAILURE(llvm-config39 or higher is required. Cannot proceed ...)
 llvm_version="`$LLVM_CONFIG --version`"
 llvm_version_maj="`echo $llvm_version | awk -F. '{print $1;}'`"
 llvm_version_min="`echo $llvm_version | awk -F. '{print $2;}'`"
 llvm_version_num="`printf '%d%03d' $llvm_version_maj $llvm_version_min`"
-test "$llvm_version_num" -lt 3004 && AC_MSG_FAILURE(LLVM version 3.4 or higher is required. Cannot proceed ...)
+test "$llvm_version_num" -lt 3009 && AC_MSG_FAILURE(LLVM version 3.9 or higher is required. Cannot proceed ...)
 AC_SUBST(LLVM_VERSION_NUM, [$llvm_version_num])
-AC_SUBST(LLVM_CFLAGS, ["`$LLVM_CONFIG --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//'` -DLLVM_VERSION_NUM=$llvm_version_num"])
+dnl AC_SUBST(LLVM_CFLAGS, ["`$LLVM_CONFIG --cflags | sed -e 's/-O[[0-9]]//' -e 's/-DNDEBUG//' -e 's/-pedantic//'` -DLLVM_VERSION_NUM=$llvm_version_num"])
+AC_SUBST(LLVM_CFLAGS, ["-I`$LLVM_CONFIG --includedir` -DLLVM_VERSION_NUM=$llvm_version_num"])
 AC_SUBST(LLVM_LIBS, [" `$LLVM_CONFIG --system-libs` $cxxlib  `$LLVM_CONFIG --libs engine ipo objcarcopts instrumentation mcjit irreader linker`"])
 AC_SUBST(LLVM_LDFLAGS, ["`$LLVM_CONFIG --ldflags`"])
 

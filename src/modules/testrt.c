@@ -66,7 +66,7 @@ _parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
         }
         ty->tag = LKIT_USER + 100;
         ty->name = "url";
-        ty = lkit_type_finalize(ty);
+        ty = lkit_type_finalize(&tctx->mctx, ty);
         lkit_register_typedef(&tctx->mctx, ty, typename, 0);
     } else {
         /* get back */
@@ -389,7 +389,7 @@ _parse_take(testrt_ctx_t *tctx,
         *ty = (*expr)->type;
     }
 
-    trt->takeexpr->type = lkit_type_finalize((lkit_type_t *)ts);
+    trt->takeexpr->type = lkit_type_finalize(&tctx->mctx, (lkit_type_t *)ts);
 
     return 0;
 }
@@ -446,7 +446,7 @@ _parse_do(testrt_ctx_t *tctx,
         *ty = (*expr)->type;
     }
 
-    trt->doexpr->type = lkit_type_finalize((lkit_type_t *)ts);
+    trt->doexpr->type = lkit_type_finalize(&tctx->mctx, (lkit_type_t *)ts);
 
     return 0;
 }
@@ -1400,7 +1400,7 @@ _init(testrt_ctx_t *tctx)
     }
 
     null_struct = (lkit_struct_t *)lkit_type_finalize(
-            lkit_type_get(&tctx->mctx, LKIT_STRUCT));
+            &tctx->mctx, lkit_type_get(&tctx->mctx, LKIT_STRUCT));
 
     if (array_init(&dsources, sizeof(dsource_t *), 0,
                    NULL,

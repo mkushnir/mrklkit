@@ -211,7 +211,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
         }
     }
 
-    name = (expr->name != NULL) ? (char *)expr->name->data : ")(";
+    name = (expr->name != NULL) ? (char *)expr->name->data : (char *)")(";
 
     //TRACE("%s: %s", name, LKIT_TAG_STR(expr->type->tag));
     /*
@@ -315,9 +315,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
             expr->zref = 1;
         }
 
-    } else if (strcmp(name, "get") == 0 ||
-               strcmp(name, "get-index") == 0 || /* compat*/
-               strcmp(name, "get-key") == 0 /* compat*/) {
+    } else if (strcmp(name, "get") == 0) {
         /*
          * (sym {get} (func undef struct conststr undef))
          * (sym {get} (func undef dict str undef))
@@ -849,7 +847,6 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
         }
 
     } else if (strcmp(name, "==") == 0 ||
-               strcmp(name, "=") == 0 || /* compat */
                strcmp(name, "!=") == 0 ||
                strcmp(name, "<") == 0 ||
                strcmp(name, "<=") == 0 ||
@@ -892,8 +889,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
         }
 
 
-    } else if (strcmp(name, "has") == 0 ||
-               strcmp(name, "has-key") == 0) {
+    } else if (strcmp(name, "has") == 0) {
 
         lkit_expr_t **cont;
         lkit_type_t *ty;
