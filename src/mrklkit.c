@@ -575,6 +575,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
                                                   &mb);
         if (res != 0) {
             TRACE("res=%d %s", res, error_msg);
+            LLVMDisposeMessage(error_msg);
             TRRET(MRKLKIT_COMPILE + 5);
         }
         TRACEC("%s", LLVMGetBufferStart(mb));
@@ -776,6 +777,7 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
                                          sizeof(opts),
                                          &error_msg) != 0) {
         TRACE("%s", error_msg);
+        LLVMDisposeMessage(error_msg);
         FAIL("LLVMCreateExecutionEngineForModule");
     }
 

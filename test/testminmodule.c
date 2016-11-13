@@ -6,10 +6,6 @@
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/util.h>
 
-#include <llvm-c/Core.h>
-#include <llvm-c/Initialization.h>
-#include <llvm-c/Transforms/IPO.h>
-
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Target.h>
