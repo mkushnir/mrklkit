@@ -254,7 +254,10 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
         }
         expr->zref = (*texp)->zref || (*fexp)->zref;
 
-    } else if (strcmp(name, ",") == 0) {
+    } else if (strcmp(name, ",") == 0 ||
+               strcmp(name, "do") == 0 ||
+               strcmp(name, "then") == 0 ||
+               strcmp(name, "else") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
 

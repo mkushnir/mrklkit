@@ -1367,7 +1367,10 @@ compile_function(mrklkit_ctx_t *mctx,
                        expr->type,
                        udata);
 
-    } else if (strcmp(name, ",") == 0) {
+    } else if (strcmp(name, ",") == 0 ||
+               strcmp(name, "do") == 0 ||
+               strcmp(name, "then") == 0 ||
+               strcmp(name, "else") == 0) {
         lkit_expr_t **arg;
         array_iter_t it;
 

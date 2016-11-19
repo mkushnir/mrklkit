@@ -79,6 +79,12 @@ typedef struct _lkit_cexpr {
     hash_t ctx;
 } lkit_cexpr_t;
 
+#define LKIT_EXPR_PARSE_FIXTURE_TRYAGAIN (-2)
+typedef int (*lkit_expr_parse_fixture_t)(mrklkit_ctx_t *,
+                                         lkit_cexpr_t *,
+                                         fparser_datum_t *,
+                                         void *,
+                                         int);
 
 #define LKIT_EXPR_NAME(expr) ((expr)->name != NULL ? (expr)->name->data : NULL)
 
@@ -98,6 +104,13 @@ lkit_expr_t *lkit_expr_parse(mrklkit_ctx_t *,
                              lkit_cexpr_t *,
                              fparser_datum_t *,
                              int);
+int lkit_expr_parse2(mrklkit_ctx_t *,
+                     lkit_cexpr_t *,
+                     fparser_datum_t *,
+                     int,
+                     lkit_expr_t **,
+                     lkit_expr_parse_fixture_t,
+                     void *);
 lkit_expr_t *lkit_expr_find(lkit_cexpr_t *, bytes_t *);
 void lkit_expr_set_referenced(lkit_expr_t *);
 int lkit_parse_exprdef(lkit_expr_t *,
@@ -109,6 +122,7 @@ void lexpr_init_ctx(lkit_cexpr_t *);
 void lexpr_add_to_ctx(lkit_cexpr_t *, bytes_t *, lkit_expr_t *);
 
 lkit_expr_t *lkit_expr_new(void);
+lkit_cexpr_t *lkit_cexpr_new(lkit_cexpr_t *);
 lkit_expr_t *lkit_expr_build_literal(mrklkit_ctx_t *,
                                      fparser_datum_t *);
 lkit_expr_t *lkit_expr_build_ref(lkit_cexpr_t *, bytes_t *);

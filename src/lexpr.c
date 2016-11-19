@@ -591,11 +591,13 @@ do {                                   \
     TRACEC("\n");                      \
 } while (0)
 
-lkit_expr_t *
-lkit_expr_parse(mrklkit_ctx_t *mctx,
+static lkit_expr_t *
+_lkit_expr_parse(mrklkit_ctx_t *mctx,
                 lkit_cexpr_t *ectx,
                 fparser_datum_t *dat,
-                int seterror)
+                int seterror,
+                lkit_expr_parse_fixture_t fixture,
+                void *udata)
 {
     lkit_type_t *ty;
     lkit_expr_t *expr;
@@ -651,12 +653,46 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
              */
             expr = lkit_expr_new();
             expr->name = (bytes_t *)(dat->body);
-            if ((expr->value.ref = lkit_expr_find(ectx, expr->name)) == NULL) {
-                TRACEN("cannot find reference target: ");
-                TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
+            if ((expr->value.ref = lkit_expr_find(
+                            ectx, expr->name)) == NULL) {
+                if (fixture != NULL) {
+                    int res;
+
+                    if ((res = fixture(mctx,
+                                       ectx,
+                                       dat,
+                                       udata,
+                                       seterror)) != 0) {
+                        if (res == LKIT_EXPR_PARSE_FIXTURE_TRYAGAIN) {
+                            if ((expr->value.ref =
+                                    lkit_expr_find(ectx,
+                                                   expr->name)) == NULL) {
+                                goto err1;
+                            }
+                        } else {
+                            goto err1;
+                        }
+                    } else {
+                        goto err1;
+                    }
+                } else {
+                    goto err1;
+                }
+
+                goto done1;
+
+err1:
+                if (seterror) {
+                    TRACEN("cannot find reference target: ");
+                    TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
+                }
                 TR(LKIT_EXPR_PARSE + 1);
                 goto err;
+
+done1:
+                ;
             }
+
             //TRACE("ISREF by %s", expr->name->data);
             expr->isref = -1;
             expr->mpolicy = expr->value.ref->mpolicy;
@@ -686,17 +722,55 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                     if (lparse_first_word_bytes(form,
                                                 &it,
                                                 &expr->name,
-                                                1) != 0) {
+                                                seterror) != 0) {
                         TR(LKIT_EXPR_PARSE + 3);
                         goto err;
                     }
 
                     if ((expr->value.ref = lkit_expr_find(
                                     ectx, expr->name)) == NULL) {
-                        TRACEN("cannot find definition: ");
-                        TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
-                        TR(LKIT_EXPR_PARSE + 4);
+                        int idx;
+                        idx = 4;
+                        if (fixture != NULL) {
+                            int res;
+
+                            if ((res = fixture(mctx,
+                                               ectx,
+                                               dat,
+                                               udata,
+                                               seterror)) != 0) {
+                                if (res == LKIT_EXPR_PARSE_FIXTURE_TRYAGAIN) {
+                                    if ((expr->value.ref =
+                                        lkit_expr_find(ectx,
+                                                       expr->name)) == NULL) {
+                                        idx = 40;
+                                        goto err0;
+                                    }
+                                } else {
+                                    idx = 41;
+                                    goto err0;
+                                }
+                            } else {
+                                idx = 42;
+                                goto err0;
+                            }
+                        } else {
+                            idx = 43;
+                            goto err0;
+                        }
+
+                        goto done0;
+
+err0:
+                        if (seterror) {
+                            TRACEN("cannot find definition: ");
+                            TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
+                        }
+                        TR(LKIT_EXPR_PARSE + idx);
                         goto err;
+
+done0:
+                        ;
                     }
 
                     expr->isref = -1;
@@ -728,10 +802,12 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
                                 FAIL("array_incr");
                             }
 
-                            if ((*arg = lkit_expr_parse(mctx,
-                                                        ectx,
-                                                        *node,
-                                                        1)) == NULL) {
+                            if ((*arg = _lkit_expr_parse(mctx,
+                                                         ectx,
+                                                         *node,
+                                                         seterror,
+                                                         fixture,
+                                                         udata)) == NULL) {
                                 TR(LKIT_EXPR_PARSE + 6);
                                 goto err;
                             }
@@ -912,7 +988,7 @@ lkit_expr_parse(mrklkit_ctx_t *mctx,
             break;
 
         default:
-            FAIL("lkit_expr_parse");
+            FAIL("_lkit_expr_parse");
         }
 
     } else {
@@ -949,6 +1025,35 @@ err:
 }
 
 
+lkit_expr_t *
+lkit_expr_parse(mrklkit_ctx_t *mctx,
+                lkit_cexpr_t *ectx,
+                fparser_datum_t *dat,
+                int seterror)
+{
+    return _lkit_expr_parse(mctx, ectx, dat, seterror, NULL, NULL);
+}
+
+
+int
+lkit_expr_parse2(mrklkit_ctx_t *mctx,
+                 lkit_cexpr_t *ectx,
+                 fparser_datum_t *dat,
+                 int seterror,
+                 lkit_expr_t **pexpr,
+                 lkit_expr_parse_fixture_t fixture,
+                 void *udata)
+{
+    if ((*pexpr = _lkit_expr_parse(mctx,
+                                   ectx,
+                                   dat,
+                                   seterror,
+                                   fixture,
+                                   udata)) == NULL) {
+        TRRET(LKIT_PARSE_EXPR2 + 1);
+    }
+    return 0;
+}
 
 void
 lexpr_init(void)
