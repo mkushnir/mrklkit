@@ -3513,7 +3513,6 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                                   udata);
         }
 
-
         if (v == NULL) {
             switch (expr->value.ref->type->tag) {
             case LKIT_FUNC:
@@ -3542,14 +3541,20 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                         array_iter_t it;
                         LLVMValueRef *args = NULL;
                         lkit_func_t *tf = (lkit_func_t *)expr->value.ref->type;
+                        lkit_type_t **vaty;
 
                         /* XXX check args */
 
-                        if (tf->fields.elnum != (expr->subs.elnum + 1)) {
-                            lkit_type_dump(expr->value.ref->type);
-                            lkit_expr_dump(expr);
-                            TR(LKIT_COMPILE_EXPR + 2);
-                            break;
+                        vaty = array_last(&tf->fields, &it);
+                        assert(vaty != NULL);
+
+                        if ((*vaty)->tag != LKIT_VARARG) {
+                            if (tf->fields.elnum != (expr->subs.elnum + 1)) {
+                                lkit_type_dump(expr->value.ref->type);
+                                lkit_expr_dump(expr);
+                                TR(LKIT_COMPILE_EXPR + 2);
+                                break;
+                            }
                         }
 
                         if ((args = malloc(sizeof(LLVMValueRef) *
@@ -3578,11 +3583,16 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                             /*
                              * "generic" cast
                              */
-                            args[it.iter] = LLVMBuildPointerCast(
-                                builder,
-                                args[it.iter],
-                                LLVMTypeOf(LLVMGetParam(fn, it.iter)),
-                                NEWVAR("cast"));
+                            if (it.iter < LLVMCountParams(fn)) {
+                                args[it.iter] = LLVMBuildPointerCast(
+                                    builder,
+                                    args[it.iter],
+                                    LLVMTypeOf(LLVMGetParam(fn, it.iter)),
+                                    NEWVAR("cast"));
+                            } else {
+                                /* vararg */
+                                assert((*vaty)->tag == LKIT_VARARG);
+                            }
                         }
 
                         if (expr->type->tag == LKIT_VOID) {
@@ -4174,14 +4184,13 @@ _compile(lkit_gitem_t **gitem, void *udata)
             LLVMSetInitializer(v, initv);
         } else {
             LLVMValueRef fn;
+            LLVMTypeRef fnty;
 
             /* declaration, */
             switch (expr->type->tag) {
             case LKIT_FUNC:
-                fn = LLVMAddFunction(params->module,
-                                     (char *)name->data,
-                                     mrklkit_ctx_get_type_backend(
-                                         params->mctx, expr->type));
+                fnty = mrklkit_ctx_get_type_backend(params->mctx, expr->type);
+                fn = LLVMAddFunction(params->module, (char *)name->data, fnty);
                 LLVMAddFunctionAttr(fn, LLVMNoUnwindAttribute);
 
                 /* and definition */
@@ -4258,7 +4267,27 @@ _compile(lkit_gitem_t **gitem, void *udata)
 
                         if (lkit_expr_type_of(expr)->tag == LKIT_VOID) {
                             LLVMBuildRetVoid(builder);
+
                         } else {
+                            if (lkit_expr_type_of(expr)->tag == LKIT_ANY) {
+                                LLVMTypeRef fnrety;
+
+                                fnrety = LLVMGetReturnType(fnty);
+
+                                if (LLVMGetTypeKind(LLVMTypeOf(v)) ==
+                                        LLVMIntegerTypeKind) {
+                                    v = LLVMBuildIntToPtr(builder,
+                                                          v,
+                                                          fnrety,
+                                                          NEWVAR("inttoptr"));
+                                } else {
+                                    v = LLVMBuildPointerCast(
+                                            builder,
+                                            v,
+                                            fnrety,
+                                            NEWVAR("cast"));
+                                }
+                            }
                             LLVMBuildRet(builder, v);
                         }
                         LLVMDisposeBuilder(builder);
