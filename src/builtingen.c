@@ -3584,11 +3584,24 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                              * "generic" cast
                              */
                             if (it.iter < LLVMCountParams(fn)) {
-                                args[it.iter] = LLVMBuildPointerCast(
-                                    builder,
-                                    args[it.iter],
-                                    LLVMTypeOf(LLVMGetParam(fn, it.iter)),
-                                    NEWVAR("cast"));
+                                LLVMTypeRef fnaty, aty;
+
+                                fnaty = LLVMTypeOf(LLVMGetParam(fn, it.iter));
+                                aty = LLVMTypeOf(args[it.iter]);
+
+                                if (LLVMGetTypeKind(aty) == LLVMIntegerTypeKind) {
+                                    args[it.iter] = LLVMBuildIntToPtr(
+                                        builder,
+                                        args[it.iter],
+                                        fnaty,
+                                        NEWVAR("cast"));
+                                } else {
+                                    args[it.iter] = LLVMBuildPointerCast(
+                                        builder,
+                                        args[it.iter],
+                                        LLVMTypeOf(LLVMGetParam(fn, it.iter)),
+                                        NEWVAR("cast"));
+                                }
                             } else {
                                 /* vararg */
                                 assert((*vaty)->tag == LKIT_VARARG);
