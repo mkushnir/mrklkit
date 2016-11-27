@@ -655,6 +655,9 @@ _lkit_expr_parse(mrklkit_ctx_t *mctx,
             expr->name = (bytes_t *)(dat->body);
             if ((expr->value.ref = lkit_expr_find(
                             ectx, expr->name)) == NULL) {
+                int idx;
+
+                idx = 1;
                 if (fixture != NULL) {
                     int res;
 
@@ -667,15 +670,19 @@ _lkit_expr_parse(mrklkit_ctx_t *mctx,
                             if ((expr->value.ref =
                                     lkit_expr_find(ectx,
                                                    expr->name)) == NULL) {
+                                idx = 100;
                                 goto err1;
                             }
                         } else {
+                            idx = 101;
                             goto err1;
                         }
                     } else {
+                        idx = 102;
                         goto err1;
                     }
                 } else {
+                    idx = 103;
                     goto err1;
                 }
 
@@ -686,7 +693,7 @@ err1:
                     TRACEN("cannot find reference target: ");
                     TRACEC(ERRCOLOR("'%s'\n"), expr->name->data);
                 }
-                TR(LKIT_EXPR_PARSE + 1);
+                TR(LKIT_EXPR_PARSE + idx);
                 goto err;
 
 done1:
