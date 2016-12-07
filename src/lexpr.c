@@ -661,6 +661,10 @@ _lkit_expr_parse(mrklkit_ctx_t *mctx,
                 if (fixture != NULL) {
                     int res;
 
+                    /*
+                     * a simple forward-looking logic: dispatch parsing to
+                     * a fixture, and optionally retry lkit_expr_find().
+                     */
                     if ((res = fixture(mctx,
                                        ectx,
                                        dat,
@@ -672,6 +676,8 @@ _lkit_expr_parse(mrklkit_ctx_t *mctx,
                                                    expr->name)) == NULL) {
                                 idx = 100;
                                 goto err1;
+                            } else {
+                                /* ok */
                             }
                         } else {
                             idx = 101;
@@ -741,6 +747,11 @@ done1:
                         if (fixture != NULL) {
                             int res;
 
+                            /*
+                             * a simple forward-looking logic: dispatch
+                             * parsing to a fixture, and optionally retry
+                             * lkit_expr_find().
+                             */
                             if ((res = fixture(mctx,
                                                ectx,
                                                dat,
@@ -752,6 +763,8 @@ done1:
                                                        expr->name)) == NULL) {
                                         idx = 40;
                                         goto err0;
+                                    } else {
+                                        /* ok */
                                     }
                                 } else {
                                     idx = 41;
