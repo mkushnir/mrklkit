@@ -20,8 +20,8 @@ typedef void (*mrklkit_module_initializer_t)(void *);
 
 typedef void (*mrklkit_module_finalizer_t)(void *);
 
-typedef int (*mrklkit_type_parser_t)(void *, array_t *,
-                                     array_iter_t *);
+typedef int (*mrklkit_type_parser_t)(void *, mnarray_t *,
+                                     mnarray_iter_t *);
 
 typedef int (*mrklkit_type_method_compiler_t)(mrklkit_ctx_t *,
                                               lkit_type_t *,
@@ -31,8 +31,8 @@ typedef int (*mrklkit_type_compiler_t)(void *, LLVMModuleRef);
 
 typedef int (*mrklkit_expr_parser_t)(void *,
                                      const char *,
-                                     array_t *,
-                                     array_iter_t *);
+                                     mnarray_t *,
+                                     mnarray_iter_t *);
 
 typedef int (*mrklkit_parser_t)(mrklkit_ctx_t *,
                                 int,
@@ -66,7 +66,7 @@ typedef int (*mrklkit_method_unlinker_t)(mrklkit_ctx_t *,
 
 typedef int (*mrklkit_module_unlinker_t)(void *);
 
-typedef lkit_dpexpr_t *(*mrklkit_module_dpexpr_find_t)(mrklkit_ctx_t *, bytes_t *, void *);
+typedef lkit_dpexpr_t *(*mrklkit_module_dpexpr_find_t)(mrklkit_ctx_t *, mnbytes_t *, void *);
 
 typedef struct _mrklkit_module {
     mrklkit_module_initializer_t init;

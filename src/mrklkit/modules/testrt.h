@@ -25,7 +25,7 @@ typedef struct _dsource {
     int duration_index;
     int error:1;
     /* weak ref*/
-    bytes_t *kind;
+    mnbytes_t *kind;
     lkit_struct_t *_struct;
     char rdelim[2];
     char fdelim;
@@ -45,10 +45,10 @@ typedef struct _testrt_target {
 
 
 typedef struct _testrt {
-    bytes_t *dsource;
+    mnbytes_t *dsource;
     /* quals */
     uint64_t id;
-    bytes_t *name;
+    mnbytes_t *name;
     /*
      * doexpr and takeexpr are not actually expressions. we use
      * lkit_expr_t here to conveniently store some sequence of operations.
@@ -57,7 +57,7 @@ typedef struct _testrt {
     lkit_expr_t *takeexpr;
     lkit_expr_t *seeexpr;
     /* weak refs */
-    array_t otherexpr;
+    mnarray_t otherexpr;
     testrt_target_t key;
 } testrt_t;
 
@@ -66,7 +66,7 @@ typedef struct _testrt_ctx {
     fparser_datum_t *datum_root;
     lkit_cexpr_t builtin;
     lkit_cexpr_t root;
-    array_t testrts;
+    mnarray_t testrts;
     dsource_t *ds;
 } testrt_ctx_t;
 
@@ -77,7 +77,7 @@ extern rt_struct_t *testrt_source;
 dsource_t *dsource_get(const char *);
 void *testrt_acquire_take_key(testrt_t *);
 void *testrt_get_do(testrt_t *);
-int testrt_run_once(bytestream_t *, const byterange_t *, testrt_ctx_t *);
+int testrt_run_once(mnbytestream_t *, const byterange_t *, testrt_ctx_t *);
 void testrt_dump_targets(void);
 void testrt_dump_source(rt_struct_t *);
 

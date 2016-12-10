@@ -30,13 +30,13 @@ MEMDEBUG_DECLARE(ltypegen);
 static LLVMTypeRef
 ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 {
-    hash_item_t *dit;
+    mnhash_item_t *dit;
     mrklkit_backend_t *backend;
 
     if ((dit = hash_get_item(&mctx->backends, ty)) == NULL) {
         LLVMContextRef lctx;
         lkit_type_t **field;
-        array_iter_t it;
+        mnarray_iter_t it;
 
 
         if ((backend = malloc(sizeof(mrklkit_backend_t))) == NULL) {
@@ -65,12 +65,12 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
         case LKIT_STR:
             {
                 /*
-                 * bytes_t *
+                 * mnbytes_t *
                  */
 #ifdef DO_MEMDEBUG
                 LLVMTypeRef fields[5];
 
-                assert(sizeof(bytes_t) == 4 * sizeof(uint64_t));
+                assert(sizeof(mnbytes_t) == 4 * sizeof(uint64_t));
                 fields[0] = LLVMInt64TypeInContext(lctx);
                 fields[1] = LLVMInt64TypeInContext(lctx);
                 fields[2] = LLVMInt64TypeInContext(lctx);
@@ -79,13 +79,13 @@ ltype_compile(mrklkit_ctx_t *mctx, lkit_type_t *ty, LLVMModuleRef module)
 #else
                 LLVMTypeRef fields[4];
 
-                assert(sizeof(bytes_t) == 3 * sizeof(uint64_t));
+                assert(sizeof(mnbytes_t) == 3 * sizeof(uint64_t));
                 fields[0] = LLVMInt64TypeInContext(lctx);
                 fields[1] = LLVMInt64TypeInContext(lctx);
                 fields[2] = LLVMInt64TypeInContext(lctx);
                 fields[3] = LLVMArrayType(LLVMInt8TypeInContext(lctx), 0);
 #endif
-                backend->deref = LLVMStructCreateNamed(lctx, "bytes_t");
+                backend->deref = LLVMStructCreateNamed(lctx, "mnbytes_t");
                 LLVMStructSetBody(backend->deref,
                                   fields,
                                   countof(fields),
@@ -281,7 +281,7 @@ ltype_maybe_compile_type(mrklkit_ctx_t *mctx,
 static mrklkit_backend_t *
 ltype_get_backend(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
-    hash_item_t *dit;
+    mnhash_item_t *dit;
 
     if ((dit = hash_get_item(&mctx->backends, ty)) == NULL) {
         FAIL("mrklkit_ctx_get_type_backend");
@@ -343,7 +343,7 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
     case LKIT_STRUCT:
         {
             lkit_struct_t *ts;
-            array_iter_t it;
+            mnarray_iter_t it;
             LLVMBuilderRef b1, b2;
             LLVMValueRef fn1, fn2, cast1, cast2;
             LLVMTypeRef argty;
@@ -528,7 +528,7 @@ ltype_compile_methods(mrklkit_ctx_t *mctx,
     default:
         {
             mrklkit_module_t **mod;
-            array_iter_t it;
+            mnarray_iter_t it;
 
             for (mod = array_first(&mctx->modules, &it);
                  mod != NULL;
@@ -555,7 +555,7 @@ err:
 
 
 static int
-rt_array_bytes_fini(bytes_t **value, UNUSED void *udata)
+rt_array_bytes_fini(mnbytes_t **value, UNUSED void *udata)
 {
     BYTES_DECREF(value);
     return 0;
@@ -587,14 +587,14 @@ rt_array_struct_fini(rt_struct_t **value, UNUSED void *udata)
 
 
 static int
-rt_dict_fini_keyonly(bytes_t *key, UNUSED void *val)
+rt_dict_fini_keyonly(mnbytes_t *key, UNUSED void *val)
 {
     BYTES_DECREF(&key);
     return 0;
 }
 
 static int
-rt_dict_fini_keyval_str(bytes_t *key, bytes_t *val)
+rt_dict_fini_keyval_str(mnbytes_t *key, mnbytes_t *val)
 {
     BYTES_DECREF(&key);
     BYTES_DECREF(&val);
@@ -603,7 +603,7 @@ rt_dict_fini_keyval_str(bytes_t *key, bytes_t *val)
 
 
 static int
-rt_dict_fini_keyval_array(bytes_t *key, rt_array_t *val)
+rt_dict_fini_keyval_array(mnbytes_t *key, rt_array_t *val)
 {
     BYTES_DECREF(&key);
     ARRAY_DECREF(&val);
@@ -612,7 +612,7 @@ rt_dict_fini_keyval_array(bytes_t *key, rt_array_t *val)
 
 
 static int
-rt_dict_fini_keyval_dict(bytes_t *key, rt_dict_t *val)
+rt_dict_fini_keyval_dict(mnbytes_t *key, rt_dict_t *val)
 {
     BYTES_DECREF(&key);
     DICT_DECREF(&val);
@@ -621,7 +621,7 @@ rt_dict_fini_keyval_dict(bytes_t *key, rt_dict_t *val)
 
 
 static int
-rt_dict_fini_keyval_struct(bytes_t *key, rt_struct_t *val)
+rt_dict_fini_keyval_struct(mnbytes_t *key, rt_struct_t *val)
 {
     BYTES_DECREF(&key);
     STRUCT_DECREF(&val);
@@ -654,7 +654,7 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
     case LKIT_STRUCT:
         {
             lkit_type_t **fty;
-            array_iter_t it;
+            mnarray_iter_t it;
             lkit_struct_t *ts;
             void *p = NULL;
             LLVMValueRef g = NULL;
@@ -782,7 +782,7 @@ ltype_link_methods(mrklkit_ctx_t *mctx,
     default:
         {
             mrklkit_module_t **mod;
-            array_iter_t it;
+            mnarray_iter_t it;
 
             for (mod = array_first(&mctx->modules, &it);
                  mod != NULL;
@@ -813,7 +813,7 @@ ltype_unlink_methods(mrklkit_ctx_t *mctx, lkit_type_t *ty)
     case LKIT_STRUCT:
         {
             lkit_type_t **fty;
-            array_iter_t it;
+            mnarray_iter_t it;
             lkit_struct_t *ts;
 
             ts = (lkit_struct_t *)ty;
@@ -844,7 +844,7 @@ ltype_unlink_methods(mrklkit_ctx_t *mctx, lkit_type_t *ty)
     default:
         {
             mrklkit_module_t **mod;
-            array_iter_t it;
+            mnarray_iter_t it;
 
             for (mod = array_first(&mctx->modules, &it);
                  mod != NULL;

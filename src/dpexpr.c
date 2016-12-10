@@ -24,8 +24,8 @@ MEMDEBUG_DECLARE(dpexpr);
 
 
 static int
-parse_dpstr_quals(array_t *form,
-                  array_iter_t *it,
+parse_dpstr_quals(mnarray_t *form,
+                  mnarray_iter_t *it,
                   unsigned char *qual,
                   lkit_dpstr_t *pa)
 {
@@ -58,8 +58,8 @@ parse_dpstr_quals(array_t *form,
 
 
 static int
-parse_dparray_quals(array_t *form,
-                    array_iter_t *it,
+parse_dparray_quals(mnarray_t *form,
+                    mnarray_iter_t *it,
                     unsigned char *qual,
                     lkit_dparray_t *pa)
 {
@@ -107,8 +107,8 @@ parse_dparray_quals(array_t *form,
 
 
 static int
-parse_dpdict_quals(array_t *form,
-                   array_iter_t *it,
+parse_dpdict_quals(mnarray_t *form,
+                   mnarray_iter_t *it,
                    unsigned char *qual,
                    lkit_dpdict_t *pa)
 {
@@ -165,8 +165,8 @@ parse_dpdict_quals(array_t *form,
 
 
 static int
-parse_dpstruct_quals(array_t *form,
-                     array_iter_t *it,
+parse_dpstruct_quals(mnarray_t *form,
+                     mnarray_iter_t *it,
                      unsigned char *qual,
                      lkit_dpstruct_t *pa)
 {
@@ -350,7 +350,7 @@ lkit_dpexpr_new(mrklkit_ctx_t *mctx, int tag)
                        NULL, /* XXX set to NULL manually */
                        (array_finalizer_t)dpexpr_fini_item);
             array_init(&(dps)->names,
-                       sizeof(bytes_t *),
+                       sizeof(mnbytes_t *),
                        0,
                        NULL,
                        NULL);
@@ -374,14 +374,14 @@ parse_fielddef(mrklkit_ctx_t *mctx,
                void *udata,
                int seterror)
 {
-    array_t *form;
-    array_iter_t it;
-    bytes_t **name0, **name1;
+    mnarray_t *form;
+    mnarray_iter_t it;
+    mnbytes_t **name0, **name1;
     lkit_type_t **fty;
     lkit_dpexpr_t **fpa;
     fparser_datum_t **node;
 
-    form = (array_t *)dat->body;
+    form = (mnarray_t *)dat->body;
 
     if ((name0 = array_incr(&dps->names)) == NULL) {
         FAIL("array_incr");
@@ -427,9 +427,9 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
 {
     lkit_dpexpr_t *res;
     fparser_tag_t tag;
-    array_t *form;
-    array_iter_t it;
-    bytes_t *b;
+    mnarray_t *form;
+    mnarray_iter_t it;
+    mnbytes_t *b;
     char *pname;
 
     res = NULL;
@@ -439,11 +439,11 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
 
     switch (tag) {
     case FPARSER_WORD:
-        b = (bytes_t *)(dat->body);
+        b = (mnbytes_t *)(dat->body);
         break;
 
     case FPARSER_SEQ:
-        form = (array_t *)dat->body;
+        form = (mnarray_t *)dat->body;
         if (lparse_first_word_bytes(form, &it, &b, seterror) != 0) {
             TR(LKIT_DPEXPR_PARSE + 1);
             goto err;
@@ -590,7 +590,7 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
             lkit_dpstruct_t *dps;
             lkit_struct_t *ts;
             fparser_datum_t **node;
-            array_t *custom_fields;
+            mnarray_t *custom_fields;
 
             dps = (lkit_dpstruct_t *)lkit_dpexpr_new(mctx, LKIT_STRUCT);
             res = (lkit_dpexpr_t *)dps;
@@ -635,15 +635,15 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
             custom_fields = udata;
 
             if (custom_fields != NULL && custom_fields->elnum > 0) {
-                array_iter_t it0;
-                bytes_t **cname;
+                mnarray_iter_t it0;
+                mnbytes_t **cname;
 
                 for (cname = array_first(custom_fields, &it0);
                      cname != NULL;
                      cname = array_next(custom_fields, &it0)) {
 
-                    array_iter_t it1;
-                    bytes_t **fname0;
+                    mnarray_iter_t it1;
+                    mnbytes_t **fname0;
 
                     it1 = it0;
                     for (fname0 = array_get_iter(&ts->names, &it1);
@@ -654,7 +654,7 @@ lkit_dpexpr_parse(mrklkit_ctx_t *mctx,
                             assert(it0.iter <= it1.iter);
 
                             if (it0.iter < it1.iter) {
-                                bytes_t **fname1, *tmp;
+                                mnbytes_t **fname1, *tmp;
                                 lkit_type_t **fty0, **fty1, *ftmp;
                                 lkit_dpexpr_t **dpa0, **dpa1, *dpatmp;
                                 /*
@@ -773,10 +773,10 @@ lkit_dparray_get_element_parser(lkit_dparray_t *dpa)
 
 
 lkit_dpexpr_t *
-lkit_dpexpr_find(mrklkit_ctx_t *mctx, bytes_t *name, void *udata)
+lkit_dpexpr_find(mrklkit_ctx_t *mctx, mnbytes_t *name, void *udata)
 {
     mrklkit_module_t **mod;
-    array_iter_t it;
+    mnarray_iter_t it;
     lkit_dpexpr_t *res;
 
     res = NULL;

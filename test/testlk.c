@@ -46,7 +46,7 @@ test1(void)
 {
     int fd;
     int res;
-    bytestream_t bs;
+    mnbytestream_t bs;
     size_t nlines = 0;
     size_t nbytes = 0;
 

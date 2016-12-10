@@ -28,7 +28,7 @@ MEMDEBUG_DECLARE(builtingen);
 static LLVMValueRef
 find_named_global(lkit_cexpr_t *ectx,
                   LLVMModuleRef module,
-                  bytes_t *name, bytes_t **qual_name)
+                  mnbytes_t *name, mnbytes_t **qual_name)
 {
     LLVMValueRef ref = NULL;
 
@@ -49,7 +49,7 @@ find_named_global(lkit_cexpr_t *ectx,
 static LLVMValueRef
 find_named_function(lkit_cexpr_t *ectx,
                     LLVMModuleRef module,
-                    bytes_t *name, bytes_t **qual_name)
+                    mnbytes_t *name, mnbytes_t **qual_name)
 {
     LLVMValueRef ref = NULL;
 
@@ -393,7 +393,7 @@ compile_cmp(mrklkit_ctx_t *mctx,
             void *udata)
 {
     lkit_expr_t **a, **b;
-    array_iter_t it;
+    mnarray_iter_t it;
 
     a = array_first(&expr->subs, &it);
     b = array_next(&expr->subs, &it);
@@ -607,14 +607,14 @@ lkit_compile_get(mrklkit_ctx_t *mctx,
 
             if ((idx = lkit_struct_get_field_index(
                         (lkit_struct_t *)cty,
-                        (bytes_t *)(*key)->value.literal->body)) == -1) {
+                        (mnbytes_t *)(*key)->value.literal->body)) == -1) {
                 TR(COMPILE_GET + 300);
                 goto err;
             }
 
             if ((fty = lkit_struct_get_field_type(
                         (lkit_struct_t *)cty,
-                        (bytes_t *)(*key)->value.literal->body)) == NULL) {
+                        (mnbytes_t *)(*key)->value.literal->body)) == NULL) {
                 TR(COMPILE_GET + 301);
                 goto err;
             }
@@ -871,14 +871,14 @@ lkit_compile_set(mrklkit_ctx_t *mctx,
 
             if ((idx = lkit_struct_get_field_index(
                         (lkit_struct_t *)(*cont)->type,
-                        (bytes_t *)(*arg)->value.literal->body)) == -1) {
+                        (mnbytes_t *)(*arg)->value.literal->body)) == -1) {
                 TR(COMPILE_SET + 100);
                 goto err;
             }
 
             if ((fty = lkit_struct_get_field_type(
                         (lkit_struct_t *)(*cont)->type,
-                        (bytes_t *)(*arg)->value.literal->body)) == NULL) {
+                        (mnbytes_t *)(*arg)->value.literal->body)) == NULL) {
                 TR(COMPILE_SET + 101);
                 goto err;
             }
@@ -1037,14 +1037,14 @@ lkit_compile_del(mrklkit_ctx_t *mctx,
 
             if ((idx = lkit_struct_get_field_index(
                         (lkit_struct_t *)(*cont)->type,
-                        (bytes_t *)(*arg)->value.literal->body)) == -1) {
+                        (mnbytes_t *)(*arg)->value.literal->body)) == -1) {
                 TR(COMPILE_DEL + 100);
                 goto err;
             }
 
             if ((fty = lkit_struct_get_field_type(
                         (lkit_struct_t *)(*cont)->type,
-                        (bytes_t *)(*arg)->value.literal->body)) == NULL) {
+                        (mnbytes_t *)(*arg)->value.literal->body)) == NULL) {
                 TR(COMPILE_DEL + 101);
                 goto err;
             }
@@ -1179,13 +1179,13 @@ lkit_compile_parse(mrklkit_ctx_t *mctx,
 
     ts = (lkit_struct_t *)LKIT_PARSER_GET_TYPE((*cont)->type);
     if ((idx = lkit_struct_get_field_index(ts,
-                (bytes_t *)(*key)->value.literal->body)) == -1) {
+                (mnbytes_t *)(*key)->value.literal->body)) == -1) {
         TR(COMPILE_PARSE + 3);
         goto err;
     }
 
     if ((fty = lkit_struct_get_field_type(ts,
-                (bytes_t *)(*key)->value.literal->body)) == NULL) {
+                (mnbytes_t *)(*key)->value.literal->body)) == NULL) {
         TR(COMPILE_PARSE + 4);
         goto err;
     }
@@ -1246,7 +1246,7 @@ compile_str_join(mrklkit_ctx_t *mctx,
 {
     size_t i;
     lkit_expr_t **arg;
-    array_iter_t it;
+    mnarray_iter_t it;
     LLVMValueRef v = NULL;
     UNUSED LLVMValueRef sz;
     LLVMValueRef tmp, accum, bnfn, bcfn;
@@ -1372,7 +1372,7 @@ compile_function(mrklkit_ctx_t *mctx,
                strcmp(name, "then") == 0 ||
                strcmp(name, "else") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym , (func undef undef ...))
         for (arg = array_first(&expr->subs, &it);
@@ -1401,7 +1401,7 @@ compile_function(mrklkit_ctx_t *mctx,
             FAIL("LLVMGetNamedFunction");
         } else {
             lkit_expr_t **arg;
-            array_iter_t it;
+            mnarray_iter_t it;
 
             for (arg = array_first(&expr->subs, &it);
                  arg != NULL;
@@ -1441,7 +1441,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                                        "%s ",
                                                        NEWVAR("printf.fmt"));
                     /*
-                     * bytes_t *
+                     * mnbytes_t *
                      */
                     {
                         char *n;
@@ -1483,7 +1483,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "+") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym + (func undef undef ...))
         if (expr->type->tag == LKIT_INT ||
@@ -1552,7 +1552,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "-") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym - (func undef undef ...))
         /*
@@ -1621,7 +1621,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "/") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym / (func undef undef ...))
         arg = array_first(&expr->subs, &it);
@@ -1704,7 +1704,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "*") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym * (func undef undef ...))
         if (expr->type->tag == LKIT_INT ||
@@ -1765,7 +1765,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "%") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym % (func undef undef ...))
         arg = array_first(&expr->subs, &it);
@@ -1850,7 +1850,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "min") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym min (func undef undef ...))
         arg = array_first(&expr->subs, &it);
@@ -1955,7 +1955,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "max") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym max (func undef undef ...))
         arg = array_first(&expr->subs, &it);
@@ -2038,7 +2038,7 @@ compile_function(mrklkit_ctx_t *mctx,
                                        testopcode,                             \
                                        buildop)                                \
         lkit_expr_t **arg;                                                     \
-        array_iter_t it;                                                       \
+        mnarray_iter_t it;                                                       \
         LLVMValueRef parent, zero, phi;                                        \
         LLVMBasicBlockRef currblock, nextblock, endblock;                      \
         zero = LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0);                \
@@ -2112,7 +2112,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "not") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym not (func bool bool))
         arg = array_first(&expr->subs, &it);
@@ -2195,7 +2195,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
 #define MRKLKIT_BUILTINGEN_INTRINSIC_BODY1(n, t, m)                            \
         lkit_expr_t **arg;                                                     \
-        array_iter_t it;                                                       \
+        mnarray_iter_t it;                                                       \
         LLVMValueRef fn, args[1];                                              \
         if ((fn = LLVMGetNamedFunction(module, "llvm." n "." t)) == NULL) {    \
             FAIL("LLVMGetNamedFunction");                                      \
@@ -2215,7 +2215,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
 #define MRKLKIT_BUILTINGEN_INTRINSIC_BODY2(n, t, m)                            \
         lkit_expr_t **arg;                                                     \
-        array_iter_t it;                                                       \
+        mnarray_iter_t it;                                                       \
         LLVMValueRef fn, args[2];                                              \
         if ((fn = LLVMGetNamedFunction(module, "llvm." n "." t)) == NULL) {    \
             FAIL("LLVMGetNamedFunction");                                      \
@@ -2275,7 +2275,7 @@ compile_function(mrklkit_ctx_t *mctx,
                strcmp(name, "float") == 0 /* compat */
               ) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym itof (func float int))
         arg = array_first(&expr->subs, &it);
@@ -2298,7 +2298,7 @@ compile_function(mrklkit_ctx_t *mctx,
                strcmp(name, "int") == 0 /* compat */
               ) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym ftoi (func int float))
         arg = array_first(&expr->subs, &it);
@@ -2460,7 +2460,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name, "itob") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym itob (func bool int))
         arg = array_first(&expr->subs, &it);
@@ -2482,7 +2482,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name, "btoi") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         //(sym btoi (func int bool))
         arg = array_first(&expr->subs, &it);
@@ -2573,7 +2573,7 @@ compile_function(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name , "tostr") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
         LLVMValueRef fn, fnarg;
         char *mpsuffix;
         char buf[1024];
@@ -2642,7 +2642,7 @@ tostr_done:
             v = LLVMConstInt(LLVMInt1TypeInContext(lctx), 0, 0);
         } else {
             lkit_expr_t **subj, **obj;
-            array_iter_t it;
+            mnarray_iter_t it;
             LLVMBasicBlockRef currblock, nextblock, endblock;
             LLVMValueRef tmp;
 
@@ -3018,7 +3018,7 @@ tostr_done:
 
     } else if (strcmp(name, "dp-info") == 0) {
         lkit_expr_t **cont, **opt;
-        bytes_t *optname;
+        mnbytes_t *optname;
         LLVMValueRef fn, args[1];
 
         //(sym dp-info (func undef undef str))
@@ -3052,7 +3052,7 @@ tostr_done:
 
         /* constant str */
         assert(!(*opt)->isref);
-        optname = (bytes_t *)(*opt)->value.literal->body;
+        optname = (mnbytes_t *)(*opt)->value.literal->body;
 
         if (strcmp((char *)optname->data, "pos") == 0) {
             if ((fn = LLVMGetNamedFunction(
@@ -3089,7 +3089,7 @@ tostr_done:
         lkit_expr_t **arg;
         lkit_type_t *ty;
         LLVMValueRef fn, args[2];
-        bytes_t *typename;
+        mnbytes_t *typename;
         lkit_dpexpr_t *pa;
         char buf[1024];
         char *mpsuffix;
@@ -3365,7 +3365,7 @@ tostr_done:
     } else if (strcmp(name, "addrof") == 0) {
         lkit_expr_t **arg;
         LLVMValueRef ref;
-        bytes_t *qual_name;
+        mnbytes_t *qual_name;
 
         arg = array_get(&expr->subs, 0);
         assert(arg != NULL);
@@ -3461,7 +3461,7 @@ tostr_done:
 
     } else {
         mrklkit_module_t **mod;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         for (mod = array_first(&mctx->modules, &it);
              mod != NULL;
@@ -3538,7 +3538,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
                     } else {
                         lkit_expr_t **rand;
-                        array_iter_t it;
+                        mnarray_iter_t it;
                         LLVMValueRef *args = NULL;
                         lkit_func_t *tf = (lkit_func_t *)expr->value.ref->type;
                         lkit_type_t **vaty;
@@ -3651,7 +3651,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
                         v = LLVMGetParam(fn, expr->value.ref->fparam_idx);
 
                     } else {
-                        bytes_t *qual_name = NULL;
+                        mnbytes_t *qual_name = NULL;
 
                         ref = find_named_global(ectx,
                                                 module,
@@ -3783,12 +3783,12 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 
             case LKIT_STR:
                 {
-                    bytes_t *b;
+                    mnbytes_t *b;
 #ifdef DO_MEMDEBUG
                     LLVMValueRef binit[5], vv;
 
-                    assert(sizeof(bytes_t) == 4 * sizeof(uint64_t));
-                    b = (bytes_t *)expr->value.literal->body;
+                    assert(sizeof(mnbytes_t) == 4 * sizeof(uint64_t));
+                    b = (mnbytes_t *)expr->value.literal->body;
                     binit[0] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
                                             0x0, 0);
                     binit[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
@@ -3804,8 +3804,8 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
 #else
                     LLVMValueRef binit[4], vv;
 
-                    assert(sizeof(bytes_t) == 3 * sizeof(uint64_t));
-                    b = (bytes_t *)expr->value.literal->body;
+                    assert(sizeof(mnbytes_t) == 3 * sizeof(uint64_t));
+                    b = (mnbytes_t *)expr->value.literal->body;
                     binit[0] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
                                             0xdada, 0);
                     binit[1] = LLVMConstInt(LLVMInt64TypeInContext(lctx),
@@ -3856,7 +3856,7 @@ lkit_compile_expr(mrklkit_ctx_t *mctx,
             }
         } else {
             lkit_expr_t **psub;
-            array_iter_t it;
+            mnarray_iter_t it;
 
             for (psub = array_first(&expr->subs, &it);
                  psub != NULL;
@@ -3888,7 +3888,7 @@ static int
 compile_dynamic_initializer(mrklkit_ctx_t *mctx,
                             lkit_cexpr_t *ectx,
                             LLVMModuleRef module,
-                            bytes_t *name,
+                            mnbytes_t *name,
                             lkit_expr_t *expr,
                             void *udata)
 {
@@ -4025,7 +4025,7 @@ compile_dynamic_initializer(mrklkit_ctx_t *mctx,
 static int
 call_eager_initializer(lkit_gitem_t **gitem, void *udata)
 {
-    bytes_t *name = (*gitem)->name;
+    mnbytes_t *name = (*gitem)->name;
     lkit_expr_t *expr = (*gitem)->expr;
     struct {
         LLVMModuleRef module;
@@ -4060,7 +4060,7 @@ call_eager_initializer(lkit_gitem_t **gitem, void *udata)
 static int
 call_finalizer(lkit_gitem_t **gitem, void *udata)
 {
-    bytes_t *name = (*gitem)->name;
+    mnbytes_t *name = (*gitem)->name;
     lkit_expr_t *expr = (*gitem)->expr;
     struct {
         lkit_cexpr_t *ectx;
@@ -4097,7 +4097,7 @@ call_finalizer(lkit_gitem_t **gitem, void *udata)
 
 
         if (expr->mpolicy != LKIT_MPMPOOL && expr->type->tag != LKIT_VOID) {
-            bytes_t *qual_name;
+            mnbytes_t *qual_name;
 
             qual_name = NULL;
             v = find_named_global(params->ectx,
@@ -4159,7 +4159,7 @@ _compile(lkit_gitem_t **gitem, void *udata)
         LLVMModuleRef module;
         void *udata;
     } *params = udata;
-    bytes_t *name = (*gitem)->name;
+    mnbytes_t *name = (*gitem)->name;
     lkit_expr_t *expr = (*gitem)->expr;
 
     if (expr->isbuiltin) {
@@ -4209,7 +4209,7 @@ _compile(lkit_gitem_t **gitem, void *udata)
                 /* and definition */
                 if (expr->subs.elnum) {
                     lkit_expr_t **body;
-                    bytes_t *s;
+                    mnbytes_t *s;
                     mrklkit_modaux_t *modaux;
                     char *error_msg;
                     LLVMContextRef lctx;
@@ -4228,7 +4228,7 @@ _compile(lkit_gitem_t **gitem, void *udata)
                             FAIL("array_incr");
                         }
 
-                        s = (bytes_t *)((*body)->value.literal->body);
+                        s = (mnbytes_t *)((*body)->value.literal->body);
                         //D8(s->data, s->sz);
 
                         if ((modaux->buf =
@@ -4252,7 +4252,7 @@ _compile(lkit_gitem_t **gitem, void *udata)
                         LLVMBuilderRef builder;
                         LLVMBasicBlockRef bb;
                         LLVMValueRef v = NULL;
-                        array_iter_t it;
+                        mnarray_iter_t it;
 
                         builder = LLVMCreateBuilderInContext(lctx);
                         bb = LLVMAppendBasicBlockInContext(lctx,

@@ -21,9 +21,9 @@ struct _lkit_expr;
 typedef struct _lkit_expr {
     struct _lkit_type *type;
     /* weakref */
-    bytes_t *name;
+    mnbytes_t *name;
     /* weakref */
-    bytes_t *title;
+    mnbytes_t *title;
     union {
         fparser_datum_t *literal;   /* !isref */
         struct _lkit_expr *ref;     /*  isref */
@@ -32,7 +32,7 @@ typedef struct _lkit_expr {
     /*
      * strongref lkit_expr_t *
      */
-    array_t subs;
+    mnarray_t subs;
 
     /* applies if (fparam == 1) */
     char fparam_idx;
@@ -57,7 +57,7 @@ typedef struct _lkit_expr {
  */
 typedef struct _lkit_gitem {
     /* strongref */
-    bytes_t *name;
+    mnbytes_t *name;
     /* weakref */
     struct _lkit_expr *expr;
 } lkit_gitem_t;
@@ -72,11 +72,11 @@ typedef struct _lkit_cexpr {
      * glist defines order of ctx's items
      * lkit_gitem_t strongref
      */
-    array_t glist;
+    mnarray_t glist;
     /*
-     * weakref bytes_t *, weakref lkit_expr_t *
+     * weakref mnbytes_t *, weakref lkit_expr_t *
      */
-    hash_t ctx;
+    mnhash_t ctx;
 } lkit_cexpr_t;
 
 #define LKIT_EXPR_PARSE_FIXTURE_TRYAGAIN (-2)
@@ -111,21 +111,21 @@ int lkit_expr_parse2(mrklkit_ctx_t *,
                      lkit_expr_t **,
                      lkit_expr_parse_fixture_t,
                      void *);
-lkit_expr_t *lkit_expr_find(lkit_cexpr_t *, bytes_t *);
+lkit_expr_t *lkit_expr_find(lkit_cexpr_t *, mnbytes_t *);
 void lkit_expr_set_referenced(lkit_expr_t *);
 int lkit_parse_exprdef(lkit_expr_t *,
-                       array_t *,
-                       array_iter_t *,
+                       mnarray_t *,
+                       mnarray_iter_t *,
                        void *);
 
 void lexpr_init_ctx(lkit_cexpr_t *);
-void lexpr_add_to_ctx(lkit_cexpr_t *, bytes_t *, lkit_expr_t *);
+void lexpr_add_to_ctx(lkit_cexpr_t *, mnbytes_t *, lkit_expr_t *);
 
 lkit_expr_t *lkit_expr_new(void);
 lkit_cexpr_t *lkit_cexpr_new(lkit_cexpr_t *);
 lkit_expr_t *lkit_expr_build_literal(mrklkit_ctx_t *,
                                      fparser_datum_t *);
-lkit_expr_t *lkit_expr_build_ref(lkit_cexpr_t *, bytes_t *);
+lkit_expr_t *lkit_expr_build_ref(lkit_cexpr_t *, mnbytes_t *);
 lkit_expr_t *lkit_expr_add_sub(lkit_expr_t *, lkit_expr_t *);
 struct _lkit_type *lkit_expr_type_of(lkit_expr_t *);
 void lkit_expr_init(lkit_expr_t *);
@@ -133,7 +133,7 @@ void lkit_expr_fini(lkit_expr_t *);
 int lkit_expr_destroy(lkit_expr_t **);
 void lkit_cexpr_init(lkit_cexpr_t *, lkit_cexpr_t *);
 void lkit_cexpr_fini(lkit_cexpr_t *);
-bytes_t *lkit_cexpr_qual_name(lkit_cexpr_t *, bytes_t *);
+mnbytes_t *lkit_cexpr_qual_name(lkit_cexpr_t *, mnbytes_t *);
 int lkit_expr_is_constant(lkit_expr_t *);
 void lexpr_init(void);
 void lexpr_fini(void);

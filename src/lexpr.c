@@ -24,13 +24,13 @@
 MEMDEBUG_DECLARE(lexpr);
 #endif
 
-static void lexpr_dump(bytestream_t *, lkit_expr_t *, int);
+static void lexpr_dump(mnbytestream_t *, lkit_expr_t *, int);
 
 
-bytes_t *
-lkit_cexpr_qual_name(lkit_cexpr_t *ectx, bytes_t *name)
+mnbytes_t *
+lkit_cexpr_qual_name(lkit_cexpr_t *ectx, mnbytes_t *name)
 {
-    bytes_t *res;
+    mnbytes_t *res;
 
     if (ectx->base.name != NULL) {
         res = bytes_printf("%s::%s", ectx->base.name->data, name->data);
@@ -54,7 +54,7 @@ lkit_expr_is_constant(lkit_expr_t *expr)
 
 
 static void
-lexpr_dump_flags(bytestream_t *bs, lkit_expr_t *expr)
+lexpr_dump_flags(mnbytestream_t *bs, lkit_expr_t *expr)
 {
     if (expr->isctx) {
         bytestream_cat(bs, 1, "c");
@@ -94,7 +94,7 @@ lexpr_dump_flags(bytestream_t *bs, lkit_expr_t *expr)
 
 
 static void
-lexpr_dump(bytestream_t *bs, lkit_expr_t *expr, int level)
+lexpr_dump(mnbytestream_t *bs, lkit_expr_t *expr, int level)
 {
     char fmt[32];
 
@@ -162,7 +162,7 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr, int level)
 
     if (expr->subs.elnum > 0) {
         lkit_expr_t **subexpr;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         bytestream_nprintf(bs, 32, fmt, ' ');
 
@@ -183,7 +183,7 @@ lexpr_dump(bytestream_t *bs, lkit_expr_t *expr, int level)
 int
 lkit_expr_dump(lkit_expr_t *expr)
 {
-    bytestream_t bs;
+    mnbytestream_t bs;
 
     bytestream_init(&bs, 4096);
     lexpr_dump(&bs, expr, 0);
@@ -195,7 +195,7 @@ lkit_expr_dump(lkit_expr_t *expr)
 }
 
 static uint64_t
-lkit_expr_hash(bytes_t *key)
+lkit_expr_hash(mnbytes_t *key)
 {
     /* this check is not in bytes_hash() */
     if (key == NULL) {
@@ -205,7 +205,7 @@ lkit_expr_hash(bytes_t *key)
 }
 
 static int
-lkit_expr_cmp(bytes_t *a, bytes_t *b)
+lkit_expr_cmp(mnbytes_t *a, mnbytes_t *b)
 {
     int64_t diff;
     uint64_t ha, hb;
@@ -249,9 +249,9 @@ lkit_expr_type_of(lkit_expr_t *expr)
 
 
 lkit_expr_t *
-lkit_expr_find(lkit_cexpr_t *ectx, bytes_t *name)
+lkit_expr_find(lkit_cexpr_t *ectx, mnbytes_t *name)
 {
-    hash_item_t *dit;
+    mnhash_item_t *dit;
     lkit_cexpr_t *cctx;
 
     for (cctx = ectx; cctx!= NULL; cctx = cctx->parent) {
@@ -270,7 +270,7 @@ void
 lkit_expr_set_referenced(lkit_expr_t *expr)
 {
     lkit_expr_t **pexpr;
-    array_iter_t it;
+    mnarray_iter_t it;
 
     for (pexpr = array_first(&expr->subs, &it);
          pexpr != NULL;
@@ -432,7 +432,7 @@ lkit_cexpr_new(lkit_cexpr_t *pectx)
 
 
 lkit_expr_t *
-lkit_expr_build_ref(lkit_cexpr_t *ectx, bytes_t *name)
+lkit_expr_build_ref(lkit_cexpr_t *ectx, mnbytes_t *name)
 {
     lkit_expr_t *expr;
 
@@ -526,7 +526,7 @@ lkit_expr_init(lkit_expr_t *expr)
 
 
 void
-lexpr_add_to_ctx(lkit_cexpr_t *ectx, bytes_t *name, lkit_expr_t *expr)
+lexpr_add_to_ctx(lkit_cexpr_t *ectx, mnbytes_t *name, lkit_expr_t *expr)
 {
     lkit_gitem_t **gitem;
 
@@ -540,8 +540,8 @@ lexpr_add_to_ctx(lkit_cexpr_t *ectx, bytes_t *name, lkit_expr_t *expr)
 
 
 static int
-parse_expr_quals(array_t *form,
-                 array_iter_t *it,
+parse_expr_quals(mnarray_t *form,
+                 mnarray_iter_t *it,
                  unsigned char *qual,
                  lkit_expr_t *expr)
 {
@@ -652,7 +652,7 @@ _lkit_expr_parse(mrklkit_ctx_t *mctx,
              * must be exprref
              */
             expr = lkit_expr_new();
-            expr->name = (bytes_t *)(dat->body);
+            expr->name = (mnbytes_t *)(dat->body);
             if ((expr->value.ref = lkit_expr_find(
                             ectx, expr->name)) == NULL) {
                 int idx;
@@ -716,13 +716,13 @@ done1:
         case FPARSER_SEQ:
             {
                 lkit_type_t **paramtype = NULL;
-                array_t *form;
-                array_iter_t it;
+                mnarray_t *form;
+                mnarray_iter_t it;
                 fparser_datum_t **node;
                 fparser_tag_t tag;
 
                 expr = lkit_expr_new();
-                form = (array_t *)(dat->body);
+                form = (mnarray_t *)(dat->body);
                 if ((node = array_first(form, &it)) == NULL) {
                     TR(LKIT_EXPR_PARSE + 2);
                     goto err;

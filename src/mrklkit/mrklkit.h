@@ -40,24 +40,24 @@ typedef struct _mrklkit_ctx {
     /*
      * lkit_type_t *, lkit_type_t *
      */
-    hash_t types;
-    array_t builtin_types;
+    mnhash_t types;
+    mnarray_t builtin_types;
     /*
-     * bytes_t *, lkit_type_t *
+     * mnbytes_t *, lkit_type_t *
      */
-    hash_t typedefs;
+    mnhash_t typedefs;
 
-    array_t modules;
+    mnarray_t modules;
 
     /*
      * program
      */
     /* weakref lkit_type_t*, strongref mrklkit_backend_t* */
-    hash_t backends;
+    mnhash_t backends;
     LLVMContextRef lctx;
     LLVMModuleRef module;
     /* mrklkit_modaux_t */
-    array_t modaux;
+    mnarray_t modaux;
     LLVMExecutionEngineRef ee;
 
     lkit_mpolicy_t dparse_mpolicy;

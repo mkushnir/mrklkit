@@ -35,7 +35,7 @@ do {                                   \
 } while (0)                            \
 
 
-static bytes_t _copy = BYTES_INITIALIZER("copy");
+static mnbytes_t _copy = BYTES_INITIALIZER("copy");
 
 /*
  * (keyword name value)
@@ -43,12 +43,12 @@ static bytes_t _copy = BYTES_INITIALIZER("copy");
 int
 builtin_parse_exprdef(mrklkit_ctx_t *mctx,
                      lkit_cexpr_t *ectx,
-                     array_t *form,
-                     array_iter_t *it,
+                     mnarray_t *form,
+                     mnarray_iter_t *it,
                      int flags)
 {
     int res = 0;
-    bytes_t *name = NULL;
+    mnbytes_t *name = NULL;
     lkit_expr_t **pexpr = NULL;
     fparser_datum_t **node = NULL;
 
@@ -87,7 +87,7 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
     if ((node = array_next(form, it)) != NULL) {
         lkit_cexpr_t *cexpr;
         lkit_type_t **pargty;
-        array_iter_t it;
+        mnarray_iter_t it;
         lkit_func_t *ft;
         lkit_expr_t **body;
 
@@ -124,7 +124,7 @@ builtin_parse_exprdef(mrklkit_ctx_t *mctx,
         for (pargty = array_next(&ft->fields, &it);
              pargty != NULL;
              pargty = array_next(&ft->fields, &it)) {
-            bytes_t **pargname;
+            mnbytes_t **pargname;
             lkit_expr_t **parg;
 
             if ((parg = array_incr(&(*pexpr)->subs)) == NULL) {
@@ -196,7 +196,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
 {
     char *name;
     lkit_expr_t **psub;
-    array_iter_t it;
+    mnarray_iter_t it;
 
     if (expr->undef_removed) {
         return 0;
@@ -259,7 +259,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
                strcmp(name, "then") == 0 ||
                strcmp(name, "else") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         if ((arg = array_last(&expr->subs, &it)) != NULL) {
             expr->type = (*arg)->type;
@@ -268,7 +268,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name, "print") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         /*
          * (sym print (func undef ...))
@@ -293,7 +293,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
                strcmp(name, "max") == 0) {
 
         lkit_expr_t **aarg, **barg;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         /*
          * (sym +|*|%|-|/ (func undef undef ...))
@@ -338,7 +338,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
             {
                 lkit_struct_t *ts = (lkit_struct_t *)ty;
                 lkit_expr_t **name;
-                bytes_t *bname;
+                mnbytes_t *bname;
                 lkit_type_t *elty;
 
                 name = array_get(&expr->subs, 1);
@@ -354,7 +354,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
                     TRRET(REMOVE_UNDEF + 51);
                 }
 
-                bname = (bytes_t *)(*name)->value.literal->body;
+                bname = (mnbytes_t *)(*name)->value.literal->body;
                 //TRACE("bname=%s ts=%p", bname->data, ts);
                 if ((elty =
                         lkit_struct_get_field_type(ts, bname)) == NULL) {
@@ -441,7 +441,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
             {
                 lkit_parser_t *tp = (lkit_parser_t *)ty;
                 lkit_expr_t **name;
-                bytes_t *bname;
+                mnbytes_t *bname;
                 lkit_type_t *pty, *elty;
 
                 name = array_get(&expr->subs, 1);
@@ -459,7 +459,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
                     TRRET(REMOVE_UNDEF + 59);
                 }
 
-                bname = (bytes_t *)(*name)->value.literal->body;
+                bname = (mnbytes_t *)(*name)->value.literal->body;
 
                 switch (pty->tag) {
                 case LKIT_ARRAY:
@@ -575,7 +575,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
             {
                 lkit_struct_t *ts = (lkit_struct_t *)ty;
                 lkit_expr_t **name;
-                bytes_t *bname;
+                mnbytes_t *bname;
 
                 name = array_get(&expr->subs, 1);
                 assert(name != NULL);
@@ -588,7 +588,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
                     TRRET(REMOVE_UNDEF + 81);
                 }
 
-                bname = (bytes_t *)(*name)->value.literal->body;
+                bname = (mnbytes_t *)(*name)->value.literal->body;
                 if ((elty =
                         lkit_struct_get_field_type(ts, bname)) == NULL) {
                     (*cont)->error = 1;
@@ -758,7 +758,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name, "parse") == 0) {
         lkit_expr_t **cont, **name;
-        bytes_t *bname;
+        mnbytes_t *bname;
         lkit_parser_t *tp;
         lkit_struct_t *ts;
         lkit_type_t *elty;
@@ -794,7 +794,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
             TRRET(REMOVE_UNDEF + 283);
         }
 
-        bname = (bytes_t *)(*name)->value.literal->body;
+        bname = (mnbytes_t *)(*name)->value.literal->body;
         if ((elty = lkit_struct_get_field_type(ts, bname)) == NULL) {
             (*cont)->error = 1;
             TRACE("problem name: %s", bname->data);
@@ -817,7 +817,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
             TRRET(REMOVE_UNDEF + 111);
         } else {
             lkit_expr_t **opt;
-            bytes_t *optname;
+            mnbytes_t *optname;
 
             if ((opt = array_get(&expr->subs, 1)) == NULL) {
                 expr->error = 1;
@@ -832,7 +832,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
                 TRRET(REMOVE_UNDEF + 113);
             }
 
-            optname = (bytes_t *)(*opt)->value.literal->body;
+            optname = (mnbytes_t *)(*opt)->value.literal->body;
             if (strcmp((char *)optname->data, "pos") == 0) {
                 expr->type = lkit_type_get(mctx, LKIT_INT);
 
@@ -859,7 +859,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
                strcmp(name, "or") == 0) {
 
         lkit_expr_t **a, **b;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         a = array_first(&expr->subs, &it);
         assert(a != NULL);
@@ -935,7 +935,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
 
     } else if (strcmp(name, "in") == 0) {
         lkit_expr_t **arg;
-        array_iter_t it;
+        mnarray_iter_t it;
         lkit_type_t *ty;
 
         ty = NULL;
@@ -1168,7 +1168,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
 
     if (expr->type->tag == LKIT_UNDEF) {
         mrklkit_module_t **mod;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         for (mod = array_first(&mctx->modules, &it);
              mod != NULL;
@@ -1187,7 +1187,7 @@ builtin_remove_undef(mrklkit_ctx_t *mctx,
      */
     if (expr->isref && expr->value.ref->type->tag == LKIT_FUNC) {
         lkit_func_t *tf = NULL;
-        array_iter_t it;
+        mnarray_iter_t it;
         lkit_expr_t **psub;
 
         tf = (lkit_func_t *)(expr->value.ref->type);

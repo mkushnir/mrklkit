@@ -293,8 +293,8 @@ int
 mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata, fparser_datum_t **datum_root)
 {
     int res = 0;
-    array_t *form;
-    array_iter_t it;
+    mnarray_t *form;
+    mnarray_iter_t it;
     fparser_datum_t **fnode;
 
     if ((*datum_root = fparser_parse(fd, NULL, NULL)) == NULL) {
@@ -307,7 +307,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata, fparser_datum_t **datum_r
         goto err;
     }
 
-    form = (array_t *)(*datum_root)->body;
+    form = (mnarray_t *)(*datum_root)->body;
     for (fnode = array_first(form, &it);
          fnode != NULL;
          fnode = array_next(form, &it)) {
@@ -315,12 +315,12 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata, fparser_datum_t **datum_r
 
         /* here tag can be either SEQ, or one of INT, WORD, FLOAT */
         switch (FPARSER_DATUM_TAG(*fnode)) {
-            array_t *nform;
-            array_iter_t nit;
+            mnarray_t *nform;
+            mnarray_iter_t nit;
             char *first = NULL;
 
         case FPARSER_SEQ:
-            nform = (array_t *)((*fnode)->body);
+            nform = (mnarray_t *)((*fnode)->body);
 
             if (lparse_first_word(nform, &nit, &first, 1) == 0) {
                 /*
@@ -341,7 +341,7 @@ mrklkit_parse(mrklkit_ctx_t *ctx, int fd, void *udata, fparser_datum_t **datum_r
 
                 } else {
                     mrklkit_module_t **mod;
-                    array_iter_t it;
+                    mnarray_iter_t it;
 
                     /*
                      * required:
@@ -458,7 +458,7 @@ mrklkit_compile(mrklkit_ctx_t *ctx, int fd, uint64_t flags, void *udata)
     LLVMTargetMachineRef tmr;
     LLVMMemoryBufferRef mb = NULL;
     mrklkit_module_t **mod;
-    array_iter_t it;
+    mnarray_iter_t it;
     mrklkit_modaux_t *modaux;
 
     PROFILE_START(parse_p);
@@ -594,7 +594,7 @@ mrklkit_compile_incomplete(mrklkit_ctx_t *ctx,
                            void *udata)
 {
     mrklkit_module_t **mod;
-    array_iter_t it;
+    mnarray_iter_t it;
 
     PROFILE_START(parse_p);
     /* parse */
@@ -702,7 +702,7 @@ mrklkit_ctx_init(mrklkit_ctx_t *ctx,
                  mrklkit_module_t *mod[],
                  size_t modsz)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     mrklkit_module_t **pm;
     size_t i;
 
@@ -750,7 +750,7 @@ void
 mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
                           void *udata)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     mrklkit_module_t **mod;
     UNUSED struct LLVMMCJITCompilerOptions opts;
     mrklkit_modaux_t *modaux;
@@ -798,7 +798,7 @@ mrklkit_ctx_setup_runtime(mrklkit_ctx_t *ctx,
 LLVMTypeRef
 mrklkit_ctx_get_type_backend(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
-    hash_item_t *dit;
+    mnhash_item_t *dit;
     mrklkit_backend_t *backend;
 
     if ((dit = hash_get_item(&mctx->backends, ty)) == NULL) {
@@ -812,7 +812,7 @@ mrklkit_ctx_get_type_backend(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 void
 mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *ctx, void *udata)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     mrklkit_module_t **mod;
 
     for (mod = array_last(&ctx->modules, &it);
@@ -851,7 +851,7 @@ mrklkit_ctx_cleanup_runtime(mrklkit_ctx_t *ctx, void *udata)
 void
 mrklkit_ctx_cleanup_runtime_dirty(mrklkit_ctx_t *ctx, void *udata)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     mrklkit_module_t **mod;
 
     /*

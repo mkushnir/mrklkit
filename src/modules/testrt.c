@@ -33,9 +33,9 @@ MEMDEBUG_DECLARE(testrt);
 #endif
 
 /* "fake" constants */
-static bytes_t *_if, *_and, *_comma, *_call;
+static mnbytes_t *_if, *_and, *_comma, *_call;
 struct {
-    bytes_t **var;
+    mnbytes_t **var;
     char *val;
 } const_bytes[] = {
     {&_if, "if"},
@@ -46,15 +46,15 @@ struct {
 static lkit_struct_t *null_struct;
 
 /* shared context */
-static array_t dsources;
-static hash_t targets;
+static mnarray_t dsources;
+static mnhash_t targets;
 rt_struct_t *testrt_source = NULL;
 
 static int
-_parse_typedef(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
+_parse_typedef(testrt_ctx_t *tctx, mnarray_t *form, mnarray_iter_t *it)
 {
     lkit_type_t *ty = NULL;
-    bytes_t *typename = NULL;
+    mnbytes_t *typename = NULL;
 
     if (lparse_next_word_bytes(form, it, &typename, 1) != 0) {
         TRRET(TESTRT_PARSE + 800);
@@ -85,7 +85,7 @@ _compile_type(testrt_ctx_t *tctx, LLVMModuleRef module)
 }
 
 static int
-_parse_builtin(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
+_parse_builtin(testrt_ctx_t *tctx, mnarray_t *form, mnarray_iter_t *it)
 {
     return builtin_parse_exprdef(&tctx->mctx, &tctx->builtin, form, it, 1);
 }
@@ -152,7 +152,7 @@ dsource_t *
 dsource_get(const char *name)
 {
     dsource_t **v;
-    array_iter_t it;
+    mnarray_iter_t it;
 
     for (v = array_first(&dsources, &it);
          v != NULL;
@@ -188,8 +188,8 @@ dsource_link(UNUSED LLVMExecutionEngineRef ee,
  *
  */
 static int
-parse_dsource_quals(array_t *form,
-                   array_iter_t *it,
+parse_dsource_quals(mnarray_t *form,
+                   mnarray_iter_t *it,
                    unsigned char *qual,
                    dsource_t *dsource)
 {
@@ -216,7 +216,7 @@ parse_dsource_quals(array_t *form,
 }
 
 static int
-_parse_dsource(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
+_parse_dsource(testrt_ctx_t *tctx, mnarray_t *form, mnarray_iter_t *it)
 {
     dsource_t *dsource;
     fparser_datum_t **node;
@@ -284,15 +284,15 @@ remove_undef(testrt_ctx_t *tctx, lkit_expr_t *expr)
 }
 
 static int
-parse_quals(array_t *form,
-                 array_iter_t *it,
+parse_quals(mnarray_t *form,
+                 mnarray_iter_t *it,
                  unsigned char *qual,
                  testrt_t *trt)
 {
     char *s = (char *)qual;
 
     if (strcmp(s, ":dsource") == 0) {
-        bytes_t *value;
+        mnbytes_t *value;
         if (lparse_next_word_bytes(form, it, &value, 1) != 0) {
             return 1;
         }
@@ -313,7 +313,7 @@ parse_quals(array_t *form,
 }
 
 void
-url_destroy(bytes_t **o)
+url_destroy(mnbytes_t **o)
 {
     BYTES_DECREF(o);
 }
@@ -347,8 +347,8 @@ static int
 _parse_take(testrt_ctx_t *tctx,
             lkit_cexpr_t *ectx,
             testrt_t *trt,
-            array_t *form,
-            array_iter_t *it,
+            mnarray_t *form,
+            mnarray_iter_t *it,
             int seterror)
 {
     fparser_datum_t **node;
@@ -399,8 +399,8 @@ static int
 _parse_do(testrt_ctx_t *tctx,
           lkit_cexpr_t *ectx,
           testrt_t *trt,
-          array_t *form,
-          array_iter_t *it,
+          mnarray_t *form,
+          mnarray_iter_t *it,
           int seterror)
 {
     fparser_datum_t **node;
@@ -456,8 +456,8 @@ static int
 _parse_see(testrt_ctx_t *tctx,
            lkit_cexpr_t *ectx,
            testrt_t *trt,
-           array_t *form,
-           array_iter_t *it,
+           mnarray_t *form,
+           mnarray_iter_t *it,
            UNUSED int seterror)
 {
     fparser_datum_t **node;
@@ -587,11 +587,11 @@ _parse_clause(testrt_ctx_t *tctx,
     switch (FPARSER_DATUM_TAG(dat)) {
     case FPARSER_SEQ:
         {
-            array_t *form;
-            array_iter_t it;
-            bytes_t *cname = NULL;
+            mnarray_t *form;
+            mnarray_iter_t it;
+            mnbytes_t *cname = NULL;
 
-            form = (array_t *)(dat->body);
+            form = (mnarray_t *)(dat->body);
 
             if (lparse_first_word_bytes(form, &it, &cname, seterror) != 0) {
                 TRRET(TESTRT_PARSE + 100);
@@ -652,7 +652,7 @@ _parse_clause(testrt_ctx_t *tctx,
 
 
 static int
-_parse_trt(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
+_parse_trt(testrt_ctx_t *tctx, mnarray_t *form, mnarray_iter_t *it)
 {
     fparser_datum_t **node = NULL;
     UNUSED lkit_gitem_t **gitem;
@@ -692,8 +692,8 @@ _parse_trt(testrt_ctx_t *tctx, array_t *form, array_iter_t *it)
 static int
 _parse_expr(testrt_ctx_t *tctx,
             const char *name,
-            array_t *form,
-            array_iter_t *it)
+            mnarray_t *form,
+            mnarray_iter_t *it)
 {
     if (strcmp(name, "type") == 0) {
         return _parse_typedef(tctx, form, it);
@@ -724,13 +724,13 @@ _compile_trt(testrt_t *trt, void *udata)
     int res = 0;
     testrt_ctx_t *tctx;
     lkit_expr_t **expr;
-    array_iter_t it;
+    mnarray_iter_t it;
     LLVMModuleRef module;
     LLVMContextRef lctx;
     LLVMBuilderRef builder;
     LLVMValueRef fn, fnmain, av, arg;
     LLVMBasicBlockRef bb;
-    bytes_t *name;
+    mnbytes_t *name;
     char buf[1024];
 
     tctx = udata;
@@ -1034,7 +1034,7 @@ static int
 _link(testrt_ctx_t *tctx, LLVMExecutionEngineRef ee, LLVMModuleRef module)
 {
     testrt_t *trt;
-    array_iter_t it;
+    mnarray_iter_t it;
 
     if (dsource_link(ee, module) != 0) {
         TRRET(TESTRT_LINK + 1);
@@ -1046,7 +1046,7 @@ _link(testrt_ctx_t *tctx, LLVMExecutionEngineRef ee, LLVMModuleRef module)
          trt = array_next(&tctx->testrts, &it)) {
 
         char buf[1024];
-        bytes_t *name;
+        mnbytes_t *name;
 
         snprintf(buf, sizeof(buf), "%s.take", trt->name->data);
         name = bytes_new_from_str(buf);
@@ -1106,7 +1106,7 @@ testrt_target_hash(testrt_target_t *tgt)
 {
     if (tgt->hash == 0) {
         lkit_type_t **ty;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         for (ty = array_first(&tgt->type->fields, &it);
              ty != NULL;
@@ -1151,7 +1151,7 @@ testrt_target_hash(testrt_target_t *tgt)
 
             case LKIT_STR:
                 {
-                    bytes_t *v;
+                    mnbytes_t *v;
 
                     v = mrklkit_rt_struct_get_item_str(tgt->value, it.iter, NULL);
                     if (v != NULL) {
@@ -1190,7 +1190,7 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
 
     if (diff == 0) {
         lkit_type_t **ty;
-        array_iter_t it;
+        mnarray_iter_t it;
 
         for (ty = array_first(&a->type->fields, &it);
              ty != NULL;
@@ -1229,7 +1229,7 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
 
             case LKIT_STR:
                 {
-                    bytes_t *as, *bs;
+                    mnbytes_t *as, *bs;
 
                     as = mrklkit_rt_struct_get_item_str(a->value, it.iter, NULL);
                     bs = mrklkit_rt_struct_get_item_str(b->value, it.iter, NULL);
@@ -1285,7 +1285,7 @@ testrt_acquire_take_key(testrt_t *trt)
 void *
 testrt_get_do(testrt_t *trt)
 {
-    hash_item_t *it;
+    mnhash_item_t *it;
     testrt_target_t *d0;
 
     if ((it = hash_get_item(&targets, &trt->key)) == NULL) {
@@ -1306,7 +1306,7 @@ testrt_get_do(testrt_t *trt)
 void
 testrt_get_do_empty(testrt_t *trt)
 {
-    hash_item_t *it;
+    mnhash_item_t *it;
     testrt_target_t *d0;
 
     if ((it = hash_get_item(&targets, &trt->key)) == NULL) {
@@ -1323,7 +1323,7 @@ testrt_get_do_empty(testrt_t *trt)
 
 
 int
-testrt_run_once(UNUSED bytestream_t *bs,
+testrt_run_once(UNUSED mnbytestream_t *bs,
                 UNUSED const byterange_t *br,
                 testrt_ctx_t *tctx)
 {

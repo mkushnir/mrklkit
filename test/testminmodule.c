@@ -51,8 +51,8 @@ minmodule_ctx_fini(minmodule_ctx_t *ctx)
 
 static int
 parse_load(UNUSED minmodule_ctx_t *ctx,
-           UNUSED array_t *form,
-           UNUSED array_iter_t *it)
+           UNUSED mnarray_t *form,
+           UNUSED mnarray_iter_t *it)
 {
     return 0;
 }
@@ -60,8 +60,8 @@ parse_load(UNUSED minmodule_ctx_t *ctx,
 
 static int
 parse_logging(UNUSED minmodule_ctx_t *ctx,
-              UNUSED array_t *form,
-              UNUSED array_iter_t *it)
+              UNUSED mnarray_t *form,
+              UNUSED mnarray_iter_t *it)
 {
     return 0;
 }
@@ -69,8 +69,8 @@ parse_logging(UNUSED minmodule_ctx_t *ctx,
 
 static int
 parse_daemon(UNUSED minmodule_ctx_t *ctx,
-             UNUSED array_t *form,
-             UNUSED array_iter_t *it)
+             UNUSED mnarray_t *form,
+             UNUSED mnarray_iter_t *it)
 {
     return 0;
 }
@@ -78,8 +78,8 @@ parse_daemon(UNUSED minmodule_ctx_t *ctx,
 
 static int
 parse_vhost(UNUSED minmodule_ctx_t *ctx,
-            UNUSED array_t *form,
-            UNUSED array_iter_t *it)
+            UNUSED mnarray_t *form,
+            UNUSED mnarray_iter_t *it)
 {
     return 0;
 }
@@ -87,7 +87,7 @@ parse_vhost(UNUSED minmodule_ctx_t *ctx,
 
 typedef struct _minmodule_config {
     const char *name;
-    int (*parser)(minmodule_ctx_t *, array_t *, array_iter_t *);
+    int (*parser)(minmodule_ctx_t *, mnarray_t *, mnarray_iter_t *);
 } minmodule_config_t;
 
 static minmodule_config_t minmodule_toplevels[] = {
@@ -100,8 +100,8 @@ static minmodule_config_t minmodule_toplevels[] = {
 static int
 minmodule_parse_top_level(minmodule_ctx_t *ctx,
                          const char *name,
-                         array_t *form,
-                         array_iter_t *it)
+                         mnarray_t *form,
+                         mnarray_iter_t *it)
 {
     /*
      * required by mrklkit

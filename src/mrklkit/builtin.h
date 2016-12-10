@@ -19,8 +19,8 @@ extern "C" {
 #define LKIT_BUILTIN_PARSE_EXPRDEF_MACRO (0x04)
 int builtin_parse_exprdef(mrklkit_ctx_t *,
                           lkit_cexpr_t *,
-                          array_t *,
-                          array_iter_t *,
+                          mnarray_t *,
+                          mnarray_iter_t *,
                           int);
 
 int builtin_remove_undef(mrklkit_ctx_t *,

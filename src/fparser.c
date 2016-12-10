@@ -104,7 +104,7 @@ fparser_escape(char *dst,
 
 static int
 compile_value(struct tokenizer_ctx *ctx,
-              bytestream_t *bs,
+              mnbytestream_t *bs,
               int state,
               int (*cb)(const char *,
                         fparser_datum_t *,
@@ -115,15 +115,15 @@ compile_value(struct tokenizer_ctx *ctx,
 
     if (state & (LEX_QSTROUT)) {
         ssize_t sz = SPOS(bs) - ctx->tokstart;
-        bytes_t *value;
+        mnbytes_t *value;
         ssize_t escaped;
 
         if ((dat = malloc(sizeof(fparser_datum_t) +
-                          sizeof(bytes_t) + sz + 1)) == NULL) {
+                          sizeof(mnbytes_t) + sz + 1)) == NULL) {
             FAIL("malloc");
         }
         fparser_datum_init(dat, FPARSER_STR);
-        value = (bytes_t *)(dat->body);
+        value = (mnbytes_t *)(dat->body);
         value->nref = POISON_NREF;
         value->hash = 0;
         value->sz = (size_t)sz + 1;
@@ -243,14 +243,14 @@ compile_value(struct tokenizer_ctx *ctx,
             ;
 
         } else {
-            bytes_t *value;
+            mnbytes_t *value;
 
             if ((dat = malloc(sizeof(fparser_datum_t) +
-                              sizeof(bytes_t) + sz + 1)) == NULL) {
+                              sizeof(mnbytes_t) + sz + 1)) == NULL) {
                 FAIL("malloc");
             }
             fparser_datum_init(dat, FPARSER_WORD);
-            value = (bytes_t *)(dat->body);
+            value = (mnbytes_t *)(dat->body);
             value->nref = POISON_NREF;
             value->hash = 0;
             value->sz = (size_t)sz + 1;
@@ -273,7 +273,7 @@ compile_value(struct tokenizer_ctx *ctx,
         ++(ctx->indent);
 
         if ((dat = malloc(sizeof(fparser_datum_t) +
-                          sizeof(array_t))) == NULL) {
+                          sizeof(mnarray_t))) == NULL) {
             FAIL("malloc");
         }
         fparser_datum_init(dat, FPARSER_SEQ);
@@ -314,7 +314,7 @@ compile_value(struct tokenizer_ctx *ctx,
 
 static int
 tokenize(struct tokenizer_ctx *ctx,
-         bytestream_t *bs,
+         mnbytestream_t *bs,
          int(*cb)(const char *,
                   fparser_datum_t *,
                   void *),
@@ -490,11 +490,11 @@ tokenize(struct tokenizer_ctx *ctx,
 
 #define FPARSER_PARSE_BODY(tokenize_fn)                                        \
     ssize_t nread;                                                             \
-    bytestream_t bs;                                                           \
+    mnbytestream_t bs;                                                           \
     struct tokenizer_ctx ctx;                                                  \
     fparser_datum_t *root = NULL;                                              \
     ctx.indent = 0;                                                            \
-    if ((root = malloc(sizeof(fparser_datum_t) + sizeof(array_t))) == NULL) {  \
+    if ((root = malloc(sizeof(fparser_datum_t) + sizeof(mnarray_t))) == NULL) {  \
         TRRETNULL(FPARSER_PARSE + 1);                                          \
     }                                                                          \
     if (fparser_datum_init(root, FPARSER_SEQ) != 0) {                          \
@@ -530,10 +530,10 @@ static int
 fparser_datum_fini(fparser_datum_t *dat)
 {
     if (dat->tag == FPARSER_SEQ) {
-        array_iter_t it;
+        mnarray_iter_t it;
         fparser_datum_t **o;
 
-        array_t *form = (array_t *)(&dat->body);
+        mnarray_t *form = (mnarray_t *)(&dat->body);
 
         for (o = array_first(form, &it);
              o != NULL;
@@ -558,7 +558,7 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
 
     //TRACE("tag=%d", rdat->tag);
     if (rdat->tag == FPARSER_SEQ) {
-        array_t *form = (array_t *)(&rdat->body);
+        mnarray_t *form = (mnarray_t *)(&rdat->body);
 
         TRACE("SEQ:%ld", form->elnum);
 
@@ -571,13 +571,13 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
         TRACE("NULL");
 
     } else if (rdat->tag == FPARSER_STR) {
-        bytes_t *v;
-        v = (bytes_t *)(rdat->body);
+        mnbytes_t *v;
+        v = (mnbytes_t *)(rdat->body);
         TRACE("STR '%s'", v->data);
 
     } else if (rdat->tag == FPARSER_WORD) {
-        bytes_t *v;
-        v = (bytes_t *)(rdat->body);
+        mnbytes_t *v;
+        v = (mnbytes_t *)(rdat->body);
         TRACE("WORD '%s'", v->data);
 
     } else if (rdat->tag == FPARSER_INT) {
@@ -600,9 +600,9 @@ fparser_datum_dump(fparser_datum_t **dat, void *udata)
 
 
 struct _fparser_datum_dump_info {
-    array_t *ar;
+    mnarray_t *ar;
     int level;
-    bytestream_t *bs;
+    mnbytestream_t *bs;
 };
 
 
@@ -629,7 +629,7 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
 
     if (rdat->tag == FPARSER_SEQ) {
         int hasforms = 0;
-        array_t *form = (array_t *)(&rdat->body);
+        mnarray_t *form = (mnarray_t *)(&rdat->body);
 
         if (di->level > 0) {
             bytestream_cat(di->bs, 1, "\n");
@@ -697,10 +697,10 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
         }
 
     } else if (rdat->tag == FPARSER_STR) {
-        bytes_t *v;
+        mnbytes_t *v;
         char *dst;
         size_t sz;
-        v = (bytes_t *)(rdat->body);
+        v = (mnbytes_t *)(rdat->body);
         sz = strlen((char *)(v->data));
         if ((dst = malloc(sz * 2 + 1)) == NULL) {
             FAIL("malloc");
@@ -715,8 +715,8 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
         free(dst);
 
     } else if (rdat->tag == FPARSER_WORD) {
-        bytes_t *v;
-        v = (bytes_t *)(rdat->body);
+        mnbytes_t *v;
+        v = (mnbytes_t *)(rdat->body);
         if (rdat->error) {
             bytestream_nprintf(di->bs, v->sz + 10 + 7, "-->%s<--", v->data);
         } else {
@@ -760,7 +760,7 @@ datum_dump_bytestream(fparser_datum_t **dat, void *udata)
 
 
 void
-fparser_datum_dump_bytestream(fparser_datum_t *dat, bytestream_t *bs)
+fparser_datum_dump_bytestream(fparser_datum_t *dat, mnbytestream_t *bs)
 {
     struct _fparser_datum_dump_info di;
 
@@ -775,7 +775,7 @@ fparser_datum_dump_bytestream(fparser_datum_t *dat, bytestream_t *bs)
 void
 fparser_datum_dump_formatted(fparser_datum_t *dat)
 {
-    bytestream_t bs;
+    mnbytestream_t bs;
 
     bytestream_init(&bs, 4096);
     fparser_datum_dump_bytestream(dat, &bs);
@@ -803,7 +803,7 @@ fparser_datum_init(fparser_datum_t *dat, fparser_tag_t tag)
     dat->error = 0;
 
     if (tag == FPARSER_SEQ) {
-        array_t *form = (array_t *)(&dat->body);
+        mnarray_t *form = (mnarray_t *)(&dat->body);
 
         if (array_init(form,
                        sizeof(fparser_datum_t *), 0,
@@ -824,7 +824,7 @@ fparser_datum_form_add(fparser_datum_t *parent, fparser_datum_t *dat)
 
     //TRACE("Adding %d to %d", dat->tag, parent->tag);
 
-    array_t *form = (array_t *)parent->body;
+    mnarray_t *form = (mnarray_t *)parent->body;
     fparser_datum_t **entry;
 
     if ((entry = array_incr(form)) == NULL) {
@@ -896,18 +896,18 @@ fparser_datum_build_bool(char val)
 
 #define FPARSER_DATUM_BUILD_STR_BODY(malloc_fn, tag)           \
     fparser_datum_t *dat;                                      \
-    bytes_t *value;                                            \
+    mnbytes_t *value;                                            \
     size_t sz;                                                 \
     ssize_t escaped;                                           \
     sz = strlen(str);                                          \
     if ((dat = malloc_fn(sizeof(fparser_datum_t) +             \
-                         sizeof(bytes_t) +                     \
+                         sizeof(mnbytes_t) +                     \
                          sz +                                  \
                          1)) == NULL) {                        \
         FAIL("malloc");                                        \
     }                                                          \
     fparser_datum_init(dat, tag);                              \
-    value = (bytes_t *)(dat->body);                            \
+    value = (mnbytes_t *)(dat->body);                            \
     value->nref = POISON_NREF;                                           \
     value->hash = 0;                                           \
     value->sz = sz + 1;                                        \
@@ -931,15 +931,15 @@ fparser_datum_build_str(const char *str)
 
 #define FPARSER_DATUM_BUILD_STR_BUF_BODY(malloc_fn)            \
     fparser_datum_t *dat;                                      \
-    bytes_t *value;                                            \
+    mnbytes_t *value;                                            \
     ssize_t escaped;                                           \
     if ((dat = malloc_fn(sizeof(fparser_datum_t) +             \
-                         sizeof(bytes_t) +                     \
+                         sizeof(mnbytes_t) +                     \
                          sz)) == NULL) {                       \
         FAIL("malloc");                                        \
     }                                                          \
     fparser_datum_init(dat, FPARSER_STR);                      \
-    value = (bytes_t *)(dat->body);                            \
+    value = (mnbytes_t *)(dat->body);                            \
     value->nref = POISON_NREF;                                           \
     value->hash = 0;                                           \
     value->sz = sz;                                            \
@@ -957,7 +957,7 @@ fparser_datum_build_str_buf(const char *str, size_t sz)
 #define FPARSER_DATUM_BUILD_SEQ_BODY(malloc_fn)        \
     fparser_datum_t *dat;                              \
     if ((dat = malloc_fn(sizeof(fparser_datum_t) +     \
-                         sizeof(array_t))) == NULL) {  \
+                         sizeof(mnarray_t))) == NULL) {  \
         FAIL("malloc");                                \
     }                                                  \
     fparser_datum_init(dat, FPARSER_SEQ);              \

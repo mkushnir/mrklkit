@@ -56,7 +56,7 @@ typedef struct _lkit_dpstr {
 typedef struct _lkit_dparray {
     struct _lkit_dpexpr base;
     /* strong lkit_dpexpr_t * */
-    array_t fields;
+    mnarray_t fields;
     int64_t nreserved;
     char fdelim;
 } lkit_dparray_t;
@@ -64,7 +64,7 @@ typedef struct _lkit_dparray {
 typedef struct _lkit_dpdict {
     struct _lkit_dpexpr base;
     /* strong lkit_dpexpr_t * */
-    array_t fields;
+    mnarray_t fields;
     int64_t nreserved;
     char fdelim; /* field delimiter */
     char pdelim; /* pair delimiter */
@@ -73,9 +73,9 @@ typedef struct _lkit_dpdict {
 typedef struct _lkit_dpstruct {
     struct _lkit_dpexpr base;
     /* strong lkit_dpexpr_t * */
-    array_t fields;
+    mnarray_t fields;
     /* weakref byte_t * */
-    array_t names;
+    mnarray_t names;
     char fdelim;
 } lkit_dpstruct_t;
 
@@ -84,7 +84,7 @@ lkit_dpexpr_t *lkit_dpstruct_get_field_parser(lkit_dpstruct_t *, int);
 lkit_dpexpr_t *lkit_dpdict_get_element_parser(lkit_dpdict_t *);
 lkit_dpexpr_t *lkit_dparray_get_element_parser(lkit_dparray_t *);
 
-lkit_dpexpr_t *lkit_dpexpr_find(mrklkit_ctx_t *, bytes_t *, void *);
+lkit_dpexpr_t *lkit_dpexpr_find(mrklkit_ctx_t *, mnbytes_t *, void *);
 
 lkit_dpexpr_t *lkit_dpexpr_parse(mrklkit_ctx_t *,
                                  fparser_datum_t *,

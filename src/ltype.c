@@ -110,7 +110,7 @@ lkit_type_destroy(lkit_type_t **ty)
 
 
 static int
-lkit_array_names_fini(bytes_t **pname)
+lkit_array_names_fini(mnbytes_t **pname)
 {
     BYTES_DECREF(pname);
     return 0;
@@ -299,7 +299,7 @@ lkit_type_new(lkit_tag_t tag)
             ts->fini = NULL;
             array_init(&ts->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             array_init(&ts->names,
-                       sizeof(bytes_t *),
+                       sizeof(mnbytes_t *),
                        0,
                        (array_initializer_t)null_init,
                        (array_finalizer_t)lkit_array_names_fini);
@@ -317,7 +317,7 @@ lkit_type_new(lkit_tag_t tag)
             tf->base.name = "func";
             array_init(&tf->fields, sizeof(lkit_type_t *), 0, NULL, NULL);
             array_init(&tf->names,
-                       sizeof(bytes_t *),
+                       sizeof(mnbytes_t *),
                        0,
                        (array_initializer_t)null_init,
                        (array_finalizer_t)lkit_array_names_fini);
@@ -423,7 +423,7 @@ lkit_type_get_parser(mrklkit_ctx_t *mctx, int ftag)
 lkit_type_t *
 lkit_type_finalize(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
-    hash_item_t *probe;
+    mnhash_item_t *probe;
 
     assert(ty != NULL);
 
@@ -454,10 +454,10 @@ lkit_type_finalize(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 void
 lkit_register_typedef(mrklkit_ctx_t *mctx,
                       lkit_type_t *ty,
-                      bytes_t *typename,
+                      mnbytes_t *typename,
                       int flags)
 {
-    hash_item_t *hit;
+    mnhash_item_t *hit;
 
     /* have it unique */
     if ((hit = hash_get_item(&mctx->typedefs, typename)) != NULL) {
@@ -483,9 +483,9 @@ lkit_register_typedef(mrklkit_ctx_t *mctx,
 
 
 lkit_type_t *
-lkit_typedef_get(mrklkit_ctx_t *mctx, bytes_t *typename)
+lkit_typedef_get(mrklkit_ctx_t *mctx, mnbytes_t *typename)
 {
-    hash_item_t *dit;
+    mnhash_item_t *dit;
 
     if ((dit = hash_get_item(&mctx->typedefs, typename)) != NULL) {
         return dit->value;
@@ -495,11 +495,11 @@ lkit_typedef_get(mrklkit_ctx_t *mctx, bytes_t *typename)
 
 
 static int
-_lkit_typename_get(bytes_t *typename, lkit_type_t *ty, void *udata)
+_lkit_typename_get(mnbytes_t *typename, lkit_type_t *ty, void *udata)
 {
     struct {
         lkit_type_t *ty;
-        bytes_t *typename;
+        mnbytes_t *typename;
     } *params = udata;
 
     if (lkit_type_cmp(ty, params->ty) == 0) {
@@ -510,12 +510,12 @@ _lkit_typename_get(bytes_t *typename, lkit_type_t *ty, void *udata)
 }
 
 
-bytes_t *
+mnbytes_t *
 lkit_typename_get(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 {
     struct {
         lkit_type_t *ty;
-        bytes_t *typename;
+        mnbytes_t *typename;
     } params;
 
     params.ty = ty;
@@ -529,7 +529,7 @@ lkit_typename_get(mrklkit_ctx_t *mctx, lkit_type_t *ty)
 lkit_type_t *
 lkit_array_get_element_type(lkit_array_t *ta)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     lkit_type_t **ty = NULL;
 
     if ((ty = array_first(&ta->fields, &it)) == NULL) {
@@ -542,7 +542,7 @@ lkit_array_get_element_type(lkit_array_t *ta)
 lkit_type_t *
 lkit_dict_get_element_type(lkit_dict_t *td)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     lkit_type_t **ty = NULL;
 
     if ((ty = array_first(&td->fields, &it)) == NULL) {
@@ -553,16 +553,16 @@ lkit_dict_get_element_type(lkit_dict_t *td)
 
 
 lkit_type_t *
-lkit_struct_get_field_type(lkit_struct_t *ts, bytes_t *name)
+lkit_struct_get_field_type(lkit_struct_t *ts, mnbytes_t *name)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     lkit_type_t **ty = NULL;
 
     for (ty = array_first(&ts->fields, &it);
          ty != NULL;
          ty = array_next(&ts->fields, &it)) {
 
-        bytes_t **fname;
+        mnbytes_t **fname;
 
         if ((fname = array_get(&ts->names, it.iter)) == NULL) {
             FAIL("array_get");
@@ -578,16 +578,16 @@ lkit_struct_get_field_type(lkit_struct_t *ts, bytes_t *name)
 
 
 int
-lkit_struct_get_field_index(lkit_struct_t *ts, bytes_t *name)
+lkit_struct_get_field_index(lkit_struct_t *ts, mnbytes_t *name)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     lkit_type_t **ty = NULL;
 
     for (ty = array_first(&ts->fields, &it);
          ty != NULL;
          ty = array_next(&ts->fields, &it)) {
 
-        bytes_t **fname;
+        mnbytes_t **fname;
 
         if ((fname = array_get(&ts->names, it.iter)) == NULL) {
             FAIL("array_get");
@@ -605,8 +605,8 @@ void
 lkit_struct_copy(lkit_struct_t *src, lkit_struct_t *dst)
 {
     lkit_type_t **pty0;
-    bytes_t **pname0;
-    array_iter_t it;
+    mnbytes_t **pname0;
+    mnarray_iter_t it;
 
     assert(dst->fields.elnum == 0);
     assert(dst->names.elnum == 0);
@@ -624,7 +624,7 @@ lkit_struct_copy(lkit_struct_t *src, lkit_struct_t *dst)
     for (pname0 = array_first(&src->names, &it);
          pname0 != NULL;
          pname0 = array_next(&src->names, &it)) {
-        bytes_t **pname1;
+        mnbytes_t **pname1;
 
         if ((pname1 = array_incr(&dst->names)) == NULL) {
             FAIL("array_incr");
@@ -689,7 +689,7 @@ _lkit_type_dump(lkit_type_t *ty, int level)
         {
             lkit_struct_t *ts;
             lkit_type_t **elty;
-            array_iter_t it;
+            mnarray_iter_t it;
 
             LTRACEN(0, "(%s ", ty->name);
 
@@ -698,7 +698,7 @@ _lkit_type_dump(lkit_type_t *ty, int level)
                  elty != NULL;
                  elty = array_next(&ts->fields, &it)) {
 
-                bytes_t **name;
+                mnbytes_t **name;
 
                 if ((name = array_get(&ts->names, it.iter)) != NULL &&
                     *name != NULL) {
@@ -718,7 +718,7 @@ _lkit_type_dump(lkit_type_t *ty, int level)
     case LKIT_FUNC:
         {
             lkit_type_t **elty;
-            array_iter_t it;
+            mnarray_iter_t it;
             lkit_func_t *tf;
 
             LTRACEN(0, "(%s ", ty->name);
@@ -728,7 +728,7 @@ _lkit_type_dump(lkit_type_t *ty, int level)
                  elty != NULL;
                  elty = array_next(&tf->fields, &it)) {
 
-                bytes_t **name;
+                mnbytes_t **name;
 
                 if ((name = array_get(&tf->names, it.iter)) != NULL &&
                     *name != NULL) {
@@ -777,7 +777,7 @@ lkit_type_dump(lkit_type_t *ty)
 
 
 void
-lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
+lkit_type_str(lkit_type_t *ty, mnbytestream_t *bs)
 {
     if (ty == NULL) {
         bytestream_cat(bs, 6, "<null>");
@@ -812,13 +812,13 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
             {
                 lkit_struct_t *ts;
                 lkit_type_t **elty;
-                array_iter_t it;
+                mnarray_iter_t it;
 
                 ts = (lkit_struct_t *)ty;
                 for (elty = array_first(&ts->fields, &it);
                      elty != NULL;
                      elty = array_next(&ts->fields, &it)) {
-                    bytes_t **fname;
+                    mnbytes_t **fname;
 
                     if ((fname = array_get(&ts->names, it.iter)) != NULL) {
                         bytestream_nprintf(bs, 1024, "(%s ", (*fname)->data);
@@ -835,7 +835,7 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
             {
                 lkit_func_t *tf;
                 lkit_type_t **elty;
-                array_iter_t it;
+                mnarray_iter_t it;
 
                 tf = (lkit_func_t *)ty;
                 for (elty = array_first(&tf->fields, &it);
@@ -869,7 +869,7 @@ lkit_type_str(lkit_type_t *ty, bytestream_t *bs)
  */
 
 static int
-field_name_cmp(bytes_t **a, bytes_t **b)
+field_name_cmp(mnbytes_t **a, mnbytes_t **b)
 {
     if (*a == NULL) {
         if (*b == NULL) {
@@ -1080,7 +1080,7 @@ lkit_type_hash(lkit_type_t *ty)
         return 0;
     }
     if (ty->hash == 0) {
-        bytestream_t bs;
+        mnbytestream_t bs;
         bytestream_init(&bs, 4096);
         lkit_type_str(ty, &bs);
         ty->hash = fasthash(0,
@@ -1145,9 +1145,9 @@ parse_fielddef(mrklkit_ctx_t *mctx,
                lkit_type_t *ty,
                int seterror)
 {
-    array_t *form;
-    array_iter_t it;
-    bytes_t **name = NULL;
+    mnarray_t *form;
+    mnarray_iter_t it;
+    mnbytes_t **name = NULL;
 
 #define DO_PARSE_FIELDDEF(var)                                         \
     var = (__typeof(var))ty;                                           \
@@ -1156,7 +1156,7 @@ parse_fielddef(mrklkit_ctx_t *mctx,
         FAIL("array_incr");                                            \
     }                                                                  \
                                                                        \
-    form = (array_t *)dat->body;                                       \
+    form = (mnarray_t *)dat->body;                                       \
                                                                        \
     if (lparse_first_word_bytes(form, &it, name, 1) == 0) {            \
         fparser_datum_t **node;                                        \
@@ -1197,12 +1197,12 @@ parse_fielddef(mrklkit_ctx_t *mctx,
 static int
 parse_argdef(mrklkit_ctx_t *mctx,
              fparser_datum_t *dat,
-             bytes_t **pname,
+             mnbytes_t **pname,
              lkit_type_t **pty,
              int seterror)
 {
-    array_t *form;
-    array_iter_t it;
+    mnarray_t *form;
+    mnarray_iter_t it;
     fparser_datum_t **d;
 
     if (dat->tag != FPARSER_SEQ) {
@@ -1210,7 +1210,7 @@ parse_argdef(mrklkit_ctx_t *mctx,
         TRRET(PARSE_ARGDEF + 1);
     }
 
-    form = (array_t *)dat->body;
+    form = (mnarray_t *)dat->body;
     if (lparse_first_word_bytes(form, &it, pname, seterror) != 0) {
         dat->error = seterror;
         TRRET(PARSE_ARGDEF + 2);
@@ -1246,10 +1246,10 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
     tag = FPARSER_DATUM_TAG(dat);
 
     if (tag == FPARSER_WORD) {
-        bytes_t *b;
+        mnbytes_t *b;
         char *typename;
 
-        b = (bytes_t *)(dat->body);
+        b = (mnbytes_t *)(dat->body);
         typename = (char *)(b->data);
 
         /* simple types */
@@ -1276,13 +1276,13 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
         } else if (strcmp(typename, "...") == 0) {
             ty = lkit_type_get(mctx, LKIT_VARARG);
         } else {
-            hash_item_t *probe = NULL;
+            mnhash_item_t *probe = NULL;
 
             /*
              * XXX handle typedefs here, or unknown type ...
              */
             if ((probe = hash_get_item(&mctx->typedefs,
-                                       (bytes_t *)(dat->body))) != NULL) {
+                                       (mnbytes_t *)(dat->body))) != NULL) {
                 lkit_type_t *pty;
 
                 pty = probe->value;
@@ -1297,11 +1297,11 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
             goto end;
         }
     } else if (tag == FPARSER_SEQ) {
-        array_t *form;
-        array_iter_t it;
-        bytes_t *first;
+        mnarray_t *form;
+        mnarray_iter_t it;
+        mnbytes_t *first;
 
-        form = (array_t *)dat->body;
+        form = (mnarray_t *)dat->body;
 
         if (lparse_first_word_bytes(form, &it, &first, seterror) == 0) {
             if (strcmp((char *)first->data, "array") == 0) {
@@ -1397,7 +1397,7 @@ lkit_type_parse(mrklkit_ctx_t *mctx,
                 lkit_func_t *tf;
                 fparser_datum_t **node;
                 lkit_type_t **paramtype;
-                bytes_t **paramname;
+                mnbytes_t **paramname;
 
 
                 ty = lkit_type_get(mctx, LKIT_FUNC);
@@ -1476,12 +1476,12 @@ err:
 
 int
 lkit_parse_typedef(mrklkit_ctx_t *mctx,
-                   array_t *form,
-                   array_iter_t *it)
+                   mnarray_t *form,
+                   mnarray_iter_t *it)
 {
     int res = 0;
     fparser_datum_t **node;
-    bytes_t *typename = NULL;
+    mnbytes_t *typename = NULL;
     lkit_type_t *type;
 
     /* (type WORD int|float|str|bool|undef|(array )|(dict )|(struct )|(func )) */
@@ -1515,7 +1515,7 @@ err:
 int
 lkit_type_traverse(lkit_type_t *ty, lkit_type_traverser_t cb, void *udata)
 {
-    array_iter_t it;
+    mnarray_iter_t it;
     lkit_type_t **pty;
 
     /* depth-first */
@@ -1617,7 +1617,7 @@ lkit_type_fini_dict(lkit_type_t *key, UNUSED lkit_type_t *value)
 
 
 static int
-lkit_typedef_fini_dict(bytes_t *key, UNUSED lkit_type_t *value)
+lkit_typedef_fini_dict(mnbytes_t *key, UNUSED lkit_type_t *value)
 {
     BYTES_DECREF(&key);
     return 0;

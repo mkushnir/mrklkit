@@ -49,7 +49,7 @@ test0(void)
 
 
 static int
-mycb(UNUSED bytestream_t *bs, const byterange_t *br, UNUSED void *udata)
+mycb(UNUSED mnbytestream_t *bs, const byterange_t *br, UNUSED void *udata)
 {
     //D8(SDATA(bs, br->start), br->end - br->start);
     TRACE("%ld/%ld", br->start, br->end);
@@ -76,7 +76,7 @@ main(int argc, char *argv[])
 
     if (argc > 2) {
         int fd;
-        bytestream_t bs;
+        mnbytestream_t bs;
         size_t nlines = 0;
         size_t nbytes = 0;
 
