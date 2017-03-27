@@ -60,8 +60,8 @@ mrklkit_config_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lbz2 -lmrkcommon @MRKC
 
 SUBDIRS = .
 
-diag.c diag.h: diag.txt
-	$(AM_V_GEN) /bin/sh ./gen-diag mrklkit
+diag.c diag.h: diag.txt gen-diag
+	$(AM_V_GEN) cat diag.txt | sort -u | /bin/sh ./gen-diag mrklkit
 
 run: all
 	for i in $(bin_PROGRAMS); do if test -x ./$$i; then LD_LIBRARY_PATH=$(libdir) ./$$i; fi; done;

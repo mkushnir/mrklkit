@@ -42,7 +42,7 @@ testminmodule_CFLAGS = -Wall -Wextra -Werror -std=c99 @MRKCOMMON_LOCAL_CFLAGS@ @
 testminmodule_LDFLAGS =  -L$(libdir) -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ -lmrklkit @MRKLKIT_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 ../src/diag.c ../src/diag.h: ../src/diag.txt
-	$(AM_V_GEN) /bin/sh ../src/gen-diag mrklkit
+	$(AM_V_GEN) /bin/sh cat ../src/diag.txt | sort -u | /bin/sh ../src/gen-diag mrklkit ../src
 
 testrun: all
 	for i in $(noinst_PROGRAMS); do if test -x ./$$i; then LD_LIBRARY_PATH=$(libdir) ./$$i; fi; done;
