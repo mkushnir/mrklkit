@@ -88,7 +88,7 @@ dparser_reach_delim_readmore_unix(mnbytestream_t *bs, int fd, off_t epos)
         //      SNEEDMORE(bs), SPOS(bs), epos);
         //TRACE("SPCHR='%c'", SPCHR(bs));
         if (SNEEDMORE(bs)) {
-            if (bytestream_read_more(bs, fd, bs->growsz) <= 0) {
+            if (bytestream_read_more(bs, (void *)(intptr_t)fd, bs->growsz) <= 0) {
                 SPOS(bs) = oldspos;
                 return DPARSE_EOD;
             }
@@ -113,7 +113,7 @@ dparser_reach_delim_readmore_win(mnbytestream_t *bs, int fd, off_t epos)
         //      SNEEDMORE(bs), SPOS(bs), epos);
         //TRACE("SPCHR='%c'", SPCHR(bs));
         if (SNEEDMORE(bs)) {
-            if (bytestream_read_more(bs, fd, bs->growsz) <= 0) {
+            if (bytestream_read_more(bs, (void *)(intptr_t)fd, bs->growsz) <= 0) {
                 SPOS(bs) = oldspos;
                 return DPARSE_EOD;
             }

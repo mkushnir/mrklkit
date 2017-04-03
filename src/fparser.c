@@ -505,7 +505,7 @@ tokenize(struct tokenizer_ctx *ctx,
     ctx.tokstart = SPOS(&bs);                                                  \
     ctx.state = LEX_SPACE;                                                     \
     while (SNEEDMORE(&bs)) {                                                   \
-        nread = bytestream_read_more(&bs, fd, BLOCKSZ);                        \
+        nread = bytestream_read_more(&bs, (void *)(intptr_t)fd, BLOCKSZ);      \
         if (nread <= 0) {                                                      \
             break;                                                             \
         }                                                                      \
@@ -779,7 +779,7 @@ fparser_datum_dump_formatted(fparser_datum_t *dat)
 
     bytestream_init(&bs, 4096);
     fparser_datum_dump_bytestream(dat, &bs);
-    bytestream_write(&bs, 2, bs.eod);
+    bytestream_write(&bs, (void *)(intptr_t)2, bs.eod);
     bytestream_fini(&bs);
 }
 
