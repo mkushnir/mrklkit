@@ -1,8 +1,9 @@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
 
+diags = diag.txt
 BUILT_SOURCES = diag.c diag.h
-EXTRA_DIST = diag.txt gen-diag
+EXTRA_DIST = $(diags)
 CLEANFILES = $(BUILT_SOURCES) *.core
 #CLEANFILES += *.in
 
@@ -53,15 +54,15 @@ DEBUG_FLAGS = -DNDEBUG -O3
 endif
 
 libmrklkit_la_CFLAGS = -Wall -Wextra -Werror -std=c99 @MRKCOMMON_LOCAL_CFLAGS@ @MRKLKIT_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS) -I$(includedir)
-libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lbz2 -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
+libmrklkit_la_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lmrkcommon -lmndiag -lbz2 @MRKCOMMON_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 mrklkit_config_CFLAGS = -Wall -Wextra -Werror -std=c99 @MRKCOMMON_LOCAL_CFLAGS@ @MRKLKIT_LOCAL_CFLAGS@ @LLVM_CFLAGS@ @_GNU_SOURCE_MACRO@ $(DEBUG_FLAGS) -I$(includedir) -DMRKLKIT_CONFIG_INCLUDES="\"$(CFLAGS) $(LLVM_CFLAGS)\"" -DMRKLKIT_CONFIG_LIBS="\"$(LIBS)\""
-mrklkit_config_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lbz2 -lmrkcommon @MRKCOMMON_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
+mrklkit_config_LDFLAGS = -version-info 0:0:0 -L$(libdir) -lmrkcommon -lmndiag -lbz2 @MRKCOMMON_LOCAL_LDFLAGS@ @LLVM_LIBS@ @LLVM_LDFLAGS@
 
 SUBDIRS = .
 
-diag.c diag.h: diag.txt gen-diag
-	$(AM_V_GEN) cat diag.txt | sort -u | /bin/sh ./gen-diag mrklkit
+diag.c diag.h: $(diags)
+	$(AM_V_GEN) cat $(diags) | sort -u >diag.txt.tmp && mndiagen -S diag.txt.tmp -L mrklkit -H diag.h -C diag.c *.[ch] modules/*.[ch]
 
 run: all
 	for i in $(bin_PROGRAMS); do if test -x ./$$i; then LD_LIBRARY_PATH=$(libdir) ./$$i; fi; done;
