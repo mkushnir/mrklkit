@@ -10,6 +10,7 @@
 #define TRRET_DEBUG_VERBOSE
 #include <mrkcommon/dumpm.h>
 #include <mrkcommon/fasthash.h>
+#include <mrkcommon/util.h>
 
 #include <mrklkit/module.h>
 #include <mrklkit/mrklkit.h>
@@ -1223,7 +1224,7 @@ testrt_target_cmp(testrt_target_t *a, testrt_target_t *b)
 
                     af = mrklkit_rt_struct_get_item_float(a->value, it.iter, 0.0);
                     bf = mrklkit_rt_struct_get_item_float(b->value, it.iter, 0.0);
-                    diff = af > bf ? 1 : af < bf ? -1 : 0;
+                    diff = MNCMP(af, bf);
                 }
                 break;
 

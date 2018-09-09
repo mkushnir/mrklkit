@@ -982,7 +982,7 @@ type_cmp(lkit_type_t **pa, lkit_type_t **pb)
         }
     }
 
-    return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+    return MNCMP(diff, 0);
 }
 
 
@@ -1069,7 +1069,7 @@ type_cmp_loose(lkit_type_t **pa, lkit_type_t **pb)
         }
     }
 
-    return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+    return MNCMP(diff, 0);
 }
 
 
@@ -1105,7 +1105,7 @@ lkit_type_cmp(lkit_type_t *a, lkit_type_t *b)
     if (diff == 0) {
         diff = type_cmp(&a, &b);
     }
-    return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+    return MNCMP(diff, 0);
 }
 
 
@@ -1123,7 +1123,7 @@ lkit_type_cmp_loose(lkit_type_t *a, lkit_type_t *b)
     if (diff == 0) {
         diff = type_cmp_loose(&a, &b);
     }
-    return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+    return MNCMP(diff, 0);
 }
 
 
