@@ -1276,7 +1276,7 @@ compile_str_join(mrklkit_ctx_t *mctx,
         COMPILE_INCREF_ZREF(module, builder, *arg, av[it.iter]);
         asz[it.iter] = LLVMBuildStructGEP(builder,
                                           av[it.iter],
-                                          BYTES_SZ_IDX,
+                                          MRKLKIT_INDEXOF(mnbytes_t, sz),
                                           NEWVAR("gep"));
         asz[it.iter] = LLVMBuildLoad(builder, asz[it.iter], NEWVAR("load"));
         accum = LLVMBuildAdd(builder, accum, asz[it.iter], NEWVAR("plus"));
@@ -1451,7 +1451,8 @@ compile_function(mrklkit_ctx_t *mctx,
                                 "str";
                         args[1] = LLVMBuildStructGEP(builder,
                                                      v,
-                                                     BYTES_DATA_IDX,
+                                                     MRKLKIT_INDEXOF(
+                                                         mnbytes_t, data),
                                                      NEWVAR(n));
                     }
                     break;
@@ -2953,7 +2954,10 @@ tostr_done:
                 goto err;
             }
             COMPILE_INCREF_ZREF(module, builder, *arg, tmp);
-            v = LLVMBuildStructGEP(builder, tmp, BYTES_SZ_IDX, NEWVAR("gep"));
+            v = LLVMBuildStructGEP(builder,
+                                   tmp,
+                                   MRKLIKT_INDEXOF(mnbytes_t, sz),
+                                   NEWVAR("gep"));
             v = LLVMBuildLoad(builder, v, NEWVAR("load"));
             const1 = LLVMConstInt(LLVMInt64TypeInContext(lctx), 1, 0);
             v = LLVMBuildSub(builder, v, const1, NEWVAR("dec")); /* zero term */

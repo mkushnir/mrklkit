@@ -2,6 +2,7 @@
 #define MRKLKIT_UTILS_H_DEFINED
 
 #include <sys/types.h>
+#include <stddef.h>
 
 #include <mrkcommon/dumpm.h>
 
@@ -17,6 +18,8 @@ char *newvar(char *, size_t, const char *);
 #define FNULL(m) m
 #define ERRCOLOR FRED
 #define SIZEOFCOLOR(c) (sizeof(c("")) - 1)
+
+#define MRKLKIT_INDEXOF(ty, field) (offsetof(ty, field) / sizeof(uint64_t))
 
 #ifdef __cplusplus
 }
